@@ -1,0 +1,19 @@
+version: "3"
+name: rapd
+services:
+  shell-sdk:
+    container_name: rapd-shell
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    # command: bash -c "npm install && npm run build && npm run test"
+    build: 
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        - USER_ID=${UID:-1000}
+        - GROUP_ID=${GID:-1000}
+    environment:
+      - NODE_ENV=development
+      - HOST_USER_ID=${UID:-1000}
+      - HOST_GROUP_ID=${GID:-1000}
+    volumes:
+      - ..:/workspace:cached
