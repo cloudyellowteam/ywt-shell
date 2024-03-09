@@ -3,13 +3,15 @@ builder() {
     local CURRENT_DIR && CURRENT_DIR=$(dirname -- "$0")
     local ROOT_DIR && ROOT_DIR=$(dirname -- "$CURRENT_DIR") && ROOT_DIR=$(realpath -- "$ROOT_DIR")
     #shellcheck source=/dev/null
-    source "${ROOT_DIR}/rapd.sh"
+    source "${ROOT_DIR}/rapd.sh" task --version
     local CONFIG_EXPIRES_AT="${2:-"31/12/2999"}"
     local DIST="${ROOT_DIR}/dist"
+    local BIN="${ROOT_DIR}/bin"
     colorize "blue" "Building shc files from $ROOT_DIR" | logger info
     prepare() {
         [[ ! -d "$DIST" ]] && mkdir -p "${DIST}"
         rm -fR "${DIST:?}"/*
+        [[ ! -d "$BIN" ]] && mkdir -p "${BIN}"
         if ! command -v shc &>/dev/null; then
             colorize "red" "compiler is not installed, trying install" | logger warn
             apt-get install shc -y || return 1
@@ -43,12 +45,16 @@ builder() {
         local FILE=$1
         [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" | logger error && return 0
         local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}"
-        echo "Building file ${FILE} valid until ${EXPIRES_AT}" | logger debug
+        local FILENAME && FILENAME=$(basename -- "$FILE")
+        colorize "blue" "Building file ${FILE} valid until ${EXPIRES_AT}" | logger info
         shc -r -f "${FILE}" -e "${EXPIRES_AT}"
-        mv -f "${FILE}" "${FILE}.sh"    # .s = sh source
-        mv -f "${FILE}.x" "${FILE}"     # .x = executable
-        mv -f "${FILE}.x.c" "${FILE}.c" # .c = c source
-        echo "Build done. run ${GREEN}${FILE}${NC} from your terminal" | logger success
+        copy -f "$FILE" "$DIST/$FILENAME.sh"        # .s = sh source
+        mv -f "${FILE}.x" "${BIN}/$FILENAME"        # .x = executable
+        mv -f "${FILE}.x.c" "${DIST}/$FILENAME"     # .c = c source
+        # mv -f "${FILE}" "${FILE}.sh"    # .s = sh source
+        # mv -f "${FILE}.x" "${FILE}"     # .x = executable
+        # mv -f "${FILE}.x.c" "${FILE}.c" # .c = c source
+        colorize "green" "Build done. run ${BIN}/${FILENAME}" | logger success
     }
     bundle() {
         local SRC=${1:?}
