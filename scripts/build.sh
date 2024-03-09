@@ -3,7 +3,8 @@ builder() {
     local CURRENT_DIR && CURRENT_DIR=$(dirname -- "$0")
     local ROOT_DIR && ROOT_DIR=$(dirname -- "$CURRENT_DIR") && ROOT_DIR=$(realpath -- "$ROOT_DIR")
     #shellcheck source=/dev/null
-    source "${ROOT_DIR}/rapd.sh" task --version
+    source "${ROOT_DIR}/rapd.sh" task --quiet
+    echo "${RAPD_METADATA}" | jq .package
     local CONFIG_EXPIRES_AT="${2:-"31/12/2999"}"
     local DIST="${ROOT_DIR}/dist"
     local BIN="${ROOT_DIR}/bin"
@@ -45,15 +46,13 @@ builder() {
         local FILE=$1
         [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" | logger error && return 0
         local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}"
-        local FILENAME && FILENAME=$(basename -- "$FILE")
+        local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}"
         colorize "blue" "Building file ${FILE} valid until ${EXPIRES_AT}" | logger info
         shc -r -f "${FILE}" -e "${EXPIRES_AT}"
-        copy -f "$FILE" "$DIST/$FILENAME.sh"        # .s = sh source
+        cp -f "$FILE" "$DIST/$FILENAME.sh"          # .s = sh source
         mv -f "${FILE}.x" "${BIN}/$FILENAME"        # .x = executable
-        mv -f "${FILE}.x.c" "${DIST}/$FILENAME"     # .c = c source
-        # mv -f "${FILE}" "${FILE}.sh"    # .s = sh source
-        # mv -f "${FILE}.x" "${FILE}"     # .x = executable
-        # mv -f "${FILE}.x.c" "${FILE}.c" # .c = c source
+        mv -f "${FILE}.x.c" "${DIST}/$FILENAME.c"   # .c = c source
+        stats "$FILE" "$EXPIRES_AT"
         colorize "green" "Build done. run ${BIN}/${FILENAME}" | logger success
     }
     bundle() {
@@ -90,6 +89,31 @@ builder() {
         echo -e "\nrapd \"\$@\"" >>"$BUNDLE"
         build_file "$BUNDLE"
     }
+    stats(){
+        local TARGET=${1:?}
+        local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}"
+        local FILENAME && FILENAME=$(basename -- "$TARGET") && FILENAME="${FILENAME%.*}"
+        local FILE="${DIST}/${FILENAME}.sh"
+        [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" | logger error && return 0
+        local STAT_FILE="${DIST}/${FILENAME}.stat"
+        [[ -f "$STAT_FILE" ]] && rm -f "$STAT_FILE"
+        touch "$STAT_FILE"
+        {
+            echo "{"
+            echo "  \"file\": \"$FILE\","
+            echo "  \"expires_at\": \"$EXPIRES_AT\","
+            echo "  \"size\": \"$(du -h "$FILE" | awk '{print $1}')\","
+            echo "  \"md5\": \"$(md5sum "$FILE" | awk '{print $1}')\","
+            echo "  \"sha1\": \"$(sha1sum "$FILE" | awk '{print $1}')\","
+            echo "  \"sha256\": \"$(sha256sum "$FILE" | awk '{print $1}')\","
+            echo "  \"sha512\": \"$(sha512sum "$FILE" | awk '{print $1}')\"",
+            echo "  \"created_at\": \"$(date -Iseconds)\"",
+            echo "  \"binary\": \"$(is_binary "$FILE")\""
+            echo "}"
+        } >> "$STAT_FILE"        
+        echo "Stat file created at $STAT_FILE" | logger success
+        jq . < "$STAT_FILE" | logger verbose
+    }
     build() {
         local TARGET=${1:?}
         echo "Building $TARGET" | logger info
@@ -100,7 +124,7 @@ builder() {
         [[ -d "$TARGET" ]] && local KIND=bundle && bundle "$TARGET" "$EXPIRES_AT"
         [[ -f "$TARGET" ]] && local KIND=file && build_file "$TARGET" "$EXPIRES_AT"
         echo "Build ${KIND} done" | logger success
-        cleanup
+        # cleanup
     }
     build "$@"
 }

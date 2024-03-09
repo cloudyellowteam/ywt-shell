@@ -8,7 +8,8 @@ export RAPD_COLORS=(
     black bright-black red bright-red green bright-green yellow bright-yellow blue bright-blue magenta bright-magenta cyan bright-cyan white bright-white
 ) && readonly RAPD_COLORS
 RAPD_PIDS=()
-rapd() {
+RAPD_OPTIONS=()
+sdk() {
     set -e -o pipefail
     handle_error() {
         local ERROR_CODE=$?
@@ -18,10 +19,34 @@ rapd() {
         exit $ERROR_CODE
     }
     trap 'handle_error' ERR
+    is_binary() {
+        local FILE="$1"
+        # local FILE_INFO=$(file "$FILE")
+        # [[ "$FILE_INFO" =~ "binary" ]] && echo 1 || echo 0
+        # local FILE_INFO=$(file -b --mine-encoding "$FILE")
+        # [[ "$FILE_INFO" =~ "binary" ]] && echo 1 || echo 0
+        LC_ALL=C grep -q -m 1 "^" "$FILE" && echo 0 || echo 1
+    }
+    hasOption() {
+        local OPTION=${1:-} && [[ -z "$OPTION" ]] && return 1
+        local OPTIONS=("${@:2}")
+        for OPT in "${OPTIONS[@]}"; do
+            [[ "$OPT" == "$OPTION" ]] && return 0
+        done
+        return 1
+    }
+    bootstrap() {
+        logger info "Boostraping $*"
+        sdk prototype
+    }
     prototype() {
         if ! command -v envsubst >/dev/null 2>&1; then
             envsubst() {
-                echo
+                local CONTENT=${1:-""}
+                while IFS= read -r LINE || [ -n "$LINE" ]; do
+                    CONTENT="$CONTENT$LINE"
+                done
+                echo "$CONTENT"
                 # local TMP_DOTENV=$(mktemp)
                 # local VAR
                 # local VARS=()
@@ -110,8 +135,8 @@ rapd() {
         [[ $KIND == "background" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
         echo -e "\e[${COLOR}m${TEXT}\e[0m"
     }
-    logger() {
-        local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
+    _log_level(){
+        local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info        
         local COLOR=white
         case $LEVEL in
         debug) COLOR=cyan ;;
@@ -119,17 +144,71 @@ rapd() {
         warn) COLOR=yellow ;;
         error) COLOR=red ;;
         esac
-        LEVEL=$(colorize "$COLOR" "${LEVEL^^}" "bg")
-        local MESSAGE=${2:-} && [[ -z "$MESSAGE" ]] && read -r MESSAGE
-        MESSAGE=$(style inverse "$MESSAGE")
-        local TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S") && TIMESTAMP=$(colorize "blue" "$TIMESTAMP" "fg")
-        local BRAND=$(rainbow "$RAPD_PROJECT_NAMESPACE")
-        echo -e "[$BRAND][$TIMESTAMP] ${LEVEL} $MESSAGE"
+        echo -n "$(colorize "blue" "$(date +"%Y-%m-%d %H:%M:%S")" "fg")"
+        echo -n "$(rainbow "$RAPD_PROJECT_NAMESPACE")"
+        echo -n "$(colorize "$COLOR" "${LEVEL^^}" "bg")"
+        echo -n " "
+
+        # LEVEL=$(colorize "$COLOR" "${LEVEL^^}" "bg")
+        # local TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S") && TIMESTAMP=$(colorize "blue" "$TIMESTAMP" "fg")
+        # local BRAND=$(rainbow "$RAPD_PROJECT_NAMESPACE")
+        # echo "[$BRAND][$TIMESTAMP] ${LEVEL^^}"
+        # echo -e "$PREFIX"
+    }
+    _log_message(){
+        local MESSAGE=${1:-}
+        local LINES=()
+        [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
+        [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
+        MESSAGE="${LINES[*]//$'\n'/$'\n' }"
+        echo "$MESSAGE"
+    }
+    logger() {
+        local IS_JSON=${3:-false}
+        _log_level "$1"
+        [[ $IS_JSON == false ]] && _log_message "$2" && return 0
+        jq -cC . <<<"$(_log_message "$2")"
+        # local LEVEL=$(_log_level "$1")
+        # local MESSAGE=$(_log_message "$2")
+        # echo -e "$LEVEL $MESSAGE"
+        # local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
+        # local MESSAGE=${2:-} #&& [[ -z "$MESSAGE" ]] &&
+        # local COLOR=white
+        # case $LEVEL in
+        # debug) COLOR=cyan ;;
+        # info) COLOR=green ;;
+        # warn) COLOR=yellow ;;
+        # error) COLOR=red ;;
+        # esac
+        # LEVEL=$(colorize "$COLOR" "${LEVEL^^}" "bg")
+        # local TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S") && TIMESTAMP=$(colorize "blue" "$TIMESTAMP" "fg")
+        # local BRAND=$(rainbow "$RAPD_PROJECT_NAMESPACE")
+        # local PREFIX="[$BRAND][$TIMESTAMP] ${LEVEL} "
+        # local LINES=()
+        # [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
+        # [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
+        # MESSAGE="${LINES[*]//$'\n'/$'\n'$PREFIX }"
+        # # MESSAGE=$(style bold "$MESSAGE")
+        # echo -e "$PREFIX $MESSAGE"
+    }
+    verbose() {
+        # local VERBOSE=$(hasOption "verbose" "${RAPD_OPTIONS[@]}") && [[ $VERBOSE == true ]] && logger debug "$@" && return 0
+        # local QUIET=$(hasOption "quiet" "${RAPD_OPTIONS[@]}") && [[ $QUIET == true ]] && return 0
+        # local DEBUG=$(hasOption "debug" "${RAPD_OPTIONS[@]}") && [[ $DEBUG == true ]] && logger debug "$@" && return 0
+        logger debug "$@"
     }
     dotenv() {
         local FILE=${1}
         [ ! -f "$FILE" ] && logger error "File $FILE not found" && return 1
-        local CONTENT=$(envsubst <"$FILE") && [ -z "$CONTENT" ] && CONTENT=$(cat "$FILE")
+        # check if envsubst is available
+        local CONTENT=$(cat "$FILE")
+        # if ! command -v envsubst >/dev/null 2>&1; then
+        #     logger warn "envsubst not found, using cat"
+        #     local CONTENT=$(cat "$FILE")
+        # else
+        #     local CONTENT=$(envsubst "$@" <"$FILE") && [ -z "$CONTENT" ] && CONTENT=$(cat "$FILE")
+        # fi
+        [ -z "$CONTENT" ] && logger info "File $FILE is empty" && return 0
         local NS=${RAPD_PROJECT_NAMESPACE:-RAPD} && [ -n "$2" ] && NS="${NS}_${2^^}"
         local INJECT=${3:-false}
         local QUIET=${4:-true}
@@ -152,16 +231,16 @@ rapd() {
         local RADP_PROJECT_ROOT=$(dirname -- "$RAPD_PATH_ROOT")
         local RAPD_PATH_TMP="${RAPD_CONFIG_PATH_TMP:-"$(dirname -- "$(mktemp -d -u)")"}/rapd"
         echo "{
-        \"root\": \"$RADP_PROJECT_ROOT\",
-        \"parent\": \"$RAPD_PATH_ROOT\",
-        \"src\": \"$RAPD_PATH_SRC\",
-        \"tmp\": \"$RAPD_PATH_TMP\",
-        \"packages\": \"$RAPD_PATH_SRC/packages\",
-        \"tools\": \"$RAPD_PATH_SRC/tools\",
-        \"tests\": \"$RAPD_PATH_SRC/tests\",
-        \"scripts\": \"$RAPD_PATH_SRC/scripts\",
-        \"cwd\": \"$PWD\"
-    }"
+            \"root\": \"$RADP_PROJECT_ROOT\",
+            \"parent\": \"$RAPD_PATH_ROOT\",
+            \"src\": \"$RAPD_PATH_SRC\",
+            \"tmp\": \"$RAPD_PATH_TMP\",
+            \"packages\": \"$RAPD_PATH_SRC/packages\",
+            \"tools\": \"$RAPD_PATH_SRC/tools\",
+            \"tests\": \"$RAPD_PATH_SRC/tests\",
+            \"scripts\": \"$RAPD_PATH_SRC/scripts\",
+            \"cwd\": \"$PWD\"
+        }"
     }
     package() {
         local RAPD_PACKAGE=$(jq -c <"$RAPD_PATH_SRC/package.json" 2>/dev/null)
@@ -183,23 +262,23 @@ rapd() {
         local ARGS="$*"
         local ARGS_LEN="$#"
         echo "{
-        \"source\": \"$PROGRAM\",        
-        \"args\": \"$ARGS\",
-        \"bash\": \"$BASH_VERSION\",
-        \"shell\": \"$SHELL\",
-        \"args\": \"$ARGS\",
-        \"args_len\": \"$ARGS_LEN\"
-    }"
+            \"source\": \"$PROGRAM\",        
+            \"args\": \"$ARGS\",
+            \"bash\": \"$BASH_VERSION\",
+            \"shell\": \"$SHELL\",
+            \"args\": \"$ARGS\",
+            \"args_len\": \"$ARGS_LEN\"
+        }"
     }
     process() {
         local PID="$$"
         local FILE="$RAPD_CMD_FILE"
         echo "{
-        \"pid\": \"$PID\",
-        \"file\": \"$FILE\",        
-        \"args\": \"$*\",
-        \"args_len\": \"$#\"
-    }"
+            \"pid\": \"$PID\",
+            \"file\": \"$FILE\",        
+            \"args\": \"$*\",
+            \"args_len\": \"$#\"
+        }"
     }
     hostinfo() {
         local HOSTNAME=$(hostname)
@@ -210,14 +289,14 @@ rapd() {
         local MEM=$(free -h | awk '/^Mem:/ {print $2}')
         local DISK=$(df -h / | awk '/\// {print $2}')
         echo "{
-        \"hostname\": \"$HOSTNAME\",
-        \"os\": \"$OS\",
-        \"kernel\": \"$KERNEL\",
-        \"arch\": \"$ARCH\",
-        \"cpu\": \"$CPU\",
-        \"mem\": \"$MEM\",
-        \"disk\": \"$DISK\"
-    }"
+            \"hostname\": \"$HOSTNAME\",
+            \"os\": \"$OS\",
+            \"kernel\": \"$KERNEL\",
+            \"arch\": \"$ARCH\",
+            \"cpu\": \"$CPU\",
+            \"mem\": \"$MEM\",
+            \"disk\": \"$DISK\"
+        }"
 
     }
     networkinfo() {
@@ -231,12 +310,12 @@ rapd() {
         local DNS=$(awk '/nameserver/ {print $2}' </etc/resolv.conf)
         local PUBLIC_IP=$(curl -s ifconfig.me)
         echo "{
-        \"ip\": \"$IP\",
-        \"mac\": \"$MAC\",
-        \"gateway\": \"$GATEWAY\",
-        \"dns\": \"$DNS\",
-        \"public_ip\": \"$PUBLIC_IP\"
-    }"
+            \"ip\": \"$IP\",
+            \"mac\": \"$MAC\",
+            \"gateway\": \"$GATEWAY\",
+            \"dns\": \"$DNS\",
+            \"public_ip\": \"$PUBLIC_IP\"
+        }"
     }
     userinfo() {
         local USER=$(whoami)
@@ -247,29 +326,33 @@ rapd() {
         local SHELL="$SHELL"
         local SUDO=$(sudo -nv 2>&1 | grep "may run sudo" || true) && SUDO=${SUDO:-false}
         echo "{
-        \"user\": \"$USER\",
-        \"group\": \"$GROUP\",
-        \"uid\": \"$USERID\",
-        \"gid\": \"$GROUPID\",
-        \"home\": \"$HOME\",
-        \"shell\": \"$SHELL\",
-        \"sudo\": \"$SUDO\"
-    }"
+            \"user\": \"$USER\",
+            \"group\": \"$GROUP\",
+            \"uid\": \"$USERID\",
+            \"gid\": \"$GROUPID\",
+            \"home\": \"$HOME\",
+            \"shell\": \"$SHELL\",
+            \"sudo\": \"$SUDO\"
+        }"
 
     }
     flags() {
+        local ARGS=()
         while [[ $# -gt 0 ]]; do
             case $1 in
             -v | --verbose)
                 local RAPD_VERBOSE=true
+                RAPD_OPTIONS+=("verbose")
                 shift
                 ;;
             -q | --quiet)
                 local RAPD_QUIET=true
+                RAPD_OPTIONS+=("quiet")
                 shift
                 ;;
             -d | --debug)
                 local RAPD_DEBUG=true
+                RAPD_OPTIONS+=("debug")
                 shift
                 ;;
             -h | --help)
@@ -281,17 +364,19 @@ rapd() {
                 shift
                 ;;
             *)
+                ARGS+=("$1")
                 shift
                 ;;
             esac
         done
+        set -- "${ARGS[@]}"
         echo "{
-        \"verbose\": \"$RAPD_VERBOSE\",
-        \"quiet\": \"$RAPD_QUIET\",
-        \"debug\": \"$RAPD_DEBUG\",
-        \"help\": \"$RAPD_HELP\",
-        \"version\": \"$RAPD_VERSION\"
-    }"
+            \"verbose\": \"$RAPD_VERBOSE\",
+            \"quiet\": \"$RAPD_QUIET\",
+            \"debug\": \"$RAPD_DEBUG\",
+            \"help\": \"$RAPD_HELP\",
+            \"version\": \"$RAPD_VERSION\"
+        }"
     }
     params() {
         local JSON="{"
@@ -394,76 +479,84 @@ rapd() {
         local RAPD_PACKAGE=$(jq -c <"$RAPD_PATH_SRC/package.json" 2>/dev/null)
         local PACKAGES=$(find "$RAPD_PATH_SRC/packages" -mindepth 1 -maxdepth 1 -type d -printf '%P\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
         echo "{
-        \"package\": $RAPD_PACKAGE,
-        \"env\": $(dotenv "$RAPD_PATH_SRC/.env"),
-        \"path\": $(paths),
-        \"tools\": $(tools),
-        \"packages\": $PACKAGES,
-        \"program\": $(program "$@"),
-        \"process\": $(process "$@"),
-        \"hostinfo\": $(hostinfo),
-        \"networkinfo\": $(networkinfo),
-        \"userinfo\": $(userinfo),
-        \"flags\": $(flags "$@"),
-        \"params\": $(params "$@")
-    }" | jq .
+            \"package\": $RAPD_PACKAGE,
+            \"env\": $(dotenv "$RAPD_PATH_SRC/.env"),
+            \"path\": $(paths),
+            \"tools\": $(tools),
+            \"packages\": $PACKAGES,
+            \"program\": $(program "$@"),
+            \"process\": $(process "$@"),
+            \"hostinfo\": $(hostinfo),
+            \"networkinfo\": $(networkinfo),
+            \"userinfo\": $(userinfo),
+            \"flags\": $(flags "$@"),
+            \"params\": $(params "$@")
+        }" | jq .
         return 0
     }
-    local FUNC=${1:-config} && shift
-    local ARGS=("${@}") # local ARGS=("${@:2}")
-    if [ -n "$(type -t "$FUNC")" ] && [ "$(type -t "$FUNC")" = function ]; then
-        $FUNC "${ARGS[@]}"
-        # local FUNC=$(declare -f "$FUNC") && eval "$FUNC"
-        # shift
-        # $FUNC "$@"
-    else
-        echo "Function $FUNC not found" | logger error
-        return 1
-    fi
-    # local FUNC=$(declare -f "$1") && eval "$FUNC"
-    # shift
-    # $FUNC "$@"
+    nnf() {
+        local FUNC=${1:-config} && shift
+        local ARGS=("${@}") # local ARGS=("${@:2}")
+        if [ -n "$(type -t "$FUNC")" ] && [ "$(type -t "$FUNC")" = function ]; then
+            verbose "Running $FUNC with args: ${ARGS[*]}" 1>&2
+            exec 3>&1
+            local STATUS
+            # STATUS=$(eval "$FUNC" "${ARGS[*]}" 2>&1 1>&3)
+            local OUTPUT=$(
+                $FUNC "${ARGS[@]}"
+            )
+            # $FUNC "${ARGS[@]}" 2>&1 1>&3
+            STATUS=$?
+            exec 3>&-
+            verbose "Function $FUNC status: $STATUS" 1>&2
+            echo "$OUTPUT" # && echo "$OUTPUT" 1>&2
+            # $FUNC "${ARGS[@]}"
+            # local STATUS=$?
+            # echo "Function $FUNC status: $STATUS" | logger info
+            # return $STATUS
+            # local FUNC=$(declare -f "$FUNC") && eval "$FUNC"
+            # shift
+            # $FUNC "$@"
+        else
+            echo "Function $FUNC not found" | logger error
+            return 1
+        fi
+    }
+    nnf "$@"
 }
-boostrap() {
-    rapd logger info "Boostraping $*"
-    rapd prototype
-    
-}
-boostrap "$@"
-# prototype
-# rapd "$@"
-# CMD="sleep 5"
-# # CHILD_PID=$(spwan "$CMD")
-# spinner "$CMD"
+# alias
 logger() {
-    rapd logger "$@"
+    sdk logger "$@"
 }
 
-# exit if no args
 [ "$#" -eq 0 ] && logger error "No arguments found" && exit 1
+sdk bootstrap "$@"
+export RAPD_METADATA=$(sdk config "$@")
+jq -Mc .package <<<"$RAPD_METADATA" | jsongger info
+# echo "$RAPD_METADATA" | jq .package | logjson info
 
-PROGRAM=$1
-if [ -z "$PROGRAM" ]; then
-    logger error "Program not found"
-    exit 1
-fi
-shift
-logger info "Program: $PROGRAM, args: $*"
-rapd config "$@" | jq -r '.tools[]' | while read -r TOOL; do
-    TOOL="$(rapd config "$@" | jq -r '.path.tools')/$TOOL"
-    NAME=$(basename "$TOOL")
-    # check if name is not equal to program
-    logger info "Checking $PROGRAM"
-    # [ "$TOOL" != "$PROGRAM" ] && continue
-    if [ -f "$TOOL" ]; then
-        logger info "Running $TOOL"
-        $TOOL "$@" | logger info
-        logger info "$NAME status: $?"
-    else
-        logger info "Tool $TOOL not found"
-    fi
-    
-    # [[ -f "$TOOL" ]] && echo "Running $TOOL" && $TOOL "$@" || logger info "$NAME status: $?"
-done
+# PROGRAM=$1
+# if [ -z "$PROGRAM" ]; then
+#     logger error "Program not found"
+#     exit 1
+# fi
+# shift
+# logger info "Program: $PROGRAM, args: $*"
+# rapd config "$@" | jq -r '.tools[]' | while read -r TOOL; do
+#     TOOL="$(rapd config "$@" | jq -r '.path.tools')/$TOOL"
+#     NAME=$(basename "$TOOL")
+#     # check if name is not equal to program
+#     logger info "Checking $PROGRAM"
+#     # [ "$TOOL" != "$PROGRAM" ] && continue
+#     if [ -f "$TOOL" ]; then
+#         logger info "Running $TOOL"
+#         $TOOL "$@" | logger info
+#         logger info "$NAME status: $?"
+#     else
+#         logger info "Tool $TOOL not found"
+#     fi
+
+#     # [[ -f "$TOOL" ]] && echo "Running $TOOL" && $TOOL "$@" || logger info "$NAME status: $?"
+# done
 # tasks=$(config "$@" | jq -r '.tools.task')
 # [[ -f "$tasks" ]] && echo "$tasks" && $tasks "$@" || echo "Task status: $?"
