@@ -1,5 +1,11 @@
 #!/bin/bash
 # shellcheck disable=SC2044,SC2155,SC2317
+RAPD_PATH_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+echo "RAPD_PATH_SRC = $RAPD_PATH_SRC"
+echo "PWD = $PWD"
+# shellcheck disable=SC1091
+source "${RAPD_PATH_SRC}/src/sdk.sh"
+exit 1
 RAPD_CMD_FILE=$0
 RAPD_PROJECT_NAMESPACE=${BASH_SOURCE[0]%.sh} && RAPD_PROJECT_NAMESPACE=${RAPD_PROJECT_NAMESPACE##*/} && RAPD_PROJECT_NAMESPACE=${RAPD_PROJECT_NAMESPACE^^}
 RAPD_PATH_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -36,7 +42,11 @@ sdk() {
         return 1
     }
     bootstrap() {
-        logger info "Boostraping $*"
+        export RAPD_METADATA=$(config "$@")
+        local PACKAGE="$(jq -Cc .package <<<"$RAPD_METADATA" 2>/dev/null)"
+        logger info "$(hyperlink "$PACKAGE" "https://rapd.run")"
+        logger debug "rapd.sh $*"
+        # jq -Cc .package <<<"$RAPD_METADATA" | logger info
         sdk prototype
     }
     prototype() {
@@ -135,6 +145,14 @@ sdk() {
         [[ $KIND == "background" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
         echo -e "\e[${COLOR}m${TEXT}\e[0m"
     }
+    hyperlink() {
+        local TEXT=${1}
+        local URL=${2}
+        echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
+    }
+    etime() {
+        ps -o etime= "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://'
+    }
     _log_level(){
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info        
         local COLOR=white
@@ -144,16 +162,13 @@ sdk() {
         warn) COLOR=yellow ;;
         error) COLOR=red ;;
         esac
-        echo -n "$(colorize "blue" "$(date +"%Y-%m-%d %H:%M:%S")" "fg")"
-        echo -n "$(rainbow "$RAPD_PROJECT_NAMESPACE")"
-        echo -n "$(colorize "$COLOR" "${LEVEL^^}" "bg")"
+        LEVEL=$(printf "%-5s" "$LEVEL")
+        echo -n "$(colorize "yellow" "[$RAPD_PROJECT_NAMESPACE]") "
+        echo -n "$(colorize "bright-black" "[$$]" "fg") "
+        # echo -n "$(style "underline" "[$(etime)]" "fg") "
+        echo -n "$(colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
+        echo -n "$(colorize "$COLOR" "$(style bold "[${LEVEL^^}]")" "fg") "        
         echo -n " "
-
-        # LEVEL=$(colorize "$COLOR" "${LEVEL^^}" "bg")
-        # local TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S") && TIMESTAMP=$(colorize "blue" "$TIMESTAMP" "fg")
-        # local BRAND=$(rainbow "$RAPD_PROJECT_NAMESPACE")
-        # echo "[$BRAND][$TIMESTAMP] ${LEVEL^^}"
-        # echo -e "$PREFIX"
     }
     _log_message(){
         local MESSAGE=${1:-}
@@ -161,35 +176,15 @@ sdk() {
         [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
         [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
         MESSAGE="${LINES[*]//$'\n'/$'\n' }"
-        echo "$MESSAGE"
+        echo -n "$MESSAGE"
     }
     logger() {
         local IS_JSON=${3:-false}
         _log_level "$1"
-        [[ $IS_JSON == false ]] && _log_message "$2" && return 0
-        jq -cC . <<<"$(_log_message "$2")"
-        # local LEVEL=$(_log_level "$1")
-        # local MESSAGE=$(_log_message "$2")
-        # echo -e "$LEVEL $MESSAGE"
-        # local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
-        # local MESSAGE=${2:-} #&& [[ -z "$MESSAGE" ]] &&
-        # local COLOR=white
-        # case $LEVEL in
-        # debug) COLOR=cyan ;;
-        # info) COLOR=green ;;
-        # warn) COLOR=yellow ;;
-        # error) COLOR=red ;;
-        # esac
-        # LEVEL=$(colorize "$COLOR" "${LEVEL^^}" "bg")
-        # local TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S") && TIMESTAMP=$(colorize "blue" "$TIMESTAMP" "fg")
-        # local BRAND=$(rainbow "$RAPD_PROJECT_NAMESPACE")
-        # local PREFIX="[$BRAND][$TIMESTAMP] ${LEVEL} "
-        # local LINES=()
-        # [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
-        # [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
-        # MESSAGE="${LINES[*]//$'\n'/$'\n'$PREFIX }"
-        # # MESSAGE=$(style bold "$MESSAGE")
-        # echo -e "$PREFIX $MESSAGE"
+        [[ $IS_JSON == false ]] && _log_message "$2"
+        [[ $IS_JSON == true ]] && jq -cC . <<<"$(_log_message "$2")"
+        # elapsed time
+        echo " $(colorize "bright-black" "[$(style "underline" "$(etime)")]" "fg")"        
     }
     verbose() {
         # local VERBOSE=$(hasOption "verbose" "${RAPD_OPTIONS[@]}") && [[ $VERBOSE == true ]] && logger debug "$@" && return 0
@@ -531,8 +526,7 @@ logger() {
 
 [ "$#" -eq 0 ] && logger error "No arguments found" && exit 1
 sdk bootstrap "$@"
-export RAPD_METADATA=$(sdk config "$@")
-jq -Mc .package <<<"$RAPD_METADATA" | jsongger info
+
 # echo "$RAPD_METADATA" | jq .package | logjson info
 
 # PROGRAM=$1

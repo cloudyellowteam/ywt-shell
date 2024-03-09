@@ -112,7 +112,7 @@ builder() {
             echo "}"
         } >> "$STAT_FILE"        
         echo "Stat file created at $STAT_FILE" | logger success
-        jq . < "$STAT_FILE" | logger verbose
+        jq -Cc . < "$STAT_FILE" | logger verbose
     }
     build() {
         local TARGET=${1:?}
