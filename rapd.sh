@@ -1,11 +1,13 @@
 #!/bin/bash
 # shellcheck disable=SC2044,SC2155,SC2317
 RAPD_PATH_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-echo "RAPD_PATH_SRC = $RAPD_PATH_SRC"
-echo "PWD = $PWD"
+# echo "RAPD_PATH_SRC = $RAPD_PATH_SRC"
+# echo "PWD = $PWD"
 # shellcheck disable=SC1091
-source "${RAPD_PATH_SRC}/src/sdk.sh"
+source "${RAPD_PATH_SRC}/src/sdk.sh" "$@"
 exit 1
+
+
 RAPD_CMD_FILE=$0
 RAPD_PROJECT_NAMESPACE=${BASH_SOURCE[0]%.sh} && RAPD_PROJECT_NAMESPACE=${RAPD_PROJECT_NAMESPACE##*/} && RAPD_PROJECT_NAMESPACE=${RAPD_PROJECT_NAMESPACE^^}
 RAPD_PATH_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

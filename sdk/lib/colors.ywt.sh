@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 
 colors() {
@@ -36,34 +36,50 @@ colors() {
 
     }
     colorize() {
-        local COLOR=${1:-white} && COLOR=${COLOR,,}
-        local TEXT=${2}
-        local KIND=${3:-foreground} && KIND=${KIND,,}
-        [[ ! $KIND =~ ^(foreground|background|fg|bg)$ ]] && KIND=foreground
-        case $COLOR in
-        black) COLOR=30 ;;
-        bright-black) COLOR=90 ;;
-        red) COLOR=31 ;;
-        bright-red) COLOR=91 ;;
-        green) COLOR=32 ;;
-        bright-green) COLOR=92 ;;
-        yellow) COLOR=33 ;;
-        bright-yellow) COLOR=93 ;;
-        blue) COLOR=34 ;;
-        bright-blue) COLOR=94 ;;
-        magenta) COLOR=35 ;;
-        bright-magenta) COLOR=95 ;;
-        cyan) COLOR=36 ;;
-        bright-cyan) COLOR=96 ;;
-        white) COLOR=37 ;;
-        bright-white) COLOR=97 ;;
-        gray) COLOR=90 ;;
-        bright-gray) COLOR=37 ;;
-        purple) COLOR=35 ;;
-        bright-purple) COLOR=95 ;;
-        esac
-        [[ $KIND == "background" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
-        echo -e "\e[${COLOR}m${TEXT}\e[0m"
+        local VAR=${1:-"NC"}  && VAR=${VAR^^} 
+        local VARS=("${RAPD_COLORS[@]}" "${RAPD_STYLE[@]}")
+        local IS_VALID=false
+        for ITEM in "${VARS[@]}"; do
+            [[ "${ITEM^^}" == "${VAR}" ]] && IS_VALID=true && break
+        done
+        [[ "$IS_VALID" == false ]] && VAR="NC"
+        local KIND=fg
+        [[ $VAR =~ bg$ ]] && KIND="bg"
+        [[ $VAR =~ ^(bold|dim|italic|underline|blink|inverse|hidden)$ ]] && KIND=style
+        VAR=${VAR//-/_}
+        local COLOR=${VAR%%-*}
+        [[ $KIND == "bg" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
+        local TEXT=${2} # && while read -r LINE; do echo -e "$LINE"; done <<<"$TEXT"
+        echo -e "\e[${!VAR}${TEXT}\e[0m${NC}"
+        return 0
+        # local COLOR=${1:-white} && COLOR=${COLOR,,}
+        # local TEXT=${2}
+        # local KIND=${3:-foreground} && KIND=${KIND,,}
+        # [[ ! $KIND =~ ^(foreground|background|fg|bg)$ ]] && KIND=foreground
+        # case $COLOR in
+        # black) COLOR=30 ;;
+        # bright-black) COLOR=90 ;;
+        # red) COLOR=31 ;;
+        # bright-red) COLOR=91 ;;
+        # green) COLOR=32 ;;
+        # bright-green) COLOR=92 ;;
+        # yellow) COLOR=33 ;;
+        # bright-yellow) COLOR=93 ;;
+        # blue) COLOR=34 ;;
+        # bright-blue) COLOR=94 ;;
+        # magenta) COLOR=35 ;;
+        # bright-magenta) COLOR=95 ;;
+        # cyan) COLOR=36 ;;
+        # bright-cyan) COLOR=96 ;;
+        # white) COLOR=37 ;;
+        # bright-white) COLOR=97 ;;
+        # gray) COLOR=90 ;;
+        # bright-gray) COLOR=37 ;;
+        # purple) COLOR=35 ;;
+        # bright-purple) COLOR=95 ;;
+        # esac
+        # [[ $KIND == "background" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
+        # echo -e "\e[${COLOR}m${TEXT}\e[0m"
     }
     hyperlink() {
         local TEXT=${1}
@@ -79,10 +95,14 @@ colors() {
     export -f colors
 )
 export RAPD_COLORS=(
-    black bright-black red bright-red green bright-green yellow bright-yellow blue bright-blue magenta bright-magenta cyan bright-cyan white bright-white
+    black black-bg bright-black dark-gray dark-gray-bg red red-bg bright-red green green-bg bright-green yellow yellow-bg bright-yellow blue blue-bg bright-blue purple purple-bg bright-purple cyan cyan-bg bright-cyan gray gray-bg bright-gray white white-bg bright-white
 ) && readonly RAPD_COLORS
+export RAPD_STYLE=(
+    bold dim italic underline blink inverse hidden
+) && readonly RAPD_STYLE
 export BLACK=$'\033[0;30m' && readonly BLACK
 export BLACK_BG=$'\033[40m' && readonly BLACK_BG
+export BRIGHT_BLACK=$'\033[1;30m' && readonly BRIGHT_BLACK
 export DARK_GRAY=$'\033[1;30m' && readonly DARK_GRAY
 export DARK_GRAY_BG=$'\033[100m' && readonly DARK_GRAY_BG
 export RED=$'\033[0;31m' && readonly RED

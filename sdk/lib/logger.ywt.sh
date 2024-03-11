@@ -1,6 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 logger() {
+    error() {
+        log "error" "$*"
+    }
+    warn() {
+        log "warn" "$*"
+    }
+    info() {
+        log "info" "$*"
+    }
+    debug() {
+        log "debug" "$*"
+    }
     _log_level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
         local COLOR=white
@@ -11,11 +23,11 @@ logger() {
         error) COLOR=red ;;
         esac
         LEVEL=$(printf "%-5s" "$LEVEL")
-        echo -n "$(colorize "yellow" "[$RAPD_PROJECT_NAMESPACE]") "
-        echo -n "$(colorize "bright-black" "[$$]" "fg") "
+        echo -n "$(colors colorize "yellow" "[$RAPD_CMD_NAME]") "
+        echo -n "$(colors colorize "bright-black" "[$$]" "fg") "
         # echo -n "$(style "underline" "[$(etime)]" "fg") "
-        echo -n "$(colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
-        echo -n "$(colorize "$COLOR" "$(style bold "[${LEVEL^^}]")" "fg") "
+        echo -n "$(colors colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
+        echo -n "$(colors colorize "$COLOR" "$(colors style bold "[${LEVEL^^}]")" "fg") "
         echo -n " "
     }
     _log_message() {
@@ -32,14 +44,15 @@ logger() {
         [[ $IS_JSON == false ]] && _log_message "$2"
         [[ $IS_JSON == true ]] && jq -cC . <<<"$(_log_message "$2")"
         # elapsed time
-        echo " $(colorize "bright-black" "[$(style "underline" "$(etime)")]" "fg")"
+        echo -n " $(colors colorize "bright-black" "[$(colors style "underline" "$(etime)")]" "fg")"
     }
+
     usage() {
         echo "usage from logger $*"
     }
-    nnf "$@" || usage "$?" "$@" && return 1
-} 
+    if nnf "$@"; then return 0; fi
+    usage "$?" "$@" && return 1
+}
 (
     export -f logger
 )
-

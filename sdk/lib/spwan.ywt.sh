@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 spwan() {
     [ -z "$RAPD_PIDS" ] && declare -a RAPD_PIDS && readonly RAPD_PIDS

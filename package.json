@@ -1,4 +1,9 @@
 {
-    "name": "@rapd-run/rapd-shell",
-    "version": "0.0.0-alpha.0"
+    "name": "@yw-team/yw-sh",
+    "version": "0.0.0-alpha.0",
+    "author": {
+        "name": "yw-team",
+        "email": "raphael@yellowteam.cloud",
+        "url": "https://yellowteam.cloud"
+    }
 }
