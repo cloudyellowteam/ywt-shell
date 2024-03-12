@@ -122,21 +122,26 @@ builder() {
     __build_file() {
         local FILE=$1 && readonly FILE && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" | logger error && return 0
         local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
-        local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}"
+        # local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+        EXPIRES_AT="31/12/9999"
         local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}"
         wysiwyg colorize "blue" "Building file ${FILE} valid until ${EXPIRES_AT}" | logger info
         shc -r -f "${FILE}" -e "${EXPIRES_AT}"
         # .s = sh source | .c = c source | .x = executable
-        cp -f "$FILE" "$DIST/$FILENAME.sh"          # /dist/file.sh
-        cp -f "${FILE}.x.c" "$DIST/$FILENAME.c"     # /dist/file.c 
-        mv -f "${FILE}.x" "${BIN}/$FILENAME"        # /bin/file
-        mv -f "${FILE}.x.c" "${FILE_DIR}/$FILENAME.c"           # ./file.c
-        echo '{
-            "sh": "'"$(_stats "$DIST/$FILENAME.sh" "$EXPIRES_AT" | jq .)"'",
-            "c": "'"$(_stats "$BIN/${FILENAME}.c" "$EXPIRES_AT" | jq .)"'",
-            "bin": "'"$(_stats "$BIN/$FILENAME" "$EXPIRES_AT" | jq .)"'",  
-        }' | jq -C . | logger info
+        [ -f "$DIST/$FILENAME.sh" ] && rm -f "$DIST/$FILENAME.sh"
+        [ -f "$DIST/$FILENAME.c" ] && rm -f "$DIST/$FILENAME.c"
+        [ -f "${BIN}/$FILENAME" ] && rm -f "${BIN}/$FILENAME"
+        cp -f "$FILE" "$DIST/$FILENAME.sh"      # /dist/file.sh
+        mv -f "${FILE}.x.c" "$DIST/$FILENAME.c" # /dist/file.c
+        mv -f "${FILE}.x" "${BIN}/$FILENAME"    # /bin/file
+        # mv -f "${FILE}.x.c" "${DIST}/$FILENAME.c"           # ./file.c
         wysiwyg colorize "green" "Build done. run ${BIN}/${FILENAME}" | logger success
+        jq -Cn \
+            --argjson sh "$(_stats "$DIST/$FILENAME.sh" "$EXPIRES_AT")" \
+            --argjson c "$(_stats "$DIST/$FILENAME.c" "$EXPIRES_AT")" \
+            --argjson bin "$(_stats "${BIN}/$FILENAME" "$EXPIRES_AT")" \
+            '{sh: $sh, c: $c, bin: $bin}' | logger info
+
     }
     _build_sdk() {
         _prepare

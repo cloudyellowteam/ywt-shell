@@ -1,11 +1,13 @@
 # ywt.sh | yw-sh
 
-YWT_CONFIG_DEBUG=false
-YWT_CONFIG_PATH_CWD=$(pwd)
-YWT_CONFIG_PATH_TMP=/tmp/ywt
-YWT_CONFIG_PATH_LOGS=/var/log/ywt
-YWT_CONFIG_PATH_CACHE=/var/cache/ywt
-YWT_CONFIG_PATH_DATA=/var/lib/ywt
-YWT_CONFIG_PATH_ETC=/etc/ywt
-YWT_CONFIG_USE_SUDO=1
 
+```bash
+# build
+clear; ./sdk/sdk.sh builder _build_sdk
+# test src
+chmod +x ./src/ywt.sh; clear; ./src/ywt.sh  inspect
+# test dist
+chmod +x ./dist/ywt.sh; clear; ./dist/ywt.sh  inspect
+# test bin
+clear; ./bin/ywt inspect
+```
