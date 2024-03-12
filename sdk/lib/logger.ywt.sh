@@ -13,6 +13,9 @@ logger() {
     debug() {
         log "debug" "$*"
     }
+    success() {
+        log "info" "$*"
+    }
     _log_level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
         local COLOR=white
@@ -23,11 +26,11 @@ logger() {
         error) COLOR=red ;;
         esac
         LEVEL=$(printf "%-5s" "$LEVEL")
-        echo -n "$(colors colorize "yellow" "[$YWT_CMD_NAME]") "
-        echo -n "$(colors colorize "bright-black" "[$$]" "fg") "
+        echo -n "$(wysiwyg colorize "yellow" "[$YWT_CMD_NAME]") "
+        echo -n "$(wysiwyg colorize "bright-black" "[$$]" "fg") "
         # echo -n "$(style "underline" "[$(etime)]" "fg") "
-        echo -n "$(colors colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
-        echo -n "$(colors colorize "$COLOR" "$(colors style bold "[${LEVEL^^}]")" "fg") "
+        echo -n "$(wysiwyg colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
+        echo -n "$(wysiwyg colorize "$COLOR" "$(wysiwyg style bold "[${LEVEL^^}]")" "fg") "
         echo -n " "
     }
     _log_message() {
@@ -44,7 +47,7 @@ logger() {
         [[ $IS_JSON == false ]] && _log_message "$2"
         [[ $IS_JSON == true ]] && jq -cC . <<<"$(_log_message "$2")"
         # elapsed time
-        echo -n " $(colors colorize "bright-black" "[$(colors style "underline" "$(etime)")]" "fg")"
+        echo -n " $(wysiwyg colorize "bright-black" "[$(wysiwyg style "underline" "$(etime)")]" "fg")"
     }
     if nnf "$@"; then return 0; fi
     usage "$?" "$@" && return 1

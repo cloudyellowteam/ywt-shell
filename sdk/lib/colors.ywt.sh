@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 
-colors() {
+wysiwyg() {
     rainbow() {
         local TEXT=${1:-$YWT_CMD_FILE} && shift
         local COLORS=("${@}") && [ ${#COLORS[@]} -eq 0 ] && COLORS=("${YWT_COLORS[@]}")
@@ -36,7 +36,7 @@ colors() {
 
     }
     colorize() {
-        local VAR=${1:-"NC"}  && VAR=${VAR^^} 
+        local VAR=${1:-"NC"} && VAR=${VAR^^}
         local VARS=("${YWT_COLORS[@]}" "${YWT_STYLE[@]}")
         local IS_VALID=false
         for ITEM in "${VARS[@]}"; do
@@ -82,14 +82,33 @@ colors() {
         # echo -e "\e[${COLOR}m${TEXT}\e[0m"
     }
     hyperlink() {
-        local TEXT=${1}
-        local URL=${2}
-        echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
+        local OSC=$'\e]'
+        local BEL=$'\a'
+        local SEP=';'
+        local PARAM_SEP=':'
+        local EQ='='        
+        local URI=$1
+        local TEXT=$2
+        local PARAMS=$3
+
+        local PARAM_STR=""
+        for PARAM in "${!PARAMS[@]}"; do
+            PARAM_STR+="${PARAM}${EQ}${PARAMS[$param]}${PARAM_SEP}"
+        done
+
+        # Remove the trailing PARAM_SEP
+        PARAM_STR=${PARAM_STR%"$PARAM_SEP"}
+
+        printf "%s8%s%s%s%s%s%s%s8%s%s%s" "$OSC" "$SEP" "$PARAM_STR" "$SEP" "$URI" "$BEL" "$TEXT" "$OSC" "$SEP" "$SEP" "$BEL"
+        echo -en "${NC}${NSTL}${NBG}"
+        # local TEXT=${1}
+        # local URL=${2}
+        # echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
     }
     nnf "$@" || usage "$?" "$@" && return 1
 }
 (
-    export -f colors
+    export -f wysiwyg
 )
 export YWT_COLORS=(
     black black-bg bright-black dark-gray dark-gray-bg red red-bg bright-red green green-bg bright-green yellow yellow-bg bright-yellow blue blue-bg bright-blue purple purple-bg bright-purple cyan cyan-bg bright-cyan gray gray-bg bright-gray white white-bg bright-white

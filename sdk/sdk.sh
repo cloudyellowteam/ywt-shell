@@ -3,8 +3,22 @@
 sdk() {
     set -e -o pipefail
     local YWT_FIFO="/tmp/ywt.$$.fifo" && [ ! -p "$YWT_FIFO" ] && mkfifo "$YWT_FIFO"
-    trap 'rm -f $YWT_FIFO' EXIT
-
+    trap 'fail $? "An error occurred"' EXIT ERR INT TERM
+    fail() {
+        local RESULT=${1:$?} && shift
+        [[ "$RESULT" -eq 0 ]] && return 0
+        local MESSAGE=${1:-"An error occurred"} && shift
+        rm -f "$YWT_FIFO"
+        local ERROR && ERROR=$(jq -n --arg result "$RESULT" --arg message "$MESSAGE" --arg caller "${FUNCNAME[*]}" --arg args "$* ($!)" '{result: $result, message: $message, caller: $caller, args: $args}')
+        logger error "$ERROR"
+        kill -s EXIT $$ 2>/dev/null
+        # echo "$MESSAGE" 1>&2
+    }
+    throw() {
+        local ERROR_CODE=${1:$?} && shift
+        local MESSAGE=${1:-"An error occurred"} && shift
+        fail "$ERROR_CODE" "$MESSAGE"
+    }
     # local YWT_CMD_NAME && YWT_CMD_NAME=$(basename -- "$0") && YWT_CMD_NAME="${YWT_CMD_NAME%.*}" && readonly YWT_CMD_NAME
     local YWT_CMD_NAME=ywt
     local YWT_INITIALIZED=false
@@ -12,7 +26,8 @@ sdk() {
     debug() {
         [ -z "$YWT_DEBUG" ] || [ "$YWT_DEBUG" == false ] && return 0
         [ -z "$*" ] && return 1
-        (echo "DEBUG: $*" >$YWT_FIFO) & true        
+        (echo "DEBUG: $*" >$YWT_FIFO) &
+        true
     }
     etime() {
         ps -o etime= "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://'
@@ -58,8 +73,13 @@ sdk() {
         local YWT_PACKAGE && YWT_PACKAGE=$(jq -c <"./package.json" 2>/dev/null)
         echo "$YWT_PACKAGE"
     }
-    banner() {
-        echo "banner"
+    welcome() {
+        # $(jq -r '.yellowteam' <<<"$YWT")
+        local NAME && NAME=$(jq -r '.name' <<<"$YWT_APPINFO") && readonly NAME
+        local VERSION && VERSION=$(jq -r '.version' <<<"$YWT_APPINFO") && readonly VERSION
+        wysiwyg hyperlink "https://yellowteam.cloud" "$(wysiwyg colorize "yellow" "${NAME}@${VERSION} | Cloud Yellow Team | https://yellowteam.cloud")" | logger info
+        # "Yellow Team"
+        # ?utm_source=yellowteam&utm_medium=cli&utm_campaign=yellowteam
     }
     is_function() {
         local FUNC=${1:-} && [ -n "$(type -t "$FUNC")" ] && [ "$(type -t "$FUNC")" = function ]
@@ -67,30 +87,35 @@ sdk() {
     [ -z "$YWT_PATHS" ] && local YWT_PATHS && YWT_PATHS=$(paths) && readonly YWT_PATHS
     [ -z "$YWT_APPINFO" ] && local YWT_APPINFO && YWT_APPINFO=$(appinfo) && readonly YWT_APPINFO
     # [ -z "$YWT_PROCESS" ] && local YWT_PROCESS && YWT_PROCESS=$(process) && readonly YWT_PROCESS
+
     bootstrap() {
         [ "$YWT_INITIALIZED" == true ] && return 0
         YWT_INITIALIZED=true
         # --argjson process "$YWT_PROCESS" \
-        export YWT && YWT=$(
-            jq -n \
-                --argjson package "$YWT_APPINFO" \
-                --argjson path "$YWT_PATHS" \
-                '{yellowteam: $package, path: $path}'
-        ) && readonly YWT
-        debug "$(jq . <<<"$YWT")"
+
         # return array of resources
         # resources packages
         # resources tools
         # resources scripts
         # resources extensions
         inject
-        logger info "$(colors colorize "yellow" "$(jq -r '.yellowteam' <<<"$YWT") https://yellowteam.cloud")"
+        export YWT_CONFIG && YWT_CONFIG=$(
+            jq -n \
+                --argjson package "$YWT_APPINFO" \
+                --argjson path "$YWT_PATHS" \
+                --argjson process "$(process info)" \
+                '{yellowteam: $package, path: $path, process: $process}'
+        ) && readonly YWT_CONFIG
+        debug "$(jq . <<<"$YWT_CONFIG")"
+        # logger info "$(wysiwyg colorize "yellow" "$(jq -r '.yellowteam' <<<"$YWT") https://yellowteam.cloud")"
         export YWT_PATHS && readonly YWT_PATHS
-        debug "YW initialized"
-        echo
+        welcome
+    }
+    inspect() {
+        jq -r '.' <<<"$YWT_CONFIG"
     }
     inject() {
-        local LIB && LIB=$(jq -r '.lib' <<<"$YWT_PATHS") && readonly LIB
+        local LIB && LIB=$(jq -r '.lib' <<<"$YWT_PATHS") && readonly LIB && [ ! -d "$LIB" ] && return 0
         debug "Injecting libraries from $LIB"
         while read -r FILE; do
             local FILE_NAME && FILE_NAME=$(basename -- "$FILE") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
