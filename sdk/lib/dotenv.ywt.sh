@@ -13,7 +13,7 @@ dotenv() {
         #     local CONTENT=$(envsubst "$@" <"$FILE") && [ -z "$CONTENT" ] && CONTENT=$(cat "$FILE")
         # fi
         [ -z "$CONTENT" ] && logger info "File $FILE is empty" && return 0
-        local NS=${RAPD_PROJECT_NAMESPACE:-RAPD} && [ -n "$2" ] && NS="${NS}_${2^^}"
+        local NS=${YWT_PROJECT_NAMESPACE:-YWT} && [ -n "$2" ] && NS="${NS}_${2^^}"
         local INJECT=${3:-false}
         local QUIET=${4:-true}
         local JSON="{"
@@ -22,16 +22,13 @@ dotenv() {
         while IFS= read -r LINE || [ -n "$LINE" ]; do
             IFS='=' read -r KEY VALUE <<<"$LINE"
             [[ -z "$LINE" || -z "$KEY" || "$KEY" =~ ^#.*$ || "$VAR" =~ ^#.*$ ]] && continue
-            [[ $INJECT == true ]] && export "${NS^^}_${KEY}"="$VALUE" # || echo "${NS^^}_${KEY}=$VALUE" >>"$RAPD_PATH_TMP/.env" # eval "export ${NS^^}_${VAR}"
+            [[ $INJECT == true ]] && export "${NS^^}_${KEY}"="$VALUE" # || echo "${NS^^}_${KEY}=$VALUE" >>"$YWT_PATH_TMP/.env" # eval "export ${NS^^}_${VAR}"
             JSON="$JSON\"${NS^^}_${KEY}\":\"${VALUE}\","
             [[ $QUIET == false ]] && logger debug "Setting ${NS^^}_${KEY}=$VALUE"
         done <<<"$CONTENT"
         JSON="${JSON%,}"
         JSON="$JSON}"
         echo "$JSON"
-    }
-    usage() {
-        echo "usage from dotenv $*"
     }
     nnf "$@" || usage "$?" "$@" && return 1
 }

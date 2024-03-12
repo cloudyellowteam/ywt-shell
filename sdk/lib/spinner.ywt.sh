@@ -47,8 +47,8 @@ spinner() {
     # # wait "$SPIN_PID"
     # # kill "$SPIN_PID"
 
-    # # local PID_INDEX=$(echo "${RAPD_PIDS[@]}" | grep -n "$PID" | cut -d: -f1)
-    # # [ -n "$PID_INDEX" ] && unset "RAPD_PIDS[$PID_INDEX]"
+    # # local PID_INDEX=$(echo "${YWT_PIDS[@]}" | grep -n "$PID" | cut -d: -f1)
+    # # [ -n "$PID_INDEX" ] && unset "YWT_PIDS[$PID_INDEX]"
 }
 (
     export -f spinner

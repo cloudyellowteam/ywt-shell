@@ -23,7 +23,7 @@ logger() {
         error) COLOR=red ;;
         esac
         LEVEL=$(printf "%-5s" "$LEVEL")
-        echo -n "$(colors colorize "yellow" "[$RAPD_CMD_NAME]") "
+        echo -n "$(colors colorize "yellow" "[$YWT_CMD_NAME]") "
         echo -n "$(colors colorize "bright-black" "[$$]" "fg") "
         # echo -n "$(style "underline" "[$(etime)]" "fg") "
         echo -n "$(colors colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
@@ -45,10 +45,6 @@ logger() {
         [[ $IS_JSON == true ]] && jq -cC . <<<"$(_log_message "$2")"
         # elapsed time
         echo -n " $(colors colorize "bright-black" "[$(colors style "underline" "$(etime)")]" "fg")"
-    }
-
-    usage() {
-        echo "usage from logger $*"
     }
     if nnf "$@"; then return 0; fi
     usage "$?" "$@" && return 1

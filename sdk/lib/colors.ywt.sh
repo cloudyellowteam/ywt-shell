@@ -3,8 +3,8 @@
 
 colors() {
     rainbow() {
-        local TEXT=${1:-$RAPD_CMD_FILE} && shift
-        local COLORS=("${@}") && [ ${#COLORS[@]} -eq 0 ] && COLORS=("${RAPD_COLORS[@]}")
+        local TEXT=${1:-$YWT_CMD_FILE} && shift
+        local COLORS=("${@}") && [ ${#COLORS[@]} -eq 0 ] && COLORS=("${YWT_COLORS[@]}")
         local COLOR_COUNT=${#COLORS[@]}
         local LENGTH=${#TEXT}
         local INDEX=0
@@ -37,7 +37,7 @@ colors() {
     }
     colorize() {
         local VAR=${1:-"NC"}  && VAR=${VAR^^} 
-        local VARS=("${RAPD_COLORS[@]}" "${RAPD_STYLE[@]}")
+        local VARS=("${YWT_COLORS[@]}" "${YWT_STYLE[@]}")
         local IS_VALID=false
         for ITEM in "${VARS[@]}"; do
             [[ "${ITEM^^}" == "${VAR}" ]] && IS_VALID=true && break
@@ -86,20 +86,17 @@ colors() {
         local URL=${2}
         echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
     }
-    usage() {
-        echo "usage from colors $*"
-    }
     nnf "$@" || usage "$?" "$@" && return 1
 }
 (
     export -f colors
 )
-export RAPD_COLORS=(
+export YWT_COLORS=(
     black black-bg bright-black dark-gray dark-gray-bg red red-bg bright-red green green-bg bright-green yellow yellow-bg bright-yellow blue blue-bg bright-blue purple purple-bg bright-purple cyan cyan-bg bright-cyan gray gray-bg bright-gray white white-bg bright-white
-) && readonly RAPD_COLORS
-export RAPD_STYLE=(
+) && readonly YWT_COLORS
+export YWT_STYLE=(
     bold dim italic underline blink inverse hidden
-) && readonly RAPD_STYLE
+) && readonly YWT_STYLE
 export BLACK=$'\033[0;30m' && readonly BLACK
 export BLACK_BG=$'\033[40m' && readonly BLACK_BG
 export BRIGHT_BLACK=$'\033[1;30m' && readonly BRIGHT_BLACK

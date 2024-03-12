@@ -21,13 +21,10 @@ user() {
     }
     runAsRoot() {
         local CMD="$*"
-        if [ "$EUID" -ne 0 ] && [ "$RAPD_CONFIG_USE_SUDO" = "true" ]; then
+        if [ "$EUID" -ne 0 ] && [ "$YWT_CONFIG_USE_SUDO" = "true" ]; then
             CMD="sudo $CMD"
         fi
         $CMD
-    }
-    usage() {
-        echo "usage from user $*"
     }
     nnf "$@" || usage "$?" "$@" && return 1
 }

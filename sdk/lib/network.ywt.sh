@@ -19,9 +19,6 @@ network() {
             \"public_ip\": \"$PUBLIC_IP\"
         }"
     }
-    usage() {
-        echo "usage from network $*"
-    }
     nnf "$@" || usage "$?" "$@" && return 1
 }
 (

@@ -19,8 +19,5 @@ host() {
             \"disk\": \"$DISK\"
         }"
     }
-    usage() {
-        echo "usage from hostinfo $*"
-    }
     nnf "$@" || usage "$?" "$@" && return 1
 }

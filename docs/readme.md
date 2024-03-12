@@ -1,2 +1,11 @@
-# rapd.sh | yw-sh
+# ywt.sh | yw-sh
+
+YWT_CONFIG_DEBUG=false
+YWT_CONFIG_PATH_CWD=$(pwd)
+YWT_CONFIG_PATH_TMP=/tmp/ywt
+YWT_CONFIG_PATH_LOGS=/var/log/ywt
+YWT_CONFIG_PATH_CACHE=/var/cache/ywt
+YWT_CONFIG_PATH_DATA=/var/lib/ywt
+YWT_CONFIG_PATH_ETC=/etc/ywt
+YWT_CONFIG_USE_SUDO=1
 

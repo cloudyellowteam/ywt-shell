@@ -20,7 +20,7 @@ builder() {
         colorize "green" "compiler is installed" | logger success
     }
     _cleanup() {
-        local KEEP_SOURCE="${RAPD_CONFIG_BUILDER_KEEP_SOURCE:-false}"
+        local KEEP_SOURCE="${YWT_CONFIG_BUILDER_KEEP_SOURCE:-false}"
         [[ "$KEEP_SOURCE" == true ]] && echo "Keeping sources" | logger info && return 0
         rm -f "${DIST}/"*.sh | logger verbose
         rm -f "${DIST}/"*.c | logger verbose
@@ -65,10 +65,6 @@ builder() {
         # mv -f "${FILE}.x.c" "${DIST}/$FILENAME.c"   # .c = c source
         # stats "$FILE" "$EXPIRES_AT"
         colorize "green" "Build done. run ${BIN}/${FILENAME}" | logger success
-    }
-    usage() {
-        _usage "$@"
-        return "$1"
     }
     # if nnf "$@"; then return 0; fi
     nnf "$@" || usage "$?" "builder" "$@" && return 1
