@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2120
+# shellcheck disable=SC2120,SC2317
 test_log() {
     IFS=$'\n'
     for value in "$@"; do
         # value=$(echo "$value" | sed 's/[{[][^}\]]*[}\]]//g')
         while read -r line; do
             printf " ${YELLOW}-> %s${NC}\n" "$line" >&3
-        done <<< "$value"
+        done <<<"$value"
     done
     # echo "${YELLOW} -> ${1}${NC}" >&3
 
@@ -39,19 +39,26 @@ test_extrat_json() {
     echo "$1" | awk '/^ *{/{p=1}p' # | grep -o '{.*}'
 }
 test_setup() {
+    local HELPER_DIR="${BASH_SOURCE[0]}" && HELPER_DIR=$(dirname "$HELPER_DIR") && HELPER_DIR=$(realpath "$HELPER_DIR")
+    local TESTS_DIR && TESTS_DIR=$(dirname "$HELPER_DIR") && TESTS_DIR=$(realpath "$TESTS_DIR")
+    local TEST_PROJECT_DIR && TEST_PROJECT_DIR=$(dirname "$TESTS_DIR") && TEST_PROJECT_DIR=$(realpath "$TEST_PROJECT_DIR")
     # echo "test setup" >&3
     load "helpers/bats-support/load.bash"
     load "helpers/bats-assert/load.bash"
     load "helpers/bats-file/load.bash"
-    # shellcheck source=/dev/null
-    source "${TEST_PROJECT_DIR}/.env"
-    is_function() {
-        declare -F "${1}" >/dev/null && echo 1 || echo 0
-    }
-    if [ "$(is_function rapd)" -eq 0 ]; then
+    # # shellcheck source=/dev/null
+    # source "${TEST_PROJECT_DIR}/.env"
+    if ! type -t ywt >/dev/null; then
+        local YWT_SDK="${TEST_PROJECT_DIR}/sdk"
         export RAPD_CMD_PATH=$TEST_PROJECT_DIR
+        # echo "HELPER_DIR: $HELPER_DIR" >&3
+        # echo "TESTS_DIR: $TESTS_DIR" >&3
+        # echo "TEST_PROJECT_DIR: $TEST_PROJECT_DIR" >&3
+        # echo "YWT_SDK: $YWT_SDK" >&3
+
         # shellcheck source=/dev/null
-        source "${RAPD_CMD_PATH}/src/main.sh"
+        source "${YWT_SDK}/sdk.sh" >&3
+        # echo "Source with $?" >&3
     fi
 
 }
@@ -79,7 +86,7 @@ test_cache() {
     [ "$action" == "update" ] && action=upsert
     # Determine which operation to perform
     case "$action" in
-    get) grep "^$key=" "$file" | cut -d '=' -f 2 | sed 's/\x1B\[[0-9;]*[JKmsu]//g';;
+    get) grep "^$key=" "$file" | cut -d '=' -f 2 | sed 's/\x1B\[[0-9;]*[JKmsu]//g' ;;
     delete) sed -i "/^$key=/d" "$file" ;;
     put)
         if grep -q "^$key=" "$file"; then
@@ -94,3 +101,4 @@ test_cache() {
         ;;
     esac
 }
+

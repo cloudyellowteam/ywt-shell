@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 builder() {
-    YWT_LOG_CONTEXT="[BUILDER] "
+    YWT_LOG_CONTEXT="BUILDER"
     local CONFIG_EXPIRES_AT="${YWT_CONFIG_BUILDER_EXPIRES_AT:-"31/12/2999"}"
     local DIST=${2:-"${YWT_CONFIG_BUILDER_DIST:-"$(jq -r .path.dist <<<"$YWT_CONFIG")"}"} && readonly DIST
     local SRC=${3:-"${YWT_CONFIG_BUILDER_SRC:-"$(jq -r .path.src <<<"$YWT_CONFIG")"}"} && readonly SRC
@@ -12,12 +12,12 @@ builder() {
         rm -fR "${DIST:?}"/*
         [[ ! -d "$BIN" ]] && mkdir -p "${BIN}"
         if ! command -v shc &>/dev/null; then
-            wysiwyg colorize "red" "$YWT_LOG_CONTEXT compiler is not installed, trying install" | logger warn
+            colors apply "red" "$YWT_LOG_CONTEXT compiler is not installed, trying install" | logger warn
             apt-get install shc -y || return 1
         fi
         local SHC_INSTALLED && SHC_INSTALLED=$(command -v shc)
-        [[ -z "$SHC_INSTALLED" ]] && wysiwyg colorize "red" "$YWT_LOG_CONTEXT compiler is not installed" | logger error && return 1
-        wysiwyg colorize "green" "$YWT_LOG_CONTEXT Compiler is installed" | logger success
+        [[ -z "$SHC_INSTALLED" ]] && colors apply "red" "$YWT_LOG_CONTEXT compiler is not installed" | logger error && return 1
+        colors apply "green" "$YWT_LOG_CONTEXT Compiler is installed" | logger success
     }
     _cleanup() {
         local KEEP_SOURCE="${YWT_CONFIG_BUILDER_KEEP_SOURCE:-false}"
@@ -43,7 +43,6 @@ builder() {
         echo "  \"created_at\": \"$(date -Iseconds)\"",
         echo "  \"binary\": $IS_BINARY"
         echo "}"
-
     }
     __bundle() {
         local SRC_FILE=${1:?} && [ ! -f "$SRC_FILE" ] && echo "Invalid source file" | logger error && return 1
@@ -100,7 +99,7 @@ builder() {
         local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
         # EXPIRES_AT="31/12/9999"
         local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}"
-        wysiwyg colorize "blue" "Building file ${FILE} valid until ${EXPIRES_AT}" | logger info
+        colors apply "blue" "Building file ${FILE} valid until ${EXPIRES_AT}" | logger info
         # -e %s  Expiration date in dd/mm/yyyy format [none]
         # -m %s  Message to display upon expiration ["Please contact your provider"]
         # -f %s  File name of the script to compile
@@ -128,7 +127,7 @@ builder() {
         mv -f "${FILE}.x.c" "$DIST/$FILENAME.c" # /dist/file.c
         mv -f "${FILE}.x" "${BIN}/$FILENAME"    # /bin/file
         # mv -f "${FILE}.x.c" "${DIST}/$FILENAME.c"           # ./file.c
-        wysiwyg colorize "green" "Build done. run ${BIN}/${FILENAME}" | logger success
+        colors apply "green" "Build done. run ${BIN}/${FILENAME}" | logger success
         jq -Cn \
             --argjson sh "$(_stats "$DIST/$FILENAME.sh" "$EXPIRES_AT")" \
             --argjson c "$(_stats "$DIST/$FILENAME.c" "$EXPIRES_AT")" \
@@ -139,12 +138,13 @@ builder() {
     _build_sdk() {
         _prepare
         __bundle "$SDK/sdk.sh" "ywt.sh" "31/12/2999"
+        # sed -i -e 's/# binary injection/text/g' "$SRC/ywt.sh"
         __build_file "$SRC/ywt.sh" "31/12/2999"
         return 0
     }
     inspect() {
         jq -r '.path' <<<"$YWT_CONFIG"
-    }
+    }   
     _nnf "$@" || usage "$?" "builder" "$@" && return 1
     return 0
 }

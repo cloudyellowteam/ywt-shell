@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-
+export YWT_SDK_FILE="${BASH_SOURCE[0]:-$0}" && readonly YWT_SDK_FILE
 sdk() {
     set -e -o pipefail
     local YWT_FIFO="/tmp/ywt.$$.fifo" && [ ! -p "$YWT_FIFO" ] && mkfifo "$YWT_FIFO"
     export YWT_LOG_CONTEXT="ywt"
+    export YWT_LOG_DEFAULT_CONTEXT="ywt" && readonly YWT_LOG_DEFAULT_CONTEXT
     trap '_fail $? "An error occurred"' EXIT ERR INT TERM
     _fail() {
         local RESULT=${1:$?} && shift
@@ -147,7 +148,7 @@ sdk() {
                 '{yellowteam: $package, path: $path, process: $process}'
         ) && readonly YWT_CONFIG
         _debug "$(jq . <<<"$YWT_CONFIG")"
-        # logger info "$(wysiwyg colorize "yellow" "$(jq -r '.yellowteam' <<<"$YWT") https://yellowteam.cloud")"
+        # logger info "$(colors apply "yellow" "$(jq -r '.yellowteam' <<<"$YWT") https://yellowteam.cloud")"
         export YWT_PATHS && readonly YWT_PATHS
         welcome
     }
@@ -160,7 +161,7 @@ sdk() {
         local FUNC_LIST && FUNC_LIST=$(declare -F | awk '{print $3}') && FUNC_LIST=${FUNC_LIST[*]} && FUNC_LIST=$(echo "$FUNC_LIST" | sed -e 's/ /\n/g' | grep -v '^_' | sort | tr '\n' ' ' | sed -e 's/ $//')
         [ -z "$CONTEXT" ] && CONTEXT="sdk"
         [ -z "$*" ] && return 0
-        echo "usage: ywt [$CONTEXT] [args] $*"                   | logger info
+        echo "usage: ywt [$CONTEXT] [args] $*" | logger info
         echo "Available functions: (${YELLOW}${FUNC_LIST}${NC})" | logger info
         # for FUNC in $FUNC_LIST; do
         #     [[ "$FUNC" == _* ]] && continue
@@ -168,15 +169,30 @@ sdk() {
         # done
         return "$ERROR_CODE"
     }
-    _bootstrap
-    logger debug "${YELLOW}yw-sh${NC} ${GREEN}$*${NC}"
-    if _nnf "$@"; then return 0; fi
-    echo "An error occurred" | logger error
-    usage "$?" "skd" "$@" && return 1
-    
-    # logger log info "SDK paths: $PATHS"
+    _bootstrap && logger debug "${YELLOW}yw-sh${NC} ${GREEN}$*${NC}"
+    _nnf "$@" || usage "$?" "sdk" "$@" && return 1
+    return 0
+}
+ywt() {
+    [ "$#" -eq 0 ] && return 0
+    local FUNC=${1} && [ -z "$FUNC" ] && return 1
+    FUNC=${FUNC#_} && FUNC=${FUNC#__}
+    local ARGS=("${@:2}")
+    sdk "$FUNC" "${ARGS[@]}"
+    return 0
 }
 (
-    export -f sdk
+    export -f ywt
 )
-if [ "$#" -gt 0 ]; then sdk "$@"; fi
+if [ "$#" -gt 0 ]; then
+    SDK_FILE="$(realpath -- "${YWT_SDK_FILE}")" && export SDK_FILE
+    if ! LC_ALL=C grep -a '[^[:print:][:space:]]' "$SDK_FILE" >/dev/null; then
+        ywt "$@"
+        exit $?
+    else
+        # binary injection
+        # echo "Binary file ($#) $*" 1>&2
+        ywt "$@"
+        exit $?
+    fi
+fi
