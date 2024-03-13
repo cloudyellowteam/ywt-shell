@@ -9,7 +9,7 @@ spwan() {
         echo $!
         return 0
     }
-    nnf "$@" || usage "$?" "$@" && return 1
+    _nnf "$@" || usage "$?" "$@" && return 1
 }
 (
     export -f spwan

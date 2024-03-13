@@ -19,7 +19,7 @@ network() {
             \"public_ip\": \"$PUBLIC_IP\"
         }"
     }
-    nnf "$@" || usage "$?" "$@" && return 1
+    _nnf "$@" || usage "$?" "$@" && return 1
 }
 (
     export -f network

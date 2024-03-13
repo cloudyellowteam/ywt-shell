@@ -4,7 +4,7 @@ config() {
     usage() {
         echo "usage: config"
     }
-    nnf "$@" || usage "$?" "$@" && return 1
+    _nnf "$@" || usage "$?" "$@" && return 1
     return 0
     # local YWT_PATH_ROOT=$(dirname -- "$YWT_PATH_SRC")
     # local RADP_PROJECT_ROOT=$(dirname -- "$YWT_PATH_ROOT")

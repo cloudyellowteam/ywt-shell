@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 logger() {
-    error() {
-        log "error" "$*"
-    }
-    warn() {
-        log "warn" "$*"
-    }
-    info() {
-        log "info" "$*"
-    }
-    debug() {
-        log "debug" "$*"
-    }
-    success() {
-        log "info" "$*"
+    # YWT_LOG_CONTEXT=${YWT_LOG_CONTEXT:-logger}
+    _is_log_level(){
+        local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
+        local LOG_LEVEL=${YWT_LOG_LEVEL:-info}
+        [[ $LOG_LEVEL == "debug" ]] && [[ $LEVEL == "debug" ]] && return 0
+        [[ $LOG_LEVEL == "info" ]] && [[ $LEVEL == "info" ]] && return 0
+        [[ $LOG_LEVEL == "warn" ]] && [[ $LEVEL == "warn" ]] && return 0
+        [[ $LOG_LEVEL == "error" ]] && [[ $LEVEL == "error" ]] && return 0
+        return 1
     }
     _log_level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error)$ ]] && LEVEL=info
@@ -25,12 +20,13 @@ logger() {
         warn) COLOR=yellow ;;
         error) COLOR=red ;;
         esac
-        LEVEL=$(printf "%-5s" "$LEVEL")
-        echo -n "$(wysiwyg colorize "yellow" "[$YWT_CMD_NAME]") "
-        echo -n "$(wysiwyg colorize "bright-black" "[$$]" "fg") "
+        LEVEL=$(printf "%-5s" "$LEVEL") #YWT_LOG_CONTEXT
+        echo -n "$(colors apply "yellow" "[${YWT_CMD_NAME^^}]") "
+        [[ "${YWT_LOG_CONTEXT^^}" != "${YWT_CMD_NAME^^}" ]] && echo -n "$(colors apply "blue" "[${YWT_LOG_CONTEXT^^}]") "
+        echo -n "$(colors apply "bright-black" "[$$]" "fg") "
         # echo -n "$(style "underline" "[$(etime)]" "fg") "
-        echo -n "$(wysiwyg colorize "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
-        echo -n "$(wysiwyg colorize "$COLOR" "$(wysiwyg style bold "[${LEVEL^^}]")" "fg") "
+        echo -n "$(colors apply "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
+        echo -n "$(colors apply "$COLOR" "$(styles bold "[${LEVEL^^}]")" "fg") "
         echo -n " "
     }
     _log_message() {
@@ -42,15 +38,28 @@ logger() {
         echo -n "$MESSAGE"
     }
     log() {
-        local IS_JSON=${3:-false}
         _log_level "$1"
-        [[ $IS_JSON == false ]] && _log_message "$2"
-        [[ $IS_JSON == true ]] && jq -cC . <<<"$(_log_message "$2")"
+        _log_message "$2"
         # elapsed time
-        echo -n " $(wysiwyg colorize "bright-black" "[$(wysiwyg style "underline" "$(etime)")]" "fg")"
+        echo " $(colors apply "bright-black" "[$(styles "underline" "$(etime)")]" "fg")"
     }
-    if nnf "$@"; then return 0; fi
-    usage "$?" "$@" && return 1
+    json(){
+        _log_level "$1"
+        jq -cC . <<<"$(_log_message "$2")"
+    }
+    local LEVEL=${1}
+    if [[ $LEVEL =~ ^(debug|info|warn|error)$ ]]; then
+        # ARGS=("${@:2}")
+        shift && LEVEL="log ${LEVEL}"
+        log "${LEVEL}" "$@" && return 0
+    elif [[ $LEVEL == "json" ]]; then
+        shift && LEVEL="json ${LEVEL}"
+        json "${LEVEL}" "$@" && return 0
+    elif _nnf "$@"; then return 0; 
+        usage "$?" "logger" "$@" && return 1    
+    else 
+        usage 1 "logger" "$@" && return 1
+    fi
 }
 (
     export -f logger

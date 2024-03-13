@@ -30,7 +30,7 @@ dotenv() {
         JSON="$JSON}"
         echo "$JSON"
     }
-    nnf "$@" || usage "$?" "$@" && return 1
+    _nnf "$@" || usage "$?" "$@" && return 1
 }
 (
     export -f dotenv

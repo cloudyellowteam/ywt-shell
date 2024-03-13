@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 
-wysiwyg() {
+colors() {
+    YWT_LOG_CONTEXT="colors"
     rainbow() {
         local TEXT=${1:-$YWT_CMD_FILE} && shift
         local COLORS=("${@}") && [ ${#COLORS[@]} -eq 0 ] && COLORS=("${YWT_COLORS[@]}")
@@ -18,24 +19,7 @@ wysiwyg() {
         done
         echo
     }
-    style() {
-        local STYLE=${1:-bold} && STYLE=${STYLE,,}
-        local TEXT=${2}
-        local KIND=${3:-normal} && KIND=${KIND,,}
-        [[ ! $KIND =~ ^(normal|italic|underline|blink|inverse|hidden)$ ]] && KIND=normal
-        case $STYLE in
-        bold) STYLE=1 ;;
-        dim) STYLE=2 ;;
-        italic) STYLE=3 ;;
-        underline) STYLE=4 ;;
-        blink) STYLE=5 ;;
-        inverse) STYLE=7 ;;
-        hidden) STYLE=8 ;;
-        esac
-        echo -e "\e[${STYLE}m${TEXT}\e[0m"
-
-    }
-    colorize() {
+    apply() {
         local VAR=${1:-"NC"} && VAR=${VAR^^}
         local VARS=("${YWT_COLORS[@]}" "${YWT_STYLE[@]}")
         local IS_VALID=false
@@ -105,17 +89,14 @@ wysiwyg() {
         # local URL=${2}
         # echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
     }
-    nnf "$@" || usage "$?" "$@" && return 1
+    _nnf "$@" || usage "$?" "$@" && return 1
 }
 (
-    export -f wysiwyg
+    export -f colors
 )
 export YWT_COLORS=(
     black black-bg bright-black dark-gray dark-gray-bg red red-bg bright-red green green-bg bright-green yellow yellow-bg bright-yellow blue blue-bg bright-blue purple purple-bg bright-purple cyan cyan-bg bright-cyan gray gray-bg bright-gray white white-bg bright-white
 ) && readonly YWT_COLORS
-export YWT_STYLE=(
-    bold dim italic underline blink inverse hidden
-) && readonly YWT_STYLE
 export BLACK=$'\033[0;30m' && readonly BLACK
 export BLACK_BG=$'\033[40m' && readonly BLACK_BG
 export BRIGHT_BLACK=$'\033[1;30m' && readonly BRIGHT_BLACK
@@ -145,14 +126,6 @@ export BRIGHT_GRAY=$'\033[1;37m' && readonly BRIGHT_GRAY
 export WHITE=$'\033[0;37m' && readonly WHITE
 export WHITE_BG=$'\033[107m' && readonly WHITE_BG
 export BRIGHT_WHITE=$'\033[1;37m' && readonly BRIGHT_WHITE
-export BOLD=$'\033[1m' && readonly BOLD
-export DIM=$'\033[2m' && readonly DIM
-export ITALIC=$'\033[3m' && readonly ITALIC
-export UNDERLINE=$'\033[4m' && readonly UNDERLINE
-export BLINK=$'\033[5m' && readonly BLINK
-export INVERSE=$'\033[7m' && readonly INVERSE
-export HIDDEN=$'\033[8m' && readonly HIDDEN
-export STRICKETHROUGH=$'\033[9m' && readonly STRICKETHROUGH
 export NC=$'\033[0m' && readonly NC
 export NBG=$'\033[49m' && readonly NBG
-export NSTL=$'\033[24m' && readonly NSTL
+
