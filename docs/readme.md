@@ -11,7 +11,7 @@ chmod +x ./dist/ywt.sh; clear; ./dist/ywt.sh  inspect
 # test bin
 clear; ./bin/ywt inspect
 clear; ./sdk/sdk.sh tests unit sdk:require
-clear; tail -f /tmp/ywt-debug
+clear; ./sdk/sdk.sh debugger watch #tail -f /tmp/ywt-debug
 ```
 
 

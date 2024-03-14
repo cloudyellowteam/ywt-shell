@@ -42,7 +42,7 @@ logger() {
         LEVEL=$(printf "%-5s" "$LEVEL") #YWT_LOG_CONTEXT        
         echo -n "$(colors apply "yellow" "[${YWT_CMD_NAME^^}]") "
         echo -n "$(colors apply "bright-black" "[$$]" "fg") "
-        # echo -n "$(style "underline" "[$(etime)]" "fg") "
+        # echo -n "$(style "underline" "[$(__etime)]" "fg") "
         echo -n "$(colors apply "blue" "[$(date +"%Y-%m-%d %H:%M:%S")]" "fg") "
         echo -n "$(colors apply "$COLOR" "$(styles bold "[${LEVEL^^}]")" "fg") "
         [[ "${YWT_LOG_CONTEXT^^}" != "${YWT_CMD_NAME^^}" ]] && echo -n "$(colors apply "blue" "[${YWT_LOG_CONTEXT^^}]") "
@@ -62,7 +62,7 @@ logger() {
         _log_level "$1"
         _log_message "$2"
         # elapsed time
-        echo " $(colors apply "bright-black" "[$(styles "underline" "$(etime)")]" "fg")"
+        echo " $(colors apply "bright-black" "[$(styles "underline" "$(__etime)")]" "fg")"
     }
     json() {
         _log_level "$1"
