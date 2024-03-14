@@ -14,7 +14,7 @@ require() {
     if [ -n "$(type -t "$1")" ] && [ "$(type -t "$1")" != function ]; then
         dependencies "$1" && return $?
     else
-        _nnf "$@" || usage "$?" "builder" "$@" && return 1
+        __nnf "$@" || usage "$?" "builder" "$@" && return 1
         return 0
     fi
 }

@@ -19,7 +19,7 @@ process() {
             \"binary\": \"$YWT_IS_BINARY\"
         }"
     }
-    _nnf "$@" || usage "$?" "process" "$@" && return 1
+    __nnf "$@" || usage "$?" "process" "$@" && return 1
     return 0
 }
 (

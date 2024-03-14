@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 logger() {
-    __debug "logger" "$@"
+    # __debug "logger" "$@"
     # YWT_LOG_CONTEXT=${YWT_LOG_CONTEXT:-logger}
     _is_log_level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error|success)$ ]] && LEVEL=info
@@ -39,7 +39,7 @@ logger() {
             ICON="✅"
             ;;
         esac
-        LEVEL=$(printf "%-5s" "$LEVEL") #YWT_LOG_CONTEXT
+        LEVEL=$(printf "%-5s" "$LEVEL") #YWT_LOG_CONTEXT        
         echo -n "$(colors apply "yellow" "[${YWT_CMD_NAME^^}]") "
         echo -n "$(colors apply "bright-black" "[$$]" "fg") "
         # echo -n "$(style "underline" "[$(etime)]" "fg") "
@@ -58,6 +58,7 @@ logger() {
         echo -n "$MESSAGE"
     }
     log() {
+        [ "$1" == "debug" ] && __debug "logger:" "$@" && return 0
         _log_level "$1"
         _log_message "$2"
         # elapsed time
@@ -70,12 +71,12 @@ logger() {
     local LEVEL=${1}
     if [[ $LEVEL =~ ^(debug|info|warn|error|success)$ ]]; then
         # ARGS=("${@:2}")
-        shift # && LEVEL="log ${LEVEL}"
-        log "${LEVEL}" "$@" && return 0
+        # shift # && LEVEL="log ${LEVEL}"
+        log "${1}" "${@:2}" && return 0
     elif [[ $LEVEL == "json" ]]; then
         shift # && LEVEL="json ${LEVEL}"
         json "${LEVEL}" "$@" && return 0
-    elif ioc nff "$@"; then
+    elif __nnf "$@"; then
         return 0
         usage "$?" "logger" "$@" && return 1
     else

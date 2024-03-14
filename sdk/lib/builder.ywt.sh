@@ -145,7 +145,7 @@ builder() {
     inspect() {
         jq -r '.path' <<<"$YWT_CONFIG"
     }   
-    _nnf "$@" || usage "$?" "builder" "$@" && return 1
+    __nnf "$@" || usage "$?" "builder" "$@" && return 1
     return 0
 }
 (

@@ -105,6 +105,6 @@ tests() {
     *) setup && unit "$@" ;;
     esac
 
-    # _nnf "$@" || usage "$?" "tests" "$@" && return 1
+    # __nnf "$@" || usage "$?" "tests" "$@" && return 1
     # return 0
 }
