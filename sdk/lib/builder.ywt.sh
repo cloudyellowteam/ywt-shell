@@ -76,7 +76,7 @@ builder() {
         {
             echo "#!/bin/bash"
             echo "# shellcheck disable=SC2044,SC2155,SC2317"
-            copywrite
+            copyright
             while read -r FILE; do
                 local FILENAME && FILENAME=$(basename -- "$FILE")
                 local RELATIVE_PATH && RELATIVE_PATH=$(realpath --relative-to="$SRC" "$FILE")

@@ -35,8 +35,11 @@ test_report() {
     # local output=${1:-${OUTPUT}}
     # echo "${output}" >&3
 }
-test_extrat_json() {
-    echo "$1" | awk '/^ *{/{p=1}p' # | grep -o '{.*}'
+test_extract_json() {
+    local TEXT="$1"
+    [ -z "$TEXT" ] && while read -r line; do TEXT+="$line"; done
+    # if stdin is not empty
+    echo "$TEXT" | sed -n '/{/,$p' | jq -sR 'fromjson? | select(.)'
 }
 test_setup() {
     local HELPER_DIR="${BASH_SOURCE[0]}" && HELPER_DIR=$(dirname "$HELPER_DIR") && HELPER_DIR=$(realpath "$HELPER_DIR")

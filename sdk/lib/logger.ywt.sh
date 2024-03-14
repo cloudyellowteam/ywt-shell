@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 logger() {
+    __debug "logger" "$@"
     # YWT_LOG_CONTEXT=${YWT_LOG_CONTEXT:-logger}
     _is_log_level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error|success)$ ]] && LEVEL=info
@@ -69,12 +70,12 @@ logger() {
     local LEVEL=${1}
     if [[ $LEVEL =~ ^(debug|info|warn|error|success)$ ]]; then
         # ARGS=("${@:2}")
-        shift && LEVEL="log ${LEVEL}"
+        shift # && LEVEL="log ${LEVEL}"
         log "${LEVEL}" "$@" && return 0
     elif [[ $LEVEL == "json" ]]; then
-        shift && LEVEL="json ${LEVEL}"
+        shift # && LEVEL="json ${LEVEL}"
         json "${LEVEL}" "$@" && return 0
-    elif _nnf "$@"; then
+    elif ioc nff "$@"; then
         return 0
         usage "$?" "logger" "$@" && return 1
     else
