@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# bats file_tags=sdk
+# bats file_tags=sdk,clis
 
 # bats test_tags=sdk:error-handler
 @test "ywt handle error with usage" {

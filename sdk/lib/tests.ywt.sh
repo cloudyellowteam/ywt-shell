@@ -2,9 +2,11 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 tests() {
     YWT_LOG_CONTEXT="TESTS"
+    local TESTS=()
     local TESTS_DIR="$(jq -r '.tests' <<<"$YWT_PATHS")"
     local TMP_DIR="$(jq -r '.tmp' <<<"$YWT_PATHS")"
     local TEST_HELPER_DIR="${TESTS_DIR}/helpers" && mkdir -p "${TEST_HELPER_DIR}"
+    local SDK_DIR="$(jq -r '.sdk' <<<"$YWT_PATHS")"
     cleanup() {
         logger info "Cleaning up tests"
         rm -f -r "${TEST_HELPER_DIR}/bats"
@@ -19,7 +21,8 @@ tests() {
         [ ! -d "${TEST_HELPER_DIR}/bats" ] && logger info "getting bats" && git clone https://github.com/bats-core/bats-core.git "${TEST_HELPER_DIR}/bats" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats/.git"
         [ ! -d "${TEST_HELPER_DIR}/bats-assert" ] && logger info "getting bats-assert" && git clone https://github.com/bats-core/bats-assert.git "${TEST_HELPER_DIR}/bats-assert" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats-assert/.git"
         [ ! -d "${TEST_HELPER_DIR}/bats-support" ] && logger info "getting bats-support" && git clone https://github.com/bats-core/bats-support.git "${TEST_HELPER_DIR}/bats-support" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats-support/.git"
-        [ ! -d "${TEST_HELPER_DIR}/bats-file" ] && logger info "getting bats-file" && git clone https://github.com/bats-core/bats-file.git "${TEST_HELPER_DIR}/bats-file" &>/dev/null & rm -fr "${TEST_HELPER_DIR}/bats-file/.git"
+        [ ! -d "${TEST_HELPER_DIR}/bats-file" ] && logger info "getting bats-file" && git clone https://github.com/bats-core/bats-file.git "${TEST_HELPER_DIR}/bats-file" &>/dev/null &
+        rm -fr "${TEST_HELPER_DIR}/bats-file/.git"
         if ! command -v bats >/dev/null 2>&1; then
             logger info "installing bats"
             chmod -R +x "${TEST_HELPER_DIR}"
@@ -54,8 +57,48 @@ tests() {
         logger info "Test exit code: ${TEST_EXIT_CODE}"
         logger info "Test result: ${TEST_RESULT}"
     }
+    __copy_tests() {  
+        __require find mktemp basename cp sed
+        while IFS= read -r -d '' TEST; do
+            local TEST_NAME=$(basename "${TEST}")
+            local TEST_DEST=$(mktemp -u -t XXXXXXXX --suffix=".${TEST_NAME}" --tmpdir="${TESTS_DIR}")
+            cp -f "${TEST}" "${TEST_DEST}"
+            {
+                echo "
+                    # auto-generated setup
+                   setup() {
+                        load \"helpers/setup.sh\" && test_setup
+                        FEATURE_DIR=\"\$(cd \"\$(dirname \"\$BATS_TEST_FILENAME\")\" >/dev/null 2>&1 && pwd)\"
+                        PATH=\"\${FEATURE_DIR}:\${PATH}\" # add feature to PATH
+                    }
+                " | sed -e 's/^[[:space:]]*// ' -e 's/[[:space:]]*$//'
+            } >>"${TEST_DEST}"
+            TESTS+=("${TEST_DEST}")
+        done < <(find "${SDK_DIR}" -type f -name "*.bats" -not -path "${TESTS_DIR}/*" -print0)
+        return 0
+        # __require mapfile
+        # mapfile -t TESTS < <(find "${SDK_DIR}" -type f -name "*.bats" -not -path "${TESTS_DIR}/*")
+        # echo "Copying tests to ${TMP_DIR}"
+        # for TEST in "${TESTS[@]}"; do
+        #     local TEST_NAME=$(basename "${TEST}")
+        #     local TEST_DEST="${TESTS_DIR}/tmp.${TEST_NAME}"
+        #     # echo "Copying ${TEST} to ${TEST_DEST}"
+        #     cp -f "${TEST}" "${TEST_DEST}"
+        #     {
+        #         echo "
+        #             # auto-generated setup
+        #            setup() {
+        #                 load \"helpers/setup.sh\" && test_setup
+        #                 FEATURE_DIR=\"\$(cd \"\$(dirname \"\$BATS_TEST_FILENAME\")\" >/dev/null 2>&1 && pwd)\"
+        #                 PATH=\"\${FEATURE_DIR}:\${PATH}\" # add feature to PATH
+        #             }
+        #         " | sed -e 's/^[[:space:]]*// ' -e 's/[[:space:]]*$//'
+        #     } >>"${TEST_DEST}"
+        # done
+    }
     #  --filter-tags "!tcp"
     unit() {
+        __copy_tests
         local VERBOSE=false
         local TRACE=false
         while [[ $# -gt 0 ]]; do
@@ -91,8 +134,10 @@ tests() {
         local END_TIME=$(date +%s)
         local ELAPSED_TIME=$((END_TIME - START_TIME))
         logger info "Test exit code: ${EXIT_CODE}"
-        logger info "Test result: ${RESULT}"
+        logger info "Test result:"
+        __verbose "${RESULT}"
         local FAILURES=$(grep -Eo "0 failures" <<<"${RESULT}")
+        rm -f "${TESTS[@]}"        
         if [ "${EXIT_CODE}" -eq 0 ] && [ -n "${FAILURES}" ]; then
             logger success "All tests passed, great job! (${ELAPSED_TIME} seconds)"
             return 0
@@ -104,7 +149,7 @@ tests() {
     case "$1" in
     cleanup) cleanup ;;
     setup) setup ;;
-    unit) shift && setup true && unit "$@" ;;
+    unit) shift && setup false && unit "$@" ;;
     *) setup && unit "$@" ;;
     esac
 

@@ -339,7 +339,6 @@ sdk() {
         local ERROR_CODE=${1:-0} && shift
         local CONTEXT=${1:-} && [ -z "$CONTEXT" ] && CONTEXT="sdk"
         local FUNC_LIST && FUNC_LIST=$(__functions)
-
         [ -z "$*" ] && return 0
         echo "usage error ($ERROR_CODE): ywt [$CONTEXT]($#)[$*]" | logger info
         echo "Available functions: " | logger info # (${YELLOW}${FUNC_LIST}${NC})" | logger info
@@ -363,7 +362,7 @@ ywt() {
     local FUNC=${1} && [ -z "$FUNC" ] && return 1
     FUNC=${FUNC#_} && FUNC=${FUNC#__}
     local ARGS=("${@:2}")
-    sdk "$FUNC" "${ARGS[@]}"
+    sdk "$FUNC" "${ARGS[@]}"   
     return 0
 }
 (
@@ -373,12 +372,14 @@ ywt() {
 if [ "$#" -gt 0 ]; then
     SDK_FILE="$(realpath -- "${YWT_SDK_FILE}")" && export SDK_FILE
     if ! LC_ALL=C grep -a '[^[:print:][:space:]]' "$SDK_FILE" >/dev/null; then
-        ywt "$@"
+        ywt "$@"  
+        # __teardown      
         exit $?
     else
         # binary injection
         # echo "Binary file ($#) $*" 1>&2
         ywt "$@"
+        # __teardown
         exit $?
-    fi
+    fi    
 fi
