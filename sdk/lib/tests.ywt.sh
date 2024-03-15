@@ -16,10 +16,10 @@ tests() {
     setup() {
         __require git tee
         [ "${1}" == true ] && cleanup
-        [ ! -d "${TEST_HELPER_DIR}/bats" ] && logger info "getting bats" && git clone https://github.com/bats-core/bats-core.git "${TEST_HELPER_DIR}/bats" &>/dev/null
-        [ ! -d "${TEST_HELPER_DIR}/bats-assert" ] && logger info "getting bats-assert" && git clone https://github.com/bats-core/bats-assert.git "${TEST_HELPER_DIR}/bats-assert" &>/dev/null
-        [ ! -d "${TEST_HELPER_DIR}/bats-support" ] && logger info "getting bats-support" && git clone https://github.com/bats-core/bats-support.git "${TEST_HELPER_DIR}/bats-support" &>/dev/null
-        [ ! -d "${TEST_HELPER_DIR}/bats-file" ] && logger info "getting bats-file" && git clone https://github.com/bats-core/bats-file.git "${TEST_HELPER_DIR}/bats-file" &>/dev/null
+        [ ! -d "${TEST_HELPER_DIR}/bats" ] && logger info "getting bats" && git clone https://github.com/bats-core/bats-core.git "${TEST_HELPER_DIR}/bats" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats/.git"
+        [ ! -d "${TEST_HELPER_DIR}/bats-assert" ] && logger info "getting bats-assert" && git clone https://github.com/bats-core/bats-assert.git "${TEST_HELPER_DIR}/bats-assert" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats-assert/.git"
+        [ ! -d "${TEST_HELPER_DIR}/bats-support" ] && logger info "getting bats-support" && git clone https://github.com/bats-core/bats-support.git "${TEST_HELPER_DIR}/bats-support" &>/dev/null && rm -fr "${TEST_HELPER_DIR}/bats-support/.git"
+        [ ! -d "${TEST_HELPER_DIR}/bats-file" ] && logger info "getting bats-file" && git clone https://github.com/bats-core/bats-file.git "${TEST_HELPER_DIR}/bats-file" &>/dev/null & rm -fr "${TEST_HELPER_DIR}/bats-file/.git"
         if ! command -v bats >/dev/null 2>&1; then
             logger info "installing bats"
             chmod -R +x "${TEST_HELPER_DIR}"
@@ -104,7 +104,7 @@ tests() {
     case "$1" in
     cleanup) cleanup ;;
     setup) setup ;;
-    unit) shift && setup false && unit "$@" ;;
+    unit) shift && setup true && unit "$@" ;;
     *) setup && unit "$@" ;;
     esac
 

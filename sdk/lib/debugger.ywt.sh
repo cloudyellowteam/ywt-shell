@@ -3,7 +3,8 @@
 debugger() {
     YWT_LOG_CONTEXT="debugger"
     watch() {
-        (tail -f "$YWT_FIFO") && wait        
+        __require tail wait kill        
+        (tail -f "$FIFO") && wait && kill "$!"
     }
     _verbose() {
         echo "$1" 1>&2
