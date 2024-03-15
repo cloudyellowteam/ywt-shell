@@ -21,6 +21,7 @@ sdk() {
     local YWT_CMD_NAME=ywt
     local YWT_INITIALIZED=false
     local YWT_DEBUG=${YWT_CONFIG_DEBUG:-true}
+    local YWT_MISSING_DEPENDENCIES=()
     __etime() {
         ps -o etime= "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://'
     }
@@ -42,10 +43,26 @@ sdk() {
         (echo "${MESSAGE[*]}" >"$YWT_FIFO") &
         true
     }
+    __require() {
+        local DEPENDENCIES=("$@")
+        for DEPENDENCY in "${DEPENDENCIES[@]}"; do
+            if ! __is command "${DEPENDENCY}"; then
+                __debug "required ${DEPENDENCY} (command not found)" && 
+                YWT_MISSING_DEPENDENCIES+=("${DEPENDENCY}")
+                # return 1
+            fi
+        done
+        [ "${#YWT_MISSING_DEPENDENCIES[@]}" -eq 0 ] && return 0
+        local MSG="Missing dependencies: ${YWT_MISSING_DEPENDENCIES[*]}"
+        __is "function" "logger" && logger error "$MSG" && exit 255
+        __debug "$MSG" && __verbose "$MSG"
+        exit 255
+        # ! __dependencies jq sed grep sort tr sudo && __verbose "Missing dependencies: ${YWT_NOT_FOUND_COMMANDS[*]}" && exit 255
+    }
     __verbose() {
         echo "$1" 1>&2
     }
-    __log(){
+    __log() {
         __is "function" "logger" && logger "$@" && return $?
         __debug "$@" && return $?
     }
@@ -120,7 +137,7 @@ sdk() {
                 __debug "Function $FUNC not found" | logger error
                 return 1
             fi
-        }        
+        }
         case "$1" in
         resolve) __resolve "${@:2}" && return 0 ;;
         inject) __inject "${@:2}" && return 0 ;;
@@ -163,22 +180,28 @@ sdk() {
     __bootstrap() {
         [ "$YWT_INITIALIZED" == true ] && return 0
         YWT_INITIALIZED=true
+        __require jq sed grep sort tr
         __ioc inject "$(jq -r '.lib' <<<"$YWT_PATHS")"
         [ -z "$YWT_APPINFO" ] && local YWT_APPINFO && YWT_APPINFO=$(ywt:info package) && readonly YWT_APPINFO
         [ -z "$YWT_PROCESS" ] && local YWT_PROCESS && YWT_PROCESS=$(process info) && readonly YWT_PROCESS
+        local DOTENV_FILE=$(jq -r '.project' <<<"$YWT_PATHS")/.env
+        [ -f "$DOTENV_FILE" ] && export YWT_DOTENV && YWT_DOTENV=$(dotenv load "$DOTENV_FILE") && readonly YWT_DOTENV
+        [ -z "$YWT_DOTENV" ] && local YWT_DOTENV && YWT_DOTENV="{}" && readonly YWT_DOTENV
         export YWT_CONFIG && YWT_CONFIG=$(
             jq -n \
                 --argjson package "$YWT_APPINFO" \
                 --argjson path "$YWT_PATHS" \
-                --argjson process "$(process info)" \
-                '{yellowteam: $package, path: $path, process: $process}'
+                --argjson process "$YWT_PROCESS" \
+                --argjson env "$YWT_DOTENV" \
+                '{yellowteam: $package, path: $path, process: $process, env: $env}'
         ) && readonly YWT_CONFIG
         __debug "Package Info $(jq -C .yellowteam <<<"$YWT_CONFIG")"
         __debug "Paths $(jq -C .path <<<"$YWT_CONFIG")"
         __debug "Process $(jq -C .process <<<"$YWT_CONFIG")"
+        __debug "Dotenv $(jq -C .env <<<"$YWT_CONFIG")"
         ywt:info welcome
         return 0
-    }    
+    }
     inspect() {
         jq -r '.' <<<"$YWT_CONFIG"
     }
@@ -188,9 +211,6 @@ sdk() {
         local FUNC_LIST && FUNC_LIST=$(__functions)
 
         [ -z "$*" ] && return 0
-        # local FUNC_LIST && FUNC_LIST=$(declare -F | awk '{print $3}') && FUNC_LIST=${FUNC_LIST[*]} && FUNC_LIST=$(echo "$FUNC_LIST" | sed -e 's/ /\n/g' | grep -v '^_' | sort | tr '\n' ' ' | sed -e 's/ $//')
-        # [ -z "$CONTEXT" ] && CONTEXT="sdk"
-        # [ -z "$*" ] && return 0
         echo "usage error ($ERROR_CODE): ywt [$CONTEXT]($#)[$*]" | logger info
         echo "Available functions: " | logger info # (${YELLOW}${FUNC_LIST}${NC})" | logger info
         for FUNC in $FUNC_LIST; do
@@ -201,9 +221,9 @@ sdk() {
         done
         return "$ERROR_CODE"
     }
-    __bootstrap && logger debug "${YELLOW}yw-sh${NC} ${GREEN}$*${NC}" 
+    __bootstrap && logger debug "${YELLOW}yw-sh${NC} ${GREEN}$*${NC}"
     __nnf "$@" && return 0
-    local STATUS=$? && usage "$STATUS" "sdk" "$@" && return 1    
+    local STATUS=$? && usage "$STATUS" "sdk" "$@" && return 1
 }
 ywt() {
     [ "$#" -eq 0 ] && return 0

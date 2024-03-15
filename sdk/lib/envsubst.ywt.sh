@@ -17,7 +17,7 @@ if ! __is command envsubst; then
         local FILE_PATH="$1"
         [ -z "$FILE_PATH" ] && __log error "File path not defined" && return 1
         [ ! -f "$FILE_PATH" ] && __log error "File not found" && return 1
-        while IFS= read -r LINE; do
+        while IFS= read -r LINE || [ -n "$LINE" ]; do
             while [[ "$LINE" =~ (\$\{([a-zA-Z_][a-zA-Z_0-9]*)\}) ]]; do
                 local FULL_MATCH=${BASH_REMATCH[1]}
                 local VAR_NAME=${BASH_REMATCH[2]}
@@ -26,7 +26,6 @@ if ! __is command envsubst; then
             done
             echo "$LINE"
         done <"$FILE_PATH"
-        logger info "envsubst" "File path: $FILE_PATH"
     }
     (
         export -f envsubst

@@ -14,6 +14,7 @@ tests() {
         rm -f "/usr/local/bin/bats"
     }
     setup() {
+        __require git tee
         [ "${1}" == true ] && cleanup
         [ ! -d "${TEST_HELPER_DIR}/bats" ] && logger info "getting bats" && git clone https://github.com/bats-core/bats-core.git "${TEST_HELPER_DIR}/bats" &>/dev/null
         [ ! -d "${TEST_HELPER_DIR}/bats-assert" ] && logger info "getting bats-assert" && git clone https://github.com/bats-core/bats-assert.git "${TEST_HELPER_DIR}/bats-assert" &>/dev/null
@@ -25,8 +26,10 @@ tests() {
             "${TEST_HELPER_DIR}"/bats/install.sh /usr/local | tee /dev/null | logger debug
             bats --version | logger debug
         fi
+        __require bats
     }
     _bats() {
+        __require bats
         local BATS_VERSION=$(bats --version)
         logger info "Bats version: ${BATS_VERSION} ${TESTS_DIR}"
         # --filter <regex>      Only run tests that match the regular expression
