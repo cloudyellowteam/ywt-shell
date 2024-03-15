@@ -1,6 +1,16 @@
 #!/usr/bin/env bats
 # bats file_tags=sdk,clis
 
+# bats test_tags=sdk:usage
+@test "ywt usage" {
+    run ywt usage
+    test_report
+    test_log "status=$status"
+    [ "$status" -eq 0 ]
+    [ "$output" != "" ]
+    [ "$BATS_RUN_COMMAND" = "ywt usage" ]
+    assert_output --partial "Available functions"
+}
 # bats test_tags=sdk:error-handler
 @test "ywt handle error with usage" {
     run ywt invalid command

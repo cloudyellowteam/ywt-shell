@@ -72,6 +72,13 @@ sdk() {
     __verbose() {
         echo "$1" 1>&2
     }
+    __stdin() {
+        [ ! -p /dev/stdin ] && [ ! -t 0 ] && return "$1"
+        while IFS= read -r INPUT; do
+            echo "$INPUT"
+        done
+        unset INPUT
+    }
     __log() {
         __is "function" "logger" && logger "$@" && return $?
         __debug "$@" && return $?
@@ -95,7 +102,13 @@ sdk() {
         return 1
     }
     __functions() {
-        local FUNC_LIST && FUNC_LIST=$(declare -F | awk '{print $3}')
+        if [ -f "${1}" ]; then 
+            local FUNC_LIST=$(
+                grep -E '^\s*(function\s+)?[a-zA-Z_][a-zA-Z0-9_]*\s*\(\)' "${1}" | awk '{print $1}' | sort | tr '\n' ' ' | sed -e 's/()//g' -e 's/ $//'
+            )
+        else 
+            local FUNC_LIST=$(declare -F | awk '{print $3}')
+        fi
         local RESULT=()
         for FUNC in $FUNC_LIST; do
             [[ "$FUNC" == _* ]] && continue
@@ -337,32 +350,43 @@ sdk() {
     }
     usage() {
         local ERROR_CODE=${1:-0} && shift
-        local CONTEXT=${1:-} && [ -z "$CONTEXT" ] && CONTEXT="sdk"
-        local FUNC_LIST && FUNC_LIST=$(__functions)
+        local CONTEXT=${1:-} && [ -z "$CONTEXT" ] && CONTEXT=""
+        # find the context file
+        local CONTEXT_PATH=$(jq -r ".lib" <<<"$YWT_PATHS")
+        local CONTEX_FILE=$(find "$CONTEXT_PATH" -type f -name "${CONTEXT}.ywt.sh" | head -n 1) && [ ! -f "$CONTEX_FILE" ] && CONTEX_FILE="${YWT_SDK_FILE}"
+        # local CONTEXT_FILE="${YWT_PATHS}/${CONTEXT}.ywt.sh"
+        local FUNC_LIST && FUNC_LIST=$(__functions "$CONTEX_FILE")
         [ -z "$*" ] && return 0
-        echo "usage error ($ERROR_CODE): ywt [$CONTEXT]($#)[$*]" | logger info
-        echo "Available functions: " | logger info # (${YELLOW}${FUNC_LIST}${NC})" | logger info
+        local ARGS=("${@:2}")
+        [ -n "${ARGS[0]}" ] && ARGS[0]="${RED}${UNDERLINE}${ARGS[0]}${NC}${NSTL}"
+        __log info "(${RED}$ERROR_CODE${NC}) ${YELLOW}YWT Usage${NC}: ${YELLOW}ywt ${GREEN}$CONTEXT${NC} (${ARGS[*]}${NC}) ${CYAN}${#ARGS[@]} length${NC}"
+        __log info "Available functions: " #| logger info # (${YELLOW}${FUNC_LIST}${NC})" | logger info
         for FUNC in $FUNC_LIST; do
             [[ "$FUNC" == bats_* ]] && continue
             [[ "$FUNC" == batslib_* ]] && continue
             [[ "$FUNC" == assert_* ]] && continue
-            echo "  $FUNC" # | logger info
+            [[ "$FUNC" == "$CONTEXT" ]] && continue
+            [[ "$FUNC" == "ywt" ]] && continue
+            [[ "$FUNC" == *"sdk"* ]] && continue
+            FUNC=${FUNC%,}
+            __log info "${YELLOW}ywt ${GREEN}${CONTEXT} ${BLUE}$FUNC${NC}"
         done
         return "$ERROR_CODE"
     }
-    [ -z "$YWT_PATHS" ] && __paths > /dev/null
-    [ -z "$YWT_FLAGS" ] && __argv "$@" > /dev/null
-    [ -z "$YWT_PARAMS" ] && __params "$@" > /dev/null
+    [ -z "$YWT_PATHS" ] && __paths >/dev/null
+    [ -z "$YWT_FLAGS" ] && __argv "$@" >/dev/null
+    [ -z "$YWT_PARAMS" ] && __params "$@" >/dev/null
     __flags "$@" && set -- "${YWT_POSITIONAL[@]}" && __bootstrap && logger debug "${YELLOW}yw-sh${NC} ${GREEN}$*${NC}"
+    [ "${1}" == "usage" ] && usage "0" "" "$@" && return 0
     __nnf "$@" && return 0
-    local STATUS=$? && usage "$STATUS" "sdk" "$@" && return 1
+    local STATUS=$? && usage "$STATUS" "" "$@" && return 1
 }
 ywt() {
     [ "$#" -eq 0 ] && return 0
     local FUNC=${1} && [ -z "$FUNC" ] && return 1
     FUNC=${FUNC#_} && FUNC=${FUNC#__}
     local ARGS=("${@:2}")
-    sdk "$FUNC" "${ARGS[@]}"   
+    sdk "$FUNC" "${ARGS[@]}"
     return 0
 }
 (
@@ -372,8 +396,8 @@ ywt() {
 if [ "$#" -gt 0 ]; then
     SDK_FILE="$(realpath -- "${YWT_SDK_FILE}")" && export SDK_FILE
     if ! LC_ALL=C grep -a '[^[:print:][:space:]]' "$SDK_FILE" >/dev/null; then
-        ywt "$@"  
-        # __teardown      
+        ywt "$@"
+        # __teardown
         exit $?
     else
         # binary injection
@@ -381,5 +405,5 @@ if [ "$#" -gt 0 ]; then
         ywt "$@"
         # __teardown
         exit $?
-    fi    
+    fi
 fi
