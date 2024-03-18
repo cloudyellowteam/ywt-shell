@@ -1,5 +1,6 @@
 {
     "explorer.fileNesting.patterns": {
-        "*.sh": "${capture}.c, ${capture}, ${capture}.bats"
+        "*.sh": "${capture}.c, ${capture}, ${capture}.bats",
+        "*.ywt.sh": "${capture}.c, ${capture}, ${capture}.bats"
     }
 }

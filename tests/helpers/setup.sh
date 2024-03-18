@@ -13,6 +13,7 @@ test_log() {
 }
 test_report() {
     local values=("${GREEN}${BATS_RUN_COMMAND}${NC}")
+    values+=("STATUS: ${status}")
     # values+=("BATS_TEST_FILENAME: ${BATS_TEST_FILENAME}")
     # values+=("BATS_TEST_DIRNAME: ${BATS_TEST_DIRNAME}")
     # values+=("BATS_TEST_NAMES: ${BATS_TEST_NAMES}")

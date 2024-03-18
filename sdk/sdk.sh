@@ -10,6 +10,7 @@ sdk() {
         [ -p "$YWT_DEBUG_FIFO" ] && rm -f "$YWT_DEBUG_FIFO" 2>/dev/null
         [ -p "$YWT_LOGGER_FIFO" ] && rm -f "$YWT_LOGGER_FIFO" 2>/dev/null
         [ -p "$YWT_TRACE_FIFO" ] && rm -f "$YWT_TRACE_FIFO" 2>/dev/null
+        [ -p "$YWT_OUTPUT_FIFO" ] && rm -f "$YWT_OUTPUT_FIFO" 2>/dev/null
         # [ -p "$YWT_FIFO" ] && rm -f "$YWT_FIFO" 2>/dev/null
     }
     __fail() {
@@ -83,8 +84,26 @@ sdk() {
         __is "function" "logger" && logger "$@" && return $?
         __debug "$@" && return $?
     }
-    __is() {
+    __is() {        
         case "$1" in
+        number)
+            [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]] && return 0
+            ;;
+        string)
+            [ -n "$2" ] && [[ "$2" =~ ^[a-zA-Z0-9_]+$ ]] && return 0
+            ;;
+        boolean)
+            [ -n "$2" ] && [[ "$2" =~ ^(true|false)$ ]] && return 0
+            ;;
+        date)
+            [ -n "$2" ] && [[ "$2" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && return 0
+            ;;
+        url)
+            [ -n "$2" ] && [[ "$2" =~ ^https?:// ]] && return 0
+            ;;        
+        json)
+            jq -e . >/dev/null 2>&1 && return 0
+            ;;
         fnc | function)
             local TYPE="$(type -t "$2")"
             [ -n "$TYPE" ] && [ "$TYPE" = function ] && return 0
@@ -102,11 +121,13 @@ sdk() {
         return 1
     }
     __functions() {
-        if [ -f "${1}" ]; then 
+        if [ -f "${1}" ]; then
             local FUNC_LIST=$(
                 grep -E '^\s*(function\s+)?[a-zA-Z_][a-zA-Z0-9_]*\s*\(\)' "${1}" | awk '{print $1}' | sort | tr '\n' ' ' | sed -e 's/()//g' -e 's/ $//'
             )
-        else 
+            [ "$2" == true ] && FUNC_LIST+=" $(declare -F | awk '{print $3}')"
+            FUNC_LIST=$(echo "${FUNC_LIST}" | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/ $//')
+        else
             local FUNC_LIST=$(declare -F | awk '{print $3}')
         fi
         local RESULT=()
@@ -118,6 +139,31 @@ sdk() {
             RESULT+=("$FUNC")
         done
         echo "${RESULT[*]}" | sed -e 's/ /\n/g' | grep -v '^_' | sort | tr '\n' ' ' | sed -e 's/ $//' | sed -e 's/ /, /g'
+    }
+    __libraries() {
+        # list files in CONTEXT_PATH and find the first file that matches the CONTEXT
+        [ ! -d "${1}" ] && echo "{}" && return 0
+        local JSON="{" && local FIRST=true
+        while read -r FILE; do
+            local FILE_NAME && FILE_NAME=$(basename -- "$FILE") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
+            local LIB_NAME="${FILE_NAME%.*}" && LIB_NAME="${LIB_NAME//-/:}" && LIB_NAME="${LIB_NAME//_/:}" && LIB_NAME="${LIB_NAME//./:}" && LIB_NAME="${LIB_NAME// /:}" && LIB_NAME="${LIB_NAME//-/:}"
+            [ "$FIRST" == true ] && FIRST=false || JSON+=","
+            JSON+="\"$LIB_NAME\": {\"entrypoint\": \"${LIB_NAME}\", \"name\":\"${FILE_NAME}\",\"src\":\"${FILE}\",\"methods\":["
+            local METHODS=$(__functions "$FILE" false) && [ -z "$METHODS" ] && METHODS=""
+            IFS=',' read -r -d '' -a METHODS <<<"$METHODS"
+            for FUNC in "${METHODS[@]}"; do
+                # trim and replace new lines
+                FUNC=$(echo "$FUNC" | tr -d '\n' | tr -d '\r' | tr -d '\t' | tr -d ' ') && FUNC="${FUNC//\{/}"
+                [[ "$FUNC" == _* ]] && continue
+                [[ "$FUNC" == bats_* ]] && continue
+                [[ "$FUNC" == batslib_* ]] && continue
+                [[ "$FUNC" == assert_* ]] && continue
+                JSON+="\"$FUNC\","
+            done
+            JSON+="\"usage\"]}"
+        done < <(find "${1}" -type f -name "*.ywt.sh" | sort)
+        JSON+="}"
+        echo "$JSON" | jq -C .
     }
     __ioc() {
         __resolve() {
@@ -142,13 +188,23 @@ sdk() {
             FUNC=${FUNC#_} && FUNC=${FUNC#__} && FUNC="${FUNC//_/-5f}" && FUNC="${FUNC//-/-2d}" && FUNC="${FUNC// /_}"
             local ARGS=("${@:2}") # local ARGS=("${@}")
             if __is function "$FUNC"; then
-                __debug "Running $FUNC with args: ${ARGS[*]}" 1>&2
+                # __debug "Running $FUNC with args: ${ARGS[*]}" 1>&2
                 local START_TIME=$(date +%s)
                 exec 3>&1
                 trap 'exec 3>&-' EXIT
                 local STATUS
                 # local OUTPUT && OUTPUT=$($FUNC "${ARGS[@]}" 1>&3) # 2>&1
-                $FUNC "${ARGS[@]}" 1>&3
+                # $FUNC "${ARGS[@]}" 1>&3
+                
+                if [[ "$FUNC" != *logger* ]] && [ -p "$YWT_OUTPUT_FIFO" ]; then
+                    $FUNC "${ARGS[@]}" 1>&3
+                    # ($FUNC "${ARGS[@]}" 1>&3 >"$YWT_OUTPUT_FIFO") & true
+                    # (exec 3>"$YWT_OUTPUT_FIFO" && $FUNC "${ARGS[@]}" 1>&3)
+                else
+                    $FUNC "${ARGS[@]}" 1>&3
+                fi                
+                # local OUTPUT && OUTPUT=$(tail -n 1 <<< "$(<&3)")
+                # [ -n "$OUTPUT" ] && __output "$OUTPUT"
                 local END_TIME=$(date +%s)
                 local ELAPSED_TIME=$((END_TIME - START_TIME))
                 STATUS=$?
@@ -157,7 +213,7 @@ sdk() {
                 exec 3>&-
                 return 0
             else
-                __debug "Function $FUNC not found" | logger error
+                __log error "Function $FUNC not found"                
                 return 1
             fi
         }
@@ -301,6 +357,17 @@ sdk() {
                 YWT_FLAGS=$(jq -n --argjson flags "$YWT_FLAGS" --arg debug "$VALUE" '$flags | .debug=$debug')
                 shift
                 ;;
+            -o | --output)
+                local VALUE=$(jq -r '.output' <<<"$YWT_FLAGS")
+                [ "$VALUE" == "null" ] && shift && continue
+                [ "$VALUE" == true ] && VALUE="/tmp/ywt.output"
+                [ -p "$VALUE" ] && rm -f "$VALUE"
+                export YWT_OUTPUT_FIFO="$VALUE"
+                [ ! -p "$YWT_OUTPUT_FIFO" ] && mkfifo "$YWT_OUTPUT_FIFO" && readonly YWT_OUTPUT_FIFO
+                YWT_LOGS+=("Output FIFO enabled. In another terminal use 'tail -f $YWT_OUTPUT_FIFO' to watch logs or 'rapd output watch $YWT_OUTPUT_FIFO'.")
+                YWT_FLAGS=$(jq -n --argjson flags "$YWT_FLAGS" --arg output "$VALUE" '$flags | .output=$output')
+                shift
+                ;;
             -p* | --param*)
                 # params already parsed using __params
                 shift
@@ -351,11 +418,19 @@ sdk() {
     usage() {
         local ERROR_CODE=${1:-0} && shift
         local CONTEXT=${1:-} && [ -z "$CONTEXT" ] && CONTEXT=""
-        # find the context file
         local CONTEXT_PATH=$(jq -r ".lib" <<<"$YWT_PATHS")
         local CONTEX_FILE=$(find "$CONTEXT_PATH" -type f -name "${CONTEXT}.ywt.sh" | head -n 1) && [ ! -f "$CONTEX_FILE" ] && CONTEX_FILE="${YWT_SDK_FILE}"
-        # local CONTEXT_FILE="${YWT_PATHS}/${CONTEXT}.ywt.sh"
-        local FUNC_LIST && FUNC_LIST=$(__functions "$CONTEX_FILE")
+
+        # local LIBS=$(__libraries "$CONTEXT_PATH")
+        # __libraries "$CONTEXT_PATH"
+        # if [ -d "$CONTEXT_PATH" ]; then
+        #     while read -r FILE; do
+        #         local FILE_NAME && FILE_NAME=$(basename -- "$FILE") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
+        #         local LIB_NAME="${FILE_NAME%.*}" && LIB_NAME="${LIB_NAME//-/:}" && LIB_NAME="${LIB_NAME//_/:}" && LIB_NAME="${LIB_NAME//./:}" && LIB_NAME="${LIB_NAME// /:}" && LIB_NAME="${LIB_NAME//-/:}"
+        #         [ -z "$CONTEXT" ] && __log info "Available libraries: ${LIB_NAME}" #| logger info
+        #     done < <(find "$CONTEXT_PATH" -type f -name "*.ywt.sh" | sort)
+        # fi
+        local FUNC_LIST="" # && FUNC_LIST=$(__functions "$CONTEX_FILE" true)
         [ -z "$*" ] && return 0
         local ARGS=("${@:2}")
         [ -n "${ARGS[0]}" ] && ARGS[0]="${RED}${UNDERLINE}${ARGS[0]}${NC}${NSTL}"

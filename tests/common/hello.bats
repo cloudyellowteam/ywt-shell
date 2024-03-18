@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# bats test_tags=hello, world
+# bats test_tags=commom, template
 @test "ywt inspect" {
     run ywt inspect
     test_report
@@ -13,13 +13,13 @@
     assert_output --partial "@yw-team/yw-sh"
 }
 
-# bats test_tags=hello, world
+# bats test_tags=commom, template
 @test "addition using bc" {
   result="$(echo 4)"
   [ "$result" -eq 4 ]
 }
 
-# bats test_tags=hello, world
+# bats test_tags=commom, template
 @test "addition using dc" {
   result="$(echo 2)"
   [ "$result" -eq 2 ]

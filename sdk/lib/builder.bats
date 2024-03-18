@@ -24,10 +24,3 @@
     [ "$BATS_RUN_COMMAND" = "ywt builder inspect" ]
     [ ! "$(jq . <<<"$JSON")" = "null" ]
 }
-
-
-setup() {
-    load "helpers/setup.sh" && test_setup
-    FEATURE_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" >/dev/null 2>&1 && pwd)"
-    PATH="$FEATURE_DIR:$PATH" # add feature to PATH
-}
