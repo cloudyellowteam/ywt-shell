@@ -3,15 +3,6 @@
 
 if ! __is command envsubst; then
     __debug "envsubst not found, injecting polyfill..."
-    # export NAME="John Doe"
-    # export AGE="30"
-    # touch /tmp/test.txt
-    # {
-    #     echo "Hello, my name is \${NAME}."
-    #     echo "I am \${AGE} years old."
-    # } > /tmp/test.txt
-    # envsubst /tmp/test.txt
-    # rm -f /tmp/test.txt
     envsubst() {
         export YWT_LOG_CONTEXT="ENVSUBST"
         local FILE_PATH="$1"
@@ -26,6 +17,7 @@ if ! __is command envsubst; then
             done
             echo "$LINE"
         done <"$FILE_PATH"
+        return 0
     }
     (
         export -f envsubst

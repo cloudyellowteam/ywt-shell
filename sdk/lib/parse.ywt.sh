@@ -54,7 +54,7 @@ parse() {
         }" | jq '.' -c
         return 0
     }
-    __nnf "$@" || usage "$?" "parse" "$@" && return 1
+    __nnf "$@" || usage "parse" "$?" "$@" && return 1
 }
 (
     export -f parse

@@ -40,6 +40,13 @@ sdk() {
         done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.ywt.sh" | sort)
         return 0
     }
+    __rename_bats_tests(){
+        while read -r FILE; do
+            local DEST="${FILE%.*}.bat"
+            mv -f "$FILE" "$DEST"            
+            echo "Moved $FILE, to ${DEST}" | logger info 
+        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.bats" | sort)        
+    }
     __teardown() {
         __debug "__teardown"
         [ -p "$YWT_DEBUG_FIFO" ] && rm -f "$YWT_DEBUG_FIFO" 2>/dev/null
@@ -456,6 +463,7 @@ sdk() {
         ywt:info welcome
         for LOG in "${YWT_LOGS[@]}"; do logger info "$LOG"; done
         # ___create_unit_tests && logger info "Unit tests created" && exit 244
+        # __rename_bats_tests && logger info "Unit tests created" && exit 244
         return 0
     }
     inspect() {

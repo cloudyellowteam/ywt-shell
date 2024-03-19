@@ -14,7 +14,7 @@ strings() {
         done
         echo "$MASKED"
     }
-    __nnf "$@" || usage "$?" "tests" "$@" && return 1
+    __nnf "$@" || usage "strings" "$?" "tests" "$@" && return 1
 }
 (
     export -f strings

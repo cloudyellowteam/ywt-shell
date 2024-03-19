@@ -10,5 +10,5 @@ debugger() {
         echo "$1" 1>&2
     }
     if __nnf "$@"; then return 0; fi
-    usage "$?" "debugger" "$@" && return 1
+    usage "debugger" "$?" "debugger" "$@" && return 1
 }

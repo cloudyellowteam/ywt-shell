@@ -14,7 +14,7 @@ errors() {
         local MESSAGE=${1:-"An error occurred"} && shift
         _fail "$ERROR_CODE" "$MESSAGE"
     }
-    __nnf "$@" || usage "$?" "styles" "$@" && return 1
+    __nnf "$@" || usage "errors" "$?" "styles" "$@" && return 1
     return 0
 }
 (

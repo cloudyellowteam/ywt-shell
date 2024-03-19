@@ -9,8 +9,8 @@
 # TEST_NAME=version
 # CMD_NAME=version
 # bats test_tags=version, usage
-@test "ywt version should be called" {
-  run ywt version
+@test "ywt versions should be called" {
+  run ywt versions
   test_report
   assert_success "version should be called"
   assert_output --partial "Available functions"

@@ -61,7 +61,7 @@ colors() {
         # local URL=${2}
         # echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
     }
-    __nnf "$@" || usage "$?" "$@" && return 1
+    __nnf "$@" || usage "colors" "$?" "$@" && return 1
 }
 (
     export -f colors

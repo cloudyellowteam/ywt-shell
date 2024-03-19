@@ -19,5 +19,5 @@ host() {
             \"disk\": \"$DISK\"
         }"
     }
-    __nnf "$@" || usage "$?" "$@" && return 1
+    __nnf "$@" || usage "host" "$?" "$@" && return 1
 }

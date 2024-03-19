@@ -3,7 +3,10 @@
 # universal package manager
 # https://github.com/sigoden/upt/tree/main
 upm(){
-    echo "upm"
+    install(){
+        echo "install"
+    }
+    __nnf "$@" || usage "upm" "$?"  "$@" && return 1
 }
 (
     export -f upm

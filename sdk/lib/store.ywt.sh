@@ -43,7 +43,7 @@ store() {
             echo -n "$KEY=" && strings mask "$VALUE" && echo
         done <"$FILE" && return 0
         ;;
-    *) logger error "store: action not found" && return 1 ;;
+    *) usage "store" "Invalid action: $ACTION" "$@" && return 1 ;;
     esac
     return 1
 }

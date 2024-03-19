@@ -46,7 +46,7 @@ tests() {
                 --output "${TMP_DIR:-"/tmp"}" \
                 --show-output-of-passing-tests \
                 --print-output-on-failure \
-                --jobs 1 \
+                --jobs 50 \
                 --timing \
                 --tap \
                 --formatter pretty \
@@ -153,7 +153,7 @@ tests() {
     cleanup) cleanup ;;
     setup) setup ;;
     unit) shift && setup false && unit "$@" ;;
-    *) setup && unit "$@" ;;
+    *) __nnf "$@" || usage "tests" "$?" "$@" && return 1 ;;
     esac
 
     # __nnf "$@" || usage "$?" "tests" "$@" && return 1

@@ -1,6 +1,14 @@
 #!/usr/bin/env bats
-# bats file_tags=sdk:logger
-# bats test_tags=sdk:logger:success
+# bats file_tags=sdk, logger
+# bats test_tags=sdk, logger, usage
+@test "ywt linter should be called" {
+  run ywt linter
+  test_report
+  assert_success "linter should be called"
+  assert_output --partial "Available functions"
+  assert_output --partial "YWT Usage"
+}
+# bats test_tags=sdk, logger, success
 @test "logger success hello" {
     run ywt logger success "hello"
     test_report
@@ -12,7 +20,7 @@
     assert_output --partial "hello"
     assert_output --partial "[SUCCESS]"
 }
-# bats test_tags=sdk:logger:error
+# bats test_tags=sdk, logger, error
 @test "logger error hello" {
     run ywt logger error "hello"
     test_report
@@ -24,7 +32,7 @@
     assert_output --partial "hello"
     assert_output --partial "[ERROR]"
 }
-# bats test_tags=sdk:logger:warn
+# bats test_tags=sdk, logger, warn
 @test "logger warn hello" {
     run ywt logger warn "hello"
     test_report
@@ -36,7 +44,7 @@
     assert_output --partial "hello"
     assert_output --partial "[WARN ]"
 }
-# bats test_tags=sdk:logger:debug
+# bats test_tags=sdk, logger, debug
 @test "logger debug hello" {
     run ywt logger debug "hello"
     test_report
@@ -48,7 +56,7 @@
     assert_output --partial "hello"
     assert_output --partial "[DEBUG]"
 }
-# bats test_tags=sdk:logger:info
+# bats test_tags=sdk, logger, info
 @test "logger info hello" {
     run ywt logger info "hello"
     test_report

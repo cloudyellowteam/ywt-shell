@@ -26,7 +26,7 @@ user() {
         fi
         $CMD
     }
-    __nnf "$@" || usage "$?" "$@" && return 1
+    __nnf "$@" || usage "user" "$?" "$@" && return 1
 }
 (
     export -f user

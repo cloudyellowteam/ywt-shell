@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 config() {
-    usage() {
-        echo "usage: config"
+    user(){
+        local USER=$(whoami)
+        local USER_ID=$(id -u)
+        local GROUP_ID=$(id -g)
+        local GROUP=$(id -g -n)
+        echo "{
+            \"user\": \"$USER\",
+            \"user_id\": \"$USER_ID\",
+            \"group\": \"$GROUP\",
+            \"group_id\": \"$GROUP_ID\"
+        }"
     }
-    __nnf "$@" || usage "$?" "$@" && return 1
+    __nnf "$@" || usage "config" "$?" "$@" && return 1
     return 0
     # local YWT_PATH_ROOT=$(dirname -- "$YWT_PATH_SRC")
     # local RADP_PROJECT_ROOT=$(dirname -- "$YWT_PATH_ROOT")

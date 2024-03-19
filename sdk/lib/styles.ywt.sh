@@ -39,7 +39,7 @@ styles() {
     hidden(){
         apply hidden "$@"
     }
-    __nnf "$@" || usage "$?" "styles" "$@" && return 1
+    __nnf "$@" || usage "styles" "$?"  "$@" && return 1
     return 0
 }
 (
