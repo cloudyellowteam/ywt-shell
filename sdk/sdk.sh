@@ -183,6 +183,14 @@ sdk() {
             done < <(find "$LIB" -type f -name "*.ywt.sh" | sort)
             return 0
         }
+        __lib(){
+            local TARGET="${1:-"$(jq -r '.lib' <<<"$YWT_PATHS")"}" && [ ! -d "$TARGET" ] && return 0
+            __inject "$TARGET"
+        }
+        __extension(){
+            local TARGET="${1:-"$(jq -r '.extensions' <<<"$YWT_PATHS")"}" && [ ! -d "$TARGET" ] && return 0
+            __inject "$TARGET"
+        }
         __nnf() {
             local FUNC=${1} && [ -z "$FUNC" ] && return 1
             FUNC=${FUNC#_} && FUNC=${FUNC#__} && FUNC="${FUNC//_/-5f}" && FUNC="${FUNC//-/-2d}" && FUNC="${FUNC// /_}"
@@ -220,6 +228,8 @@ sdk() {
         case "$1" in
         resolve) __resolve "${@:2}" && return 0 ;;
         inject) __inject "${@:2}" && return 0 ;;
+        lib) __lib "${@:2}" && return 0 ;;
+        extension) __extension "${@:2}" && return 0 ;;
         nff) __nnf "${@:2}" && return $? ;;
         *) usage "$?" "ioc" "$@" && return 1 ;;
         esac
@@ -385,7 +395,8 @@ sdk() {
         [ "$YWT_INITIALIZED" == true ] && return 0
         YWT_INITIALIZED=true && readonly YWT_INITIALIZED
         __require jq sed grep sort tr
-        __ioc inject "$(jq -r '.lib' <<<"$YWT_PATHS")"
+        __ioc lib "$(jq -r '.lib' <<<"$YWT_PATHS")"
+        __ioc extension "$(jq -r '.extensions' <<<"$YWT_PATHS")"
         [ -z "$YWT_APPINFO" ] && local YWT_APPINFO && YWT_APPINFO=$(ywt:info package) && readonly YWT_APPINFO
         [ -z "$YWT_PROCESS" ] && local YWT_PROCESS && YWT_PROCESS=$(process info) && readonly YWT_PROCESS
         local DOTENV_FILE=$(jq -r '.project' <<<"$YWT_PATHS")/.env
@@ -409,6 +420,40 @@ sdk() {
         __debug "Params $(jq -C .params <<<"$YWT_CONFIG")"
         ywt:info welcome
         for LOG in "${YWT_LOGS[@]}"; do logger info "$LOG"; done
+        # create a bats file test for each unexisting tests on lib path
+        while read -r FILE; do
+            local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
+            local FILE_DIR=$(dirname -- "$FILE_REALPATH")
+            local FILE_NAME && FILE_NAME=$(basename -- "$FILE_REALPATH") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
+            local LIB_NAME="${FILE_NAME%.*}" && LIB_NAME="${LIB_NAME//-/:}" && LIB_NAME="${LIB_NAME//_/:}" && LIB_NAME="${LIB_NAME//./:}" && LIB_NAME="${LIB_NAME// /:}" && LIB_NAME="${LIB_NAME//-/:}"
+            local TEST_NAME="${LIB_NAME//:/-}" && TEST_NAME="${TEST_NAME//_/-}" && TEST_NAME="${TEST_NAME// /-}"
+            #$(jq -r '.tests' <<<"$YWT_PATHS")
+            local TEST_FILE="$FILE_DIR/${LIB_NAME}.bats" && TEST_FILE="${TEST_FILE//:/-}" && TEST_FILE="${TEST_FILE//_/-}" && TEST_FILE="${TEST_FILE// /-}"
+            local CMD_NAME="${TEST_NAME//:/-}" && CMD_NAME="${CMD_NAME//_/-}" && CMD_NAME="${CMD_NAME// /-}"
+            [ -f "$TEST_FILE" ] && continue
+            {
+                echo "#!/usr/bin/env bats"
+                echo "# bats file_tags=${TEST_NAME}"
+                echo 
+                # echo "# LIB_NAME=${LIB_NAME}"
+                # echo "# FILE_REALPATH=${FILE_REALPATH}"
+                # echo "# FILE_DIR=${FILE_DIR}"
+                # echo "# FILE_NAME=${FILE_NAME}"
+                # echo "# TEST_FILE=${TEST_FILE}"
+                # echo "# TEST_NAME=${TEST_NAME}"   
+                # echo "# CMD_NAME=${CMD_NAME}"             
+                echo "# bats test_tags=${TEST_NAME}, usage"
+                echo "@test \"ywt ${TEST_NAME} should be called\" {"
+                echo "  run ywt ${CMD_NAME}"
+                echo "  test_report"
+                echo "  assert_success \"${LIB_NAME} should be called\""
+                echo "  assert_output --partial \"YWT Usage \""
+                echo "  assert_output --partial \"Available functions\""
+                echo "}"
+            } >"$TEST_FILE"
+            exit 255
+        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.ywt.sh" | sort)
+        exit 255
         return 0
     }
     inspect() {
