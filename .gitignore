@@ -1,3 +1,4 @@
 v1
 dist
 bin
+tests/unit.*

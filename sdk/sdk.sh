@@ -5,6 +5,41 @@ sdk() {
     set -e -o pipefail
     trap '__teardown' EXIT
     trap '__fail $? "An error occurred"' ERR INT TERM
+    ___create_unit_tests() {
+        while read -r FILE; do
+            local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
+            local FILE_DIR=$(dirname -- "$FILE_REALPATH")
+            local FILE_NAME && FILE_NAME=$(basename -- "$FILE_REALPATH") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
+            local LIB_NAME="${FILE_NAME%.*}" && LIB_NAME="${LIB_NAME//-/:}" && LIB_NAME="${LIB_NAME//_/:}" && LIB_NAME="${LIB_NAME//./:}" && LIB_NAME="${LIB_NAME// /:}" && LIB_NAME="${LIB_NAME//-/:}"
+            local TEST_NAME="${LIB_NAME//:/-}" && TEST_NAME="${TEST_NAME//_/-}" && TEST_NAME="${TEST_NAME// /-}"
+            #$(jq -r '.tests' <<<"$YWT_PATHS")
+            local TEST_FILE="$FILE_DIR/${LIB_NAME}.bats" && TEST_FILE="${TEST_FILE//:/-}" && TEST_FILE="${TEST_FILE//_/-}" && TEST_FILE="${TEST_FILE// /-}"
+            local CMD_NAME="${TEST_NAME//:/-}" && CMD_NAME="${CMD_NAME//_/-}" && CMD_NAME="${CMD_NAME// /-}"
+            [ -f "$TEST_FILE" ] && continue
+            {
+                echo "#!/usr/bin/env bats"
+                echo "# bats file_tags=${TEST_NAME}"
+                echo
+                echo "# LIB_NAME=${LIB_NAME}"
+                echo "# FILE_REALPATH=${FILE_REALPATH}"
+                echo "# FILE_DIR=${FILE_DIR}"
+                echo "# FILE_NAME=${FILE_NAME}"
+                echo "# TEST_FILE=${TEST_FILE}"
+                echo "# TEST_NAME=${TEST_NAME}"
+                echo "# CMD_NAME=${CMD_NAME}"
+                echo "# bats test_tags=${TEST_NAME}, usage"
+                echo "@test \"ywt ${TEST_NAME} should be called\" {"
+                echo "  run ywt ${CMD_NAME}"
+                echo "  test_report"
+                echo "  assert_success \"${LIB_NAME} should be called\""
+                echo "  assert_output --partial \"Available functions\""
+                echo "  assert_output --partial \"YWT Usage\""
+                echo "}"
+            } >"$TEST_FILE" 
+            echo "Created $TEST_FILE" | logger info 
+        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.ywt.sh" | sort)
+        return 0
+    }
     __teardown() {
         __debug "__teardown"
         [ -p "$YWT_DEBUG_FIFO" ] && rm -f "$YWT_DEBUG_FIFO" 2>/dev/null
@@ -84,7 +119,7 @@ sdk() {
         __is "function" "logger" && logger "$@" && return $?
         __debug "$@" && return $?
     }
-    __is() {        
+    __is() {
         case "$1" in
         number)
             [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]] && return 0
@@ -100,7 +135,7 @@ sdk() {
             ;;
         url)
             [ -n "$2" ] && [[ "$2" =~ ^https?:// ]] && return 0
-            ;;        
+            ;;
         json)
             jq -e . >/dev/null 2>&1 && return 0
             ;;
@@ -183,11 +218,11 @@ sdk() {
             done < <(find "$LIB" -type f -name "*.ywt.sh" | sort)
             return 0
         }
-        __lib(){
+        __lib() {
             local TARGET="${1:-"$(jq -r '.lib' <<<"$YWT_PATHS")"}" && [ ! -d "$TARGET" ] && return 0
             __inject "$TARGET"
         }
-        __extension(){
+        __extension() {
             local TARGET="${1:-"$(jq -r '.extensions' <<<"$YWT_PATHS")"}" && [ ! -d "$TARGET" ] && return 0
             __inject "$TARGET"
         }
@@ -203,14 +238,14 @@ sdk() {
                 local STATUS
                 # local OUTPUT && OUTPUT=$($FUNC "${ARGS[@]}" 1>&3) # 2>&1
                 # $FUNC "${ARGS[@]}" 1>&3
-                
+
                 if [[ "$FUNC" != *logger* ]] && [ -p "$YWT_OUTPUT_FIFO" ]; then
                     $FUNC "${ARGS[@]}" 1>&3
                     # ($FUNC "${ARGS[@]}" 1>&3 >"$YWT_OUTPUT_FIFO") & true
                     # (exec 3>"$YWT_OUTPUT_FIFO" && $FUNC "${ARGS[@]}" 1>&3)
                 else
                     $FUNC "${ARGS[@]}" 1>&3
-                fi                
+                fi
                 # local OUTPUT && OUTPUT=$(tail -n 1 <<< "$(<&3)")
                 # [ -n "$OUTPUT" ] && __output "$OUTPUT"
                 local END_TIME=$(date +%s)
@@ -221,7 +256,7 @@ sdk() {
                 exec 3>&-
                 return 0
             else
-                __log error "Function $FUNC not found"                
+                __log error "Function $FUNC not found"
                 return 1
             fi
         }
@@ -420,43 +455,7 @@ sdk() {
         __debug "Params $(jq -C .params <<<"$YWT_CONFIG")"
         ywt:info welcome
         for LOG in "${YWT_LOGS[@]}"; do logger info "$LOG"; done
-        
-        git config --global user.email "raphaelcarlosr@gmail.com"
-        git config --global user.name "Raphael C. Rego"
-        exit 244
-        while read -r FILE; do
-            local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
-            local FILE_DIR=$(dirname -- "$FILE_REALPATH")
-            local FILE_NAME && FILE_NAME=$(basename -- "$FILE_REALPATH") && FILE_NAME="${FILE_NAME%.*}" && FILE_NAME=$(echo "$FILE_NAME" | tr '[:upper:]' '[:lower:]')
-            local LIB_NAME="${FILE_NAME%.*}" && LIB_NAME="${LIB_NAME//-/:}" && LIB_NAME="${LIB_NAME//_/:}" && LIB_NAME="${LIB_NAME//./:}" && LIB_NAME="${LIB_NAME// /:}" && LIB_NAME="${LIB_NAME//-/:}"
-            local TEST_NAME="${LIB_NAME//:/-}" && TEST_NAME="${TEST_NAME//_/-}" && TEST_NAME="${TEST_NAME// /-}"
-            #$(jq -r '.tests' <<<"$YWT_PATHS")
-            local TEST_FILE="$FILE_DIR/${LIB_NAME}.bats" && TEST_FILE="${TEST_FILE//:/-}" && TEST_FILE="${TEST_FILE//_/-}" && TEST_FILE="${TEST_FILE// /-}"
-            local CMD_NAME="${TEST_NAME//:/-}" && CMD_NAME="${CMD_NAME//_/-}" && CMD_NAME="${CMD_NAME// /-}"
-            [ -f "$TEST_FILE" ] && continue
-            {
-                echo "#!/usr/bin/env bats"
-                echo "# bats file_tags=${TEST_NAME}"
-                echo 
-                # echo "# LIB_NAME=${LIB_NAME}"
-                # echo "# FILE_REALPATH=${FILE_REALPATH}"
-                # echo "# FILE_DIR=${FILE_DIR}"
-                # echo "# FILE_NAME=${FILE_NAME}"
-                # echo "# TEST_FILE=${TEST_FILE}"
-                # echo "# TEST_NAME=${TEST_NAME}"   
-                # echo "# CMD_NAME=${CMD_NAME}"             
-                echo "# bats test_tags=${TEST_NAME}, usage"
-                echo "@test \"ywt ${TEST_NAME} should be called\" {"
-                echo "  run ywt ${CMD_NAME}"
-                echo "  test_report"
-                echo "  assert_success \"${LIB_NAME} should be called\""
-                echo "  assert_output --partial \"YWT Usage \""
-                echo "  assert_output --partial \"Available functions\""
-                echo "}"
-            } >"$TEST_FILE"
-            exit 255
-        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.ywt.sh" | sort)
-        exit 255
+        # ___create_unit_tests && logger info "Unit tests created" && exit 244
         return 0
     }
     inspect() {
@@ -530,3 +529,9 @@ if [ "$#" -gt 0 ]; then
         exit $?
     fi
 fi
+
+#############
+# git config --global user.email "raphaelcarlosr@gmail.com"
+# git config --global user.name "Raphael C. Rego"
+
+#############

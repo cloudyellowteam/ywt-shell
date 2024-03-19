@@ -62,6 +62,8 @@ tests() {
         while IFS= read -r -d '' TEST; do
             local TEST_NAME=$(basename "${TEST}")
             local TEST_DEST=$(mktemp -u -t XXXXXXXX --suffix=".${TEST_NAME}" --tmpdir="${TESTS_DIR}")
+            local TEST_FILE_NAME=$(basename "${TEST_DEST}") && TEST_FILE_NAME="unit.${TEST_FILE_NAME}"
+            TEST_DEST="${TESTS_DIR}/${TEST_FILE_NAME}"
             # echo "Copying ${TEST} to ${TEST_DEST}"            
             cp -f "${TEST}" "${TEST_DEST}"
             {

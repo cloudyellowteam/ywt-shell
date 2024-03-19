@@ -21,7 +21,8 @@
 				"timonwong.shellcheck",
 				"jetmartin.bats",
 				"foxundermoon.shell-format",
-				"bmalehorn.shell-syntax"
+				"bmalehorn.shell-syntax",
+				"rogalmic.bash-debug"
 			]
 		}
 	}
