@@ -420,7 +420,10 @@ sdk() {
         __debug "Params $(jq -C .params <<<"$YWT_CONFIG")"
         ywt:info welcome
         for LOG in "${YWT_LOGS[@]}"; do logger info "$LOG"; done
-        # create a bats file test for each unexisting tests on lib path
+        
+        git config --global user.email "raphaelcarlosr@gmail.com"
+        git config --global user.name "Raphael C. Rego"
+        exit 244
         while read -r FILE; do
             local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
             local FILE_DIR=$(dirname -- "$FILE_REALPATH")
