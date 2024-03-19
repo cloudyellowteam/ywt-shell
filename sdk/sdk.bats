@@ -1,40 +1,35 @@
 #!/usr/bin/env bats
-# bats file_tags=sdk, cli
-
-# bats test_tags=sdk:usage
-@test "ywt usage" {
-    run ywt usage
-    test_report
-    test_log "status=$status"
-    [ "$status" -eq 0 ]
-    [ "$output" != "" ]
-    [ "$BATS_RUN_COMMAND" = "ywt usage" ]
-    assert_output --partial "YWT Usage "
-    assert_output --partial "Available functions"
+# bats file_tags=sdk
+@test "ywt usage should be called" {
+  run ywt usage
+  test_report
+  assert_success "usage should be called"
+  assert_output --partial "Available functions"
+  assert_output --partial "YWT Usage"
 }
 
-# bats test_tags=sdk:stdin
+# bats test_tags=sdk, stdin
 @test "Test __stdin function with empty input" {
     skip
     run __stdin
     assert_success
     assert_output ""
 }
-# bats test_tags=sdk:stdin
+# bats test_tags=sdk, stdin
 @test "Test __stdin function with single line input" {
     skip
     run echo "Hello, World!" | __stdin
     assert_success
     assert_output "Hello, World!"
 }
-# bats test_tags=sdk:stdin
+# bats test_tags=sdk, stdin
 @test "Test __stdin function with multiple lines input" {
     skip
     run echo -e "Line 1\nLine 2\nLine 3" | __stdin
     assert_success
     assert_output "Line 1\nLine 2\nLine 3"
 }
-# bats test_tags=sdk:stdin
+# bats test_tags=sdk, stdin
 @test "Test __stdin function with non-piped input" {
     skip
     run echo "Hello, World!" | __stdin
@@ -42,7 +37,7 @@
     assert_output "Hello, World!"
 }
 
-# bats test_tags=sdk:error-handler
+# bats test_tags=sdk, error-handler
 @test "ywt handle error with usage" {
     run ywt invalid command
     test_report
@@ -50,11 +45,11 @@
     [ "$status" -eq 0 ]
     [ "$output" != "" ]
     [ "$BATS_RUN_COMMAND" = "ywt invalid command" ]
-    assert_output --partial "YWT Usage "
+    assert_output --partial "Function invalid not found"
     assert_output --partial "Available functions"
 }
 
-# bats test_tags=sdk:copyright
+# bats test_tags=sdk, copyright
 @test "ywt copyright" {
     run ywt copyright
     test_report
@@ -64,7 +59,7 @@
     [ "$BATS_RUN_COMMAND" = "ywt copyright" ]
     assert_output --partial "YELLOW TEAM BUNDLE"
 }
-# bats test_tags=sdk:appinfo
+# bats test_tags=sdk, appinfo
 @test "ywt appinfo" {
     run ywt appinfo
     test_report
@@ -86,7 +81,7 @@
     [ "$(jq .bugs -c <<<"$JSON")" != "null" ]
 
 }
-# bats test_tags=sdk:paths
+# bats test_tags=sdk, paths
 @test "ywt paths" {
     run ywt paths
     test_report
@@ -119,7 +114,7 @@
 
     [ "$BATS_RUN_COMMAND" = "ywt paths" ]
 }
-# bats test_tags=sdk:etime
+# bats test_tags=sdk, etime
 @test "ywt etime" {
     run ywt etime
     test_report
@@ -128,7 +123,7 @@
     [ "$output" != "" ]
     [ "$BATS_RUN_COMMAND" = "ywt etime" ]
 }
-# bats test_tags=sdk:inspect
+# bats test_tags=sdk, inspect
 @test "ywt inspect" {
     run ywt inspect
     test_report

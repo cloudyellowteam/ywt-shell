@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+
+# 255 __require depenency
 errors() {
+
     code() {
         local code=${1:?} && [ -z "$code" ] && echo "Invalid error code" | logger error && return 1
         local message=${2:?} && [ -z "$message" ] && echo "Invalid error message" | logger error && return 1

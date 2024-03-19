@@ -110,7 +110,6 @@ sdk() {
         __is "function" "logger" && logger error "$MSG" && exit 255
         __debug "$MSG" && __verbose "$MSG"
         exit 255
-        # ! __dependencies jq sed grep sort tr sudo && __verbose "Missing dependencies: ${YWT_NOT_FOUND_COMMANDS[*]}" && exit 255
     }
     __verbose() {
         echo "$1" 1>&2

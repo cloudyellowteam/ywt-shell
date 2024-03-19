@@ -18,7 +18,7 @@ clear; ./sdk/sdk.sh --trace --debug --logger inspect --param=key:value --paramke
 
 
 # return array of resources
-        # resources packages
-        # resources tools
-        # resources scripts
-        # resources extensions
+# resources packages
+# resources tools
+# resources scripts
+# resources extensions
