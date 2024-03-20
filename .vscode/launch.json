@@ -5,7 +5,10 @@
             "type": "bashdb",
             "request": "launch",
             "name": "SDK Debugger",
-            "program": "${workspaceFolder}/sdk/sdk.sh"
+            "program": "${workspaceFolder}/sdk/sdk.sh",
+            "args": [
+                "usage"
+            ]
         }
     ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# bats file_tags=sdk
+# bats file_tags=sdk, ywt
 @test "ywt usage should be called" {
   run ywt usage
   test_report

@@ -126,7 +126,11 @@ sdk() {
         __debug "$@" && return $?
     }
     __is() {
-        case "$1" in
+        case "$1" in        
+        nil)
+            [ -z "$2" ] && return 0
+            [ "$2" == "null" ] && return 0
+            ;;
         number)
             [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]] && return 0
             ;;
@@ -500,7 +504,7 @@ sdk() {
             FUNC=${FUNC%,}
             __log info "${YELLOW}ywt ${GREEN}${CONTEXT} ${BLUE}$FUNC${NC}"
         done
-        return "$ERROR_CODE"
+        return 1
     }
     [ -z "$YWT_PATHS" ] && __paths >/dev/null
     [ -z "$YWT_FLAGS" ] && __argv "$@" >/dev/null

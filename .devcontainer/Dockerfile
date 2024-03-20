@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     procps \
     software-properties-common \
+    parallel \
     # sudo \
     # unzip \
     # wget \

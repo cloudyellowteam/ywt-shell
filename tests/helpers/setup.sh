@@ -13,8 +13,12 @@ test_log() {
 }
 test_report() {
     local values=("${GREEN}${BATS_RUN_COMMAND}${NC}")
+    values+=("BATS_TEST_FILENAME: ${BATS_TEST_FILENAME}")
+    values+=("BATS_TEST_NAME: ${BATS_TEST_NAME}")
+    values+=("BATS_TEST_DESCRIPTION: ${BATS_TEST_DESCRIPTION}")
+    values+=("BATS_TEST_NUMBER: ${BATS_TEST_NUMBER}")
     values+=("STATUS: ${status}")
-    # values+=("BATS_TEST_FILENAME: ${BATS_TEST_FILENAME}")
+    
     # values+=("BATS_TEST_DIRNAME: ${BATS_TEST_DIRNAME}")
     # values+=("BATS_TEST_NAMES: ${BATS_TEST_NAMES}")
     # values+=("BATS_TEST_NAME: ${BATS_TEST_NAME}")
@@ -32,6 +36,17 @@ test_report() {
     # values+=("BATS_TEST_TMPDIR: ${BATS_TEST_TMPDIR}")
     # values+=("BATS_VERSION: ${BATS_VERSION}")
     test_log "${values[@]}"
+    local JSON && JSON=$(test_extract_json "$output")
+    if [ -n "$JSON" ]; then
+        test_log "Parsed JSON"
+        echo "$JSON" | jq -Cr '.'
+    else
+        test_log "Raw Output"
+        echo "$output"
+    fi    
+    echo
+    # repeat 80 times
+    printf '%*s\n' 160 '' | tr ' ' -
     echo
     # local output=${1:-${OUTPUT}}
     # echo "${output}" >&3
