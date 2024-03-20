@@ -50,7 +50,9 @@ parse() {
             \"path\": \"$URI_PATH\",
             \"query\": \"$URI_QUERY\",
             \"querystring\": $URI_QUERY_STRING,
-            \"anchor\": \"$URI_ANCHOR\"
+            \"anchor\": \"$URI_ANCHOR\",
+            \"uri\": \"$URI\",
+            \"surl\": \"${URI/$URI_CREDENTIAL@/}\"
         }" | jq '.' -c
         return 0
     }

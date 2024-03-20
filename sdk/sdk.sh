@@ -147,7 +147,7 @@ sdk() {
             [ -n "$2" ] && [[ "$2" =~ ^https?:// ]] && return 0
             ;;
         json)
-            jq -e . >/dev/null 2>&1 && return 0
+            jq -e . <<< "$2" >/dev/null 2>&1 && return 0
             ;;
         fnc | function)
             local TYPE="$(type -t "$2")"
