@@ -36,26 +36,32 @@ test_report() {
     # values+=("BATS_TEST_TMPDIR: ${BATS_TEST_TMPDIR}")
     # values+=("BATS_VERSION: ${BATS_VERSION}")
     test_log "${values[@]}"
-    local JSON && JSON=$(test_extract_json "$output")
-    if [ -n "$JSON" ]; then
-        test_log "Parsed JSON"
-        echo "$JSON" | jq -Cr '.'
+    export JSON_OUTPUT && JSON_OUTPUT=$(echo "$output" | sed -n '/{/,$p')
+    #JSON=$(test_extract_json "$output")
+    if jq -e . <<< "$JSON_OUTPUT" >/dev/null 2>&1; then
+        test_log "Parsed JSON"        
+        export JSON_OUTPUT &&  echo "$JSON_OUTPUT" | jq -Ccr '.'
     else
         test_log "Raw Output"
-        echo "$output"
-    fi    
+        # test_log "$output"
+         #| jq .
+        export JSON_OUTPUT="{}" && echo "$output"
+        # echo "$output" | sed -n '/{/,$p' #| jq -sR 'fromjson? | select(.)'
+    fi     
     echo
-    # repeat 80 times
-    printf '%*s\n' 160 '' | tr ' ' -
+    printf '%*s\n' 80 '' | tr ' ' -
     echo
-    # local output=${1:-${OUTPUT}}
-    # echo "${output}" >&3
 }
 test_extract_json() {
     local TEXT="$1"
-    [ -z "$TEXT" ] && while read -r line; do TEXT+="$line"; done
-    # if stdin is not empty
-    echo "$TEXT" | sed -n '/{/,$p' | jq -sR 'fromjson? | select(.)'
+    [ -z "$TEXT" ] && TEXT="" && while read -r LINE; do TEXT+="$LINE"; done
+    local RAW && RAW=$(echo "$TEXT" | sed -n '/{/,$p') #&& RAW="${RAW//\\x1B\\[[0-9;]*[JKmsu]}"
+    # echo "$RAW" && return 0
+    if jq -e . <<< "$RAW" >/dev/null 2>&1; then 
+        echo "${RAW}" | jq -Cr '.'
+        return 0 
+    fi
+    echo "$RAW" | jq -sR 'fromjson? | select(.)'
 }
 test_setup() {
     local HELPER_DIR="${BASH_SOURCE[0]}" && HELPER_DIR=$(dirname "$HELPER_DIR") && HELPER_DIR=$(realpath "$HELPER_DIR")
