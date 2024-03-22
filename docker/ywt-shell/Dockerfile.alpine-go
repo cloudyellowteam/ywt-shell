@@ -1,0 +1,5 @@
+FROM ywt-shell:latest
+
+
+RUN apk add --no-cache go && \
+    rm -rf /var/cache/apk/* /root/.npm /tmp/*

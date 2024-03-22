@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317,SC2120,SC2155,SC2044
-# fecth requests like node.js
 fetch() {
     YWT_LOG_CONTEXT="fetch"
     __metrics() {

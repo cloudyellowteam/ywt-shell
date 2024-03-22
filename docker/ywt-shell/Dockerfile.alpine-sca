@@ -1,0 +1,7 @@
+FROM ywt-shell:latest
+
+RUN apk add --no-cache cloc && \
+    rm -rf /var/cache/apk/* /root/.npm /tmp/*
+
+RUN curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.50.0

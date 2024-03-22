@@ -1,0 +1,7 @@
+FROM ywt-shell:latest
+
+# update package repository
+RUN apk update && \
+    # install dotnet
+    apk add --no-cache dotnet-sdk && \
+    rm -rf /var/cache/apk/* /root/.npm /tmp/*

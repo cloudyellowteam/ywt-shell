@@ -1,0 +1,34 @@
+ARG ALPINE_VERSION=3.14
+FROM alpine:${ALPINE_VERSION:-3.14}
+
+LABEL maintainer="yellowteam.cloud"
+LABEL org.opencontainers.image.authors="yellowteam.cloud"
+LABEL org.opencontainers.image.title="yellowteam.cloud"
+LABEL org.opencontainers.image.description="yellowteam.cloud"
+LABEL org.opencontainers.image.url="https://hub.docker.com/r/bats/yellowteam.cloud"
+LABEL org.opencontainers.image.source="https://github.com/yellowteam.cloud"
+LABEL org.opencontainers.image.base.name="docker.io/yellowteam.cloud"
+
+RUN apk add --update && \	
+    apk add --no-cache bash jq git parallel && \
+    apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils && \
+	rm -rf /var/cache/apk/* /root/.npm /tmp/*
+
+WORKDIR /usr/local/bin/ywt-shell
+
+RUN mkdir -p /usr/local/bin/ywt-shell/sdk && \
+    mkdir -p /usr/local/bin/ywt-shell/tests/helpers
+
+COPY ["sdk", "/usr/local/bin/ywt-shell/sdk"]
+COPY ["ywt.sh", "/usr/local/bin/ywt-shell/"]
+COPY ["package.json", "/usr/local/bin/ywt-shell/"]
+COPY ["tests/helpers/setup.sh", "/usr/local/bin/ywt-shell/tests/helpers"]
+
+
+RUN chmod +x /usr/local/bin/ywt-shell/ywt.sh && \
+    chmod +x /usr/local/bin/ywt-shell/*.sh
+#     /usr/local/bin/ywt-shell/sdk.sh ywt inspect
+
+CMD ["bash"]
+
+

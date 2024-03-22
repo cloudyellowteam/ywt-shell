@@ -5,7 +5,7 @@ tests() {
     local TESTS=()
     local TESTS_DIR="$(jq -r '.tests' <<<"$YWT_PATHS")"
     local TMP_DIR="$(jq -r '.tmp' <<<"$YWT_PATHS")"
-    local TEST_HELPER_DIR="${TESTS_DIR}/helpers" && mkdir -p "${TEST_HELPER_DIR}"
+    local TEST_HELPER_DIR="${TESTS_DIR}/helpers" && [ ! -d "TEST_HELPER_DIR" ] && mkdir -p "${TEST_HELPER_DIR}"
     local SDK_DIR="$(jq -r '.sdk' <<<"$YWT_PATHS")"
     cleanup() {
         logger info "Cleaning up tests"

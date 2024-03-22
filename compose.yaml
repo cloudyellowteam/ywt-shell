@@ -1,2 +1,64 @@
-version: "3"
-name: rapd
+name: ywt
+
+services:
+  ywt-shell:
+    container_name: ywt-shell
+    image: ywt-shell:latest
+    build:
+      context: .
+      dockerfile: docker/ywt-shell/Dockerfile.alpine
+    networks:
+      - ywt
+    command: | 
+      /bin/sh -c "while true; do sleep 1000; done"
+    develop:
+      watch:
+        - action: sync
+          path: ./sdk
+          target: /usr/local/bin/ywt-shell/sdk
+  ywt-go:
+    container_name: ywt-go
+    image: ywt-go:latest
+    build:
+      context: .
+      dockerfile: docker/ywt-shell/Dockerfile.alpine-go
+    networks:
+      - ywt
+    depends_on:
+      - ywt-shell
+  ywt-python:
+    container_name: ywt-python
+    image: ywt-python:latest
+    build:
+      context: .
+      dockerfile: docker/ywt-shell/Dockerfile.alpine-python
+    networks:
+      - ywt
+    depends_on:
+      - ywt-shell
+  ywt-node:
+    container_name: ywt-node
+    image: ywt-node:latest
+    build:
+      context: .
+      dockerfile: docker/ywt-shell/Dockerfile.alpine-node
+    networks:
+      - ywt
+    depends_on:
+      - ywt-shell
+  ywt-sca:
+    container_name: ywt-sca
+    image: ywt-sca:latest
+    networks:
+      - ywt
+    build:
+      context: .
+      dockerfile: docker/ywt-shell/Dockerfile.alpine-sca
+    depends_on:
+      - ywt-shell
+
+networks: 
+  ywt:
+    driver: bridge
+  host:
+    driver: host

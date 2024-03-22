@@ -35,17 +35,17 @@ sdk() {
                 echo "  assert_output --partial \"Available functions\""
                 echo "  assert_output --partial \"YWT Usage\""
                 echo "}"
-            } >"$TEST_FILE" 
-            echo "Created $TEST_FILE" | logger info 
+            } >"$TEST_FILE"
+            echo "Created $TEST_FILE" | logger info
         done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.ywt.sh" | sort)
         return 0
     }
-    __rename_bats_tests(){
+    __rename_bats_tests() {
         while read -r FILE; do
             local DEST="${FILE%.*}.bat"
-            mv -f "$FILE" "$DEST"            
-            echo "Moved $FILE, to ${DEST}" | logger info 
-        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.bats" | sort)        
+            mv -f "$FILE" "$DEST"
+            echo "Moved $FILE, to ${DEST}" | logger info
+        done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.bats" | sort)
     }
     __teardown() {
         __debug "__teardown"
@@ -75,7 +75,11 @@ sdk() {
     local YWT_LOGS=()
     local YWT_POSITIONAL=()
     __etime() {
-        ps -o etime= "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://'
+        if grep -q 'Alpine' /etc/os-release; then
+            ps -o etime= "$$" | awk -F "[:]" '{ print ($1 * 60) + $2 }' | head -n 1
+        else
+            ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
+        fi
     }
     __debug() {
         [ -z "$YWT_DEBUG" ] || [ "$YWT_DEBUG" == false ] && return 0
@@ -126,7 +130,30 @@ sdk() {
         __debug "$@" && return $?
     }
     __is() {
-        case "$1" in        
+        case "$1" in
+        not-defined)
+            [ -z "$2" ] && return 0
+            [ "$2" == "null" ] && return 0
+            ;;
+        defined)
+            [ -n "$2" ] && return 0
+            [ "$2" != "null" ] && return 0
+            ;;
+        rw)
+            [ -r "$2" ] && [ -w "$2" ] && return 0
+            ;;
+        owner)
+            [ -O "$2" ] && return 0
+            ;;
+        writable)
+            [ -w "$2" ] && return 0
+            ;;
+        readable)
+            [ -r "$2" ] && return 0
+            ;;
+        executable)
+            [ -x "$2" ] && return 0
+            ;;
         nil)
             [ -z "$2" ] && return 0
             [ "$2" == "null" ] && return 0
@@ -147,7 +174,7 @@ sdk() {
             [ -n "$2" ] && [[ "$2" =~ ^https?:// ]] && return 0
             ;;
         json)
-            jq -e . <<< "$2" >/dev/null 2>&1 && return 0
+            jq -e . <<<"$2" >/dev/null 2>&1 && return 0
             ;;
         fnc | function)
             local TYPE="$(type -t "$2")"
@@ -281,7 +308,7 @@ sdk() {
     }
     __paths() {
         [ -n "$YWT_PATHS" ] && echo "$YWT_PATHS" | jq -c . && return 0
-        local CMD && CMD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) && readonly CMD
+        local CMD && CMD=$(cd "$(dirname "${YWT_SDK_FILE}")" && pwd) && readonly CMD
         local SDK="${CMD}"
         local PROJECT && PROJECT=$(dirname -- "$SDK") && PROJECT=$(realpath -- "$PROJECT") && readonly PROJECT
         local WORKSPACE && WORKSPACE=$(dirname -- "$PROJECT") && WORKSPACE=$(realpath -- "$WORKSPACE") && readonly WORKSPACE
@@ -348,10 +375,10 @@ sdk() {
         export YWT_PARAMS=$({
             local JSON="{" && local FIRST=true
             while [[ $# -gt 0 ]]; do
-                # params are --param=key:value --paramkey3:value -p=key1:value -pkey2:value
+                # params are kv=key:value
                 local PARAM="$1"
-                [[ "$PARAM" != -p* ]] && [[ "$PARAM" != --param* ]] && YWT_POSITIONAL+=("$1") && shift && continue
-                local KEY=${PARAM#--param=} && KEY=${KEY#-p=} && KEY=${KEY#--param} && KEY=${KEY#-p}
+                [[ "$PARAM" != kv=* ]] && YWT_POSITIONAL+=("$1") && shift && continue
+                local KEY=${PARAM#kv=} #&& KEY=${KEY#p=} # && KEY=${KEY#param} && KEY=${KEY#p}
                 local VALUE=${KEY#*:} && VALUE=${VALUE#*:} && VALUE=${VALUE#=}
                 KEY=${KEY%%:*}
                 [ "$KEY" == "$VALUE" ] && VALUE=true
@@ -472,6 +499,38 @@ sdk() {
     inspect() {
         logger info "inspect $#"
         jq -r '.' <<<"$YWT_CONFIG"
+        local PARAMS=$(
+            {
+                # | jq -rc | tr -d '\n'                
+                echo -n "["
+                param get -r -n key | jq -rc | tr -d '\n' && echo -n "," || echo ","
+                param get -r -n key2 | jq -rc | tr -d '\n' && echo -n "" || echo ""
+                # param get -r -n keys | jq -rc | tr -d '\n' && echo -n "," || echo ","
+                # param get -r -n keys2 | jq -rc | tr -d '\n' && echo -n "" || echo ""
+                echo -n "]"
+                return 0
+            } | jq -cr 'reduce .[] as $item ({}; .[$item.name] = $item)'
+        )
+        if ! param validate "$PARAMS"; then
+            return 1
+        fi
+        echo "$PARAMS" | jq -C .
+        # local PARAMS=$()
+        # echo "PARAMS: $PARAMS"
+        # local PARAMS=$({
+        #     # param -n key2 || echo "key2 not exists ($?)" | logger error && return 1
+        #     param -n key || echo "key not exists ($?)" | logger error && return 1
+        # })
+        # echo "PARAMS: $PARAMS"
+        # param -n key2 && echo "exists ($?)" | logger success
+        # echo
+        # param -r -n key3 || echo "not exists ($?)" | logger error
+        # echo
+        # local INVALID_PARAM=$({
+        #     param -r -n key3 && return 0
+        #     echo "not exists ($?)" | logger error && return $?
+        # }) && echo "${INVALID_PARAM}"
+        # local PARAM1=$(param -n key2) && echo "PARAM1($?): $PARAM1" | logger info
     }
     usage() {
         local ERROR_CODE=${1:-0} && shift
@@ -540,9 +599,3 @@ if [ "$#" -gt 0 ]; then
         exit $?
     fi
 fi
-
-#############
-# git config --global user.email "raphaelcarlosr@gmail.com"
-# git config --global user.name "Raphael C. Rego"
-
-#############

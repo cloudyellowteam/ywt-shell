@@ -1,0 +1,11 @@
+FROM ywt-shell:latest
+
+COPY docker/ywt-shell/.npmrc /usr/local/etc/npmrc
+
+RUN apk add --no-cache nodejs npm && \
+    rm -rf /var/cache/apk/* /root/.npm /tmp/*
+
+RUN RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+
+# taskfile
+RUN npm install -g zx pnpm
