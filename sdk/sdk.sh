@@ -499,38 +499,21 @@ sdk() {
     inspect() {
         logger info "inspect $#"
         jq -r '.' <<<"$YWT_CONFIG"
-        local PARAMS=$(
-            {
-                # | jq -rc | tr -d '\n'                
-                echo -n "["
-                param get -r -n key | jq -rc | tr -d '\n' && echo -n "," || echo ","
-                param get -r -n key2 | jq -rc | tr -d '\n' && echo -n "" || echo ""
-                # param get -r -n keys | jq -rc | tr -d '\n' && echo -n "," || echo ","
-                # param get -r -n keys2 | jq -rc | tr -d '\n' && echo -n "" || echo ""
-                echo -n "]"
-                return 0
-            } | jq -cr 'reduce .[] as $item ({}; .[$item.name] = $item)'
-        )
-        if ! param validate "$PARAMS"; then
-            return 1
-        fi
+        YWT_LOG_CONTEXT="inspect"
+        local PARAMS=$({
+            param kv -r -n key -- \
+                --required --name key2 -- \
+                --default value --required --name key3 -- \
+                --default value --required --name key4 -- \
+                --type number --default "fd1" --required --name key5 -- \
+                --message "custom message" --type number --default 1 --required --name key6 -- \
+                --required --name flag-value -- \
+                --required --name flag -- \
+                --default '{}' --type json --required --name jsons -- \
+                --default "{}" --type json --required --name jsons2
+        })
+        if ! param validate "$PARAMS"; then return 1; fi
         echo "$PARAMS" | jq -C .
-        # local PARAMS=$()
-        # echo "PARAMS: $PARAMS"
-        # local PARAMS=$({
-        #     # param -n key2 || echo "key2 not exists ($?)" | logger error && return 1
-        #     param -n key || echo "key not exists ($?)" | logger error && return 1
-        # })
-        # echo "PARAMS: $PARAMS"
-        # param -n key2 && echo "exists ($?)" | logger success
-        # echo
-        # param -r -n key3 || echo "not exists ($?)" | logger error
-        # echo
-        # local INVALID_PARAM=$({
-        #     param -r -n key3 && return 0
-        #     echo "not exists ($?)" | logger error && return $?
-        # }) && echo "${INVALID_PARAM}"
-        # local PARAM1=$(param -n key2) && echo "PARAM1($?): $PARAM1" | logger info
     }
     usage() {
         local ERROR_CODE=${1:-0} && shift

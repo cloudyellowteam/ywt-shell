@@ -29,6 +29,23 @@ clear; ./ywt.sh fetch get https://jsonplaceholder.typicode.com/todos/1
 clear; ./ywt.sh tests unit fetch get
 ```
 
+```shell
+local PARAMS=$({
+    param json -r -n key -- \
+        --required --name key2 -- \
+        --required --name key3 -- \
+        --default value --required --name key4 -- \
+        --type number --default value --required --name key5 -- \
+        --message "custom message" --type number --default value --required --name key6
+})
+if ! param validate "$PARAMS"; then return 1; fi
+echo "$PARAMS" | jq -C .
+
+[YWT] [958564] [2024-03-22 23:15:20] [ERROR] [INSPECT] 🚨 3 Invalid parameters [0003]
+[YWT] [958564] [2024-03-22 23:15:21] [ERROR] [INSPECT] 🚨 (--kv=key3: ) is required to inspect [0003]
+[YWT] [958564] [2024-03-22 23:15:21] [ERROR] [INSPECT] 🚨 (--kv=key5: value) must be a number [0003]
+[YWT] [958564] [2024-03-22 23:15:21] [ERROR] [INSPECT] 🚨 (--kv=key6: value) must be a number [0003]
+ ```
 
 
 # return array of resources
