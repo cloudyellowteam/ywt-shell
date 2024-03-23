@@ -90,10 +90,10 @@ param() {
                 VALUE_KEY="process"
             fi
         fi
-        local LOG_MESSAGE="(--kv=$PARAM_NAME: $VALUE)"
+        local LOG_MESSAGE="(--kv=$PARAM_NAME: ${VALUE:-"empty"})"
 
         local ERROR=
-        [ -z "$VALUE" ] && [ "$REQUIRED" == true ] && ERROR="${LOG_MESSAGE} is required to ${FUNCNAME[4]:-"unknow"}"
+        [ -z "$VALUE" ] && [ "$REQUIRED" == true ] && ERROR="${LOG_MESSAGE} is required"
         if [ -n "$TYPE" ]; then
             case "$TYPE" in
             date)
@@ -157,8 +157,8 @@ param() {
             # echo -n "\"value\":\"${VALUE//\"/\\\"}\","
             if [[ "$VALUE" =~ ^[0-9]+$ ]] || [[ "$VALUE" =~ ^(true|false)$ ]]; then
                 echo -n "\"value\":$VALUE,"
-            elif jq -e . >/dev/null 2>&1 <<<"$VALUE"; then
-                echo -n "\"value\":$VALUE,"
+            #elif jq -e . >/dev/null 2>&1 <<<"$VALUE"; then
+            #    echo -n "\"value\":$VALUE,"
             else
                 echo -n "\"value\":\"$VALUE\","
             fi
@@ -179,26 +179,40 @@ param() {
     }
     kv() {
         # -r -n key -- -r -n key2 -- -r -n key2
-        {
-            echo -n "["
-            local ARGS=()
-            while [ "$#" -gt 0 ]; do
-                case "$1" in
-                --)
-                    get "${ARGS[@]}" #echo "get ${ARGS[*]}"
-                    ARGS=()
-                    shift
-                    [ "$#" -gt 1 ] && echo -n ","
-                    ;;
-                *)
-                    ARGS+=("$1")
-                    shift
-                    ;;
-                esac
-            done
-            [ "${#ARGS[@]}" -gt 0 ] && get "${ARGS[@]}" # echo "get ${ARGS[*]}"
-            echo -n "]"
-        } | jq -r '.' | jq -cr 'reduce .[] as $item ({}; .[$item.name] = $item)'
+        case "$1" in
+        -v | --validate)
+            VALIDATE=true
+            shift
+            ;;
+        esac
+        local PARAMS=$(
+            {
+                echo -n "["
+                local ARGS=()
+                while [ "$#" -gt 0 ]; do
+                    case "$1" in                    
+                    --)
+                        get "${ARGS[@]}" #echo "get ${ARGS[*]}"
+                        ARGS=()
+                        shift
+                        [ "$#" -gt 1 ] && echo -n ","
+                        ;;
+                    *)
+                        ARGS+=("$1")
+                        shift
+                        ;;
+                    esac
+                done
+                [ "${#ARGS[@]}" -gt 0 ] && get "${ARGS[@]}" # echo "get ${ARGS[*]}"
+                echo -n "]"
+            } | jq -r '.' | jq -cr 'reduce .[] as $item ({}; .[$item.name] = $item)'
+        )
+        if [ "$VALIDATE" == true ]; then
+            if ! validate "$PARAMS"; then
+                return 1
+            fi
+        fi
+        echo "$PARAMS" | jq -cr '.'
     }
     validate() {
         if ! jq -e . >/dev/null 2>&1 <<<"$1"; then

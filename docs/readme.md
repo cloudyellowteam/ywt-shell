@@ -1,6 +1,16 @@
 # ywt.sh | yw-sh
 
+> **2024.03.22**
+```shell
+# parse without validade
+clear; ./ywt.sh param kv --default value --required --name key3 -- --default value --required --name key4
 
+# parse with validade
+clear; ./ywt.sh param kv --validate --required --name key2
+```
+
+
+> **Caption:** This is the caption for the code block
 ```bash
 # build
 clear; ./ywt.sh builder _build_sdk

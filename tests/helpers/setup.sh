@@ -38,8 +38,8 @@ test_report() {
     test_log "${values[@]}"
     export JSON_OUTPUT && JSON_OUTPUT=$(echo "$output" | sed -n '/{/,$p')
     #JSON=$(test_extract_json "$output")
-    if jq -e . <<< "$JSON_OUTPUT" >/dev/null 2>&1; then
-        test_log "Parsed JSON"        
+    if [ "${#JSON_OUTPUT}" -gt 0 ] && jq -e . <<< "$JSON_OUTPUT" >/dev/null 2>&1; then
+        test_log "Parsed JSON ${#JSON_OUTPUT} bytes"
         export JSON_OUTPUT &&  echo "$JSON_OUTPUT" | jq -Ccr '.'
     else
         test_log "Raw Output"
