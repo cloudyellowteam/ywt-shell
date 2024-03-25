@@ -22,7 +22,8 @@
 				"jetmartin.bats",
 				"foxundermoon.shell-format",
 				"bmalehorn.shell-syntax",
-				"rogalmic.bash-debug"
+				"rogalmic.bash-debug",
+				"humao.rest-client"
 			]
 		}
 	}
