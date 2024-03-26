@@ -1,0 +1,15 @@
+{
+    "GET /basic-auth/{user}/{passwd}": {
+        "id": "basic-auth",
+        "response": {
+            "status": 200,
+            "body": {
+                "authenticated": true,
+                "user": "{user}"
+            },
+            "headers": {
+                "Access-Control-Allow-Credentials": true
+            }
+        }
+    }
+}

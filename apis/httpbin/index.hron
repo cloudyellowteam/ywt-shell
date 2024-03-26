@@ -1,0 +1,53 @@
+[
+    {
+        "service": "httpbin",
+        "endpoint": "https://httpbin.org",
+        "headers": {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Api-Key": "1234567890"
+        },
+        "cookies": {
+            "hron": {
+                "value": "1234567890",
+                "expires": "2020-12-31T23:59:59",
+                "path": "/",
+                "domain": "localhost",
+                "secure": false,
+                "httponly": false,
+                "samesite": "Lax",
+                "max-age": 3600
+            },
+            "jwt": {
+                "value": "1234567890",
+                "expires": "2020-12-31T23:59:59",
+                "path": "/",
+                "domain": "localhost",
+                "secure": false,
+                "httponly": false,
+                "samesite": "Lax",
+                "max-age": 3600
+            }
+        },
+        "query": {
+            "api-version": "1.0.0",
+            "api-key": "1234567890"
+        },
+        "routes": [{
+            "GET /get": {
+                "id": "62_get",
+                "query": {
+                    "another": "value",
+                    "api-version": "1.0.1"
+                },
+                "headers": {
+                    "Content-Type": "text/html",
+                    "Accept": "text/html"
+                },
+                "response": {
+                    "status": 200
+                }
+            }
+        }]
+    }
+]

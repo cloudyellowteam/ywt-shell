@@ -6,7 +6,7 @@
     local URL="https://jsonplaceholder.typicode.com/todos/1"
     run ywt fetch get "$URL"
     test_report
-    assert_success "fetch get httpbin should be successful"
+    assert_success "fetch get jsonplaceholder should be successful"
     assert_output --partial "$URL"
     [ "$(jq -r .ok <<<"$JSON_OUTPUT")" == "true" ]
     [ "$(jq -r .json <<<"$JSON_OUTPUT")" == "true" ]

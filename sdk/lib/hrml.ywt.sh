@@ -180,10 +180,10 @@ hrml() {
         # CONTENT=$(echo "$CONTENT" | sed -e 's/^\s*//' -e 's/\s*$//')
         # CONTENT=$(echo "$CONTENT" | sed -e '1d' -e '$d')
         # CONTENT="${CONTENT//\{/\{}"
-        __inspect:block "headers" "$CONTENT"
-        __inspect:block "cookies" "$CONTENT" && echo
+        # __inspect:block "headers" "$CONTENT"
+        # __inspect:block "cookies" "$CONTENT" && echo
         # __inspect:block "authorization" "$CONTENT"
-        # __inspect:block "body" "$CONTENT"
+        __inspect:block "body" "$CONTENT"
         # __inspect:block "data" "$CONTENT"
         # __inspect:block "files" "$CONTENT"
         # __inspect:block "params" "$CONTENT"

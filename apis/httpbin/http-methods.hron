@@ -1,0 +1,16 @@
+{
+    "GET /get": {
+        "id": "62_get",
+        "query": {
+            "another": "value",
+            "api-version": "1.0.1"
+        },
+        "headers": {
+            "Content-Type": "text/html",
+            "Accept": "text/html"
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}

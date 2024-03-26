@@ -1,0 +1,58 @@
+POST https://example.com/comments/1 {
+    headers {
+        Content-Type: "application/json"
+        Accept: application/json
+    }
+    cookie session {
+        value: "1234567890"
+        httpOnly: true
+        path: "/"
+        domain: "example.com"
+        secure: true
+        sameSite: "strict"
+        expires: "2021-12-31T23:59:59Z"
+    }
+    cookie audit {
+        value: "1234567890"
+        httpOnly: true
+        path: "/"
+        maxAge: 3600
+
+    }
+    cookie jwt {
+        value: "1234567890"
+        httpOnly: true
+        path: "/"
+    }
+    body {
+        key: "value"
+    }
+/}
+
+# POST https://example.com/comments/1 {
+#     headers {
+#         Content-Type: "application/json"
+#     }
+#     cookie session {
+#         value: "1234567890"
+#         httpOnly: true
+#         path: "/"
+#     }
+#     body {
+#         key: "value"
+#     }
+# /}
+# 
+# POST https://example.com/comments/1 {
+#     headers {
+#         Content-Type: "application/json"
+#     }
+#     cookie session {
+#         value: "1234567890"
+#         httpOnly: true
+#         path: "/"
+#     }
+#     body {
+#         key: "value"
+#     }
+# /}
