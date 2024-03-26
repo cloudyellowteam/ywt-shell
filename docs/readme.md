@@ -2,6 +2,13 @@
 
 > **2024.03.22**
 ```shell
+clear; ./ywt.sh scanner cloc /ywt-target
+clear; ./ywt.sh scanner trivy fs /ywt-target
+```
+
+
+> **2024.03.22**
+```shell
 # parse without validade
 clear; ./ywt.sh param kv --default value --required --name key3 -- --default value --required --name key4
 

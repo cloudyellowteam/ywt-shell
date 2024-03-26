@@ -1,0 +1,23 @@
+[
+    {
+        "type": "repository",
+        "remote": "https://github.com/DefectDojo/django-DefectDojo.git",
+        "local": "django-DefectDojo",
+        "clone": {
+            "branch": "main",
+            "args": [
+                "--depth=1"
+            ]
+        },
+        "branches": [
+            "main"        
+        ]
+    },
+    {
+        "type": "docker:image",
+        "name": "defectdojo/django-DefectDojo",
+        "tags": [
+            "latest"
+        ]
+    }
+]
