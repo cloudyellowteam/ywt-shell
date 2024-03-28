@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317,SC2120,SC2155,SC2044
-__scanner:trufflehog() {
+__scanner:trufflehog:v1() {
     # local RESULT_FILE="$(mktemp -u -t XXXXXX --suffix=.trufflehog -p /tmp)"
     local SCANNER="$({
         echo -n "{"

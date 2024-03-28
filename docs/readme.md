@@ -2,8 +2,11 @@
 
 > **2024.03.22**
 ```shell
-clear; ./ywt.sh scanner cloc /ywt-target
-clear; ./ywt.sh scanner trivy fs /ywt-target
+clear; ./ywt.sh scanner cloc /ywt-workdir
+clear; ./ywt.sh scanner trivy fs /ywt-workdir
+clear; ./ywt.sh scanner trivy image ywt-shell:latest
+clear; ./ywt.sh scanner trufflehog docker --image=ywt-shell:latest
+clear; ./ywt.sh scanner trufflehog filesystem /ywt-workdir
 ```
 
 

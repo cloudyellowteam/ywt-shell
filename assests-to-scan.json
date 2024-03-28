@@ -15,7 +15,7 @@
     },
     {
         "type": "docker:image",
-        "name": "defectdojo/django-DefectDojo",
+        "image": "defectdojo/django-DefectDojo",
         "tags": [
             "latest"
         ]

@@ -1,11 +1,23 @@
 FROM ywt-shell:latest
 
-COPY docker/ywt-shell/.npmrc /usr/local/etc/npmrc
-
-RUN apk add --no-cache nodejs npm && \
+RUN apk add --update nodejs npm && \
     rm -rf /var/cache/apk/* /root/.npm /tmp/*
 
-RUN RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+# RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+# ENV NVM_DIR /root/.nvm
+# COPY docker/ywt-shell/.nvmrc "$NVM_DIR.nvmrc"
+# ENV NODE_VERSION 16
+# RUN . "$NVM_DIR/nvm.sh" && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && nvm use default
 
-# taskfile
+# RUN echo "export NVM_DIR=$NVM_DIR" >> /root/.bashrc && \
+#     echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && [ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' >> /root/.bashrc && \
+#     echo "nvm use default &>/dev/null" >> /root/.bashrc
+
+# ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
+# COPY docker/ywt-shell/.npmrc /usr/local/etc/npmrc
+# RUN npm install -g npm@latest
+
+RUN node -v
+RUN npm -v
 RUN npm install -g zx pnpm

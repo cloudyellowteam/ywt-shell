@@ -9,6 +9,9 @@ LABEL org.opencontainers.image.url="https://hub.docker.com/r/bats/yellowteam.clo
 LABEL org.opencontainers.image.source="https://github.com/yellowteam.cloud"
 LABEL org.opencontainers.image.base.name="docker.io/yellowteam.cloud"
 
+# RUN locale-gen en_US.UTF-8
+RUN touch ~/.bashrc && chmod +x ~/.bashrc
+
 RUN apk add --update && \	
     apk add --no-cache bash jq git parallel && \
     apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils && \

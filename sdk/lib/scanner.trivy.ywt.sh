@@ -9,7 +9,7 @@
 # rootfs      Scan rootfs
 # sbom        Scan SBOM for vulnerabilities and licenses
 # vm          [EXPERIMENTAL] Scan a virtual machine image
-__scanner:trivy() {
+__scanner:trivy:v1() {
     # local RESULT_FILE="$(mktemp -u -t XXXXXX --suffix=.trivy -p /tmp)"
     local SCANNER="$({
         echo -n "{"
