@@ -1,5 +1,12 @@
 # ywt.sh | yw-sh
 
+> **2024.04.01**
+```shell
+clear; ./ywt.sh scanner cloc /ywt-workdir
+clear; ./ywt.sh scanner trufflehog filesystem /ywt-workdir
+clear; ./ywt.sh scanner trivy fs /ywt-workdir
+```
+
 > **2024.03.22**
 ```shell
 clear; ./ywt.sh scanner cloc /ywt-workdir
