@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317,SC2120,SC2155,SC2044
 scanner() {
-    local SCANNER_NAME="$1" && shift && SCANNER_NAME="${SCANNER_NAME,,}" && SCANNER_NAME="${SCANNER_NAME// /-}" && SCANNER_NAME="${SCANNER_NAME//./-}" && SCANNER_NAME="${SCANNER_NAME//:/-}" && SCANNER_NAME="${SCANNER_NAME//\//-}"
+    local SCANNER_ACTION="$1" && shift
+    local SCANNER_NAME="$SCANNER_ACTION" && SCANNER_NAME="${SCANNER_NAME,,}" && SCANNER_NAME="${SCANNER_NAME// /-}" && SCANNER_NAME="${SCANNER_NAME//./-}" && SCANNER_NAME="${SCANNER_NAME//:/-}" && SCANNER_NAME="${SCANNER_NAME//\//-}"
     local SCANNER_UID="$(mktemp -u -t XXXXXXXXXXXXXX -p /tmp)" && SCANNER_UID="$(basename "$SCANNER_UID")" && SCANNER_UID="${SCANNER_UID//./-}"
     local SCANNER_ID="$(echo -n "$SCANNER_NAME" | base64)${SCANNER_UID}"
     local SCANNER_OUTPUT="/tmp/scanner-${SCANNER_UID}.ywt"
@@ -11,9 +12,12 @@ scanner() {
             if [ ! -f "$SCANNER_OUTPUT" ]; then
                 echo -n "\"format\":\"text\","
                 echo -n "\"content\":\"No output\","
-            elif jq . "$SCANNER_OUTPUT" >/dev/null 2>&1; then
+            elif jq -e . "$SCANNER_OUTPUT" >/dev/null 2>&1; then
                 echo -n "\"format\":\"json\","
-                echo -n "\"content\":$(jq . "$SCANNER_OUTPUT"),"
+                echo -n "\"content\":"
+                __scanner:"${SCANNER_NAME}" result "$SCANNER_OUTPUT"
+                # jq -c . "$SCANNER_OUTPUT"
+                echo -n ","
             else
                 echo -n "\"format\":\"text\","
                 local SCANNER_CONTENT="$(
@@ -115,6 +119,7 @@ scanner() {
 
     }
     __scanner:state() {
+        local SCANNER_NAME="$1" && shift
         {
             if ! __is function "__scanner:${SCANNER_NAME}"; then
                 echo -n "{"
@@ -146,10 +151,21 @@ scanner() {
             fi
         } | jq -c .
     }
+    __scanner:validate() {
+        jq -r .state.api.implemented <<<"$1" | grep -q false && {
+            echo "$1" | jq -c '.state.error="API not implemented"'
+            return 1
+        }
+        ! jq -r .state.error <<<"$1" | grep -q "null" && {
+            echo "$1" | jq -c #'.state.error="Scanner not activated"'
+            return 1
+        }
+        return 0
+    }
     __scanner:metadata() {
         local SCANNER_METADATA=$({
-            __scanner:info "$@"
-            __scanner:state "$@"
+            __scanner:info "$SCANNER_NAME"
+            __scanner:state "$SCANNER_NAME"
         } | jq -sc '
             .[0] as $info |
             .[1] as $state |
@@ -158,20 +174,15 @@ scanner() {
                 state: $state
             }
         ')
-        jq -r .state.api.implemented <<<"$SCANNER_METADATA" | grep -q false && {
-            echo "$SCANNER_METADATA" | jq -c '.state.error="API not implemented"'
+        if ! __scanner:validate "$SCANNER_METADATA"; then
             return 1
-        }
-        ! jq -r .state.error <<<"$SCANNER_METADATA" | grep -q "null" && {
-            echo "$SCANNER_METADATA" | jq -c #'.state.error="Scanner not activated"'
-            return 1
-        }
+        fi
         {
             jq -cr .info <<<"$SCANNER_METADATA"
             jq -cr .state <<<"$SCANNER_METADATA"
             __scanner:"${SCANNER_NAME}" metadata "$@"
             __scanner:"${SCANNER_NAME}" version "$@"
-        } | jq -s '
+        } | jq -sc '
             .[0] as $info |
             .[1] as $state |
             .[2] as $metadata |
@@ -188,127 +199,120 @@ scanner() {
             }
         '
         return 0
-        # if __is function "__scanner:${SCANNER_NAME}"; then
-        #     if __scanner:"${SCANNER_NAME}" activate >"$SCANNER_OUTPUT"; then
-        #         {
-        #             __scanner:info "$@"
-        #             __scanner:api "$@"
-        #             __scanner:"${SCANNER_NAME}" metadata "$@"
-        #             __scanner:"${SCANNER_NAME}" version "$@"
-        #         } | jq -s '
-        #             .[0] as $info |
-        #             .[1] as $api |
-        #             .[2] as $metadata |
-        #             .[3] as $version |
-        #             {
-        #                 info: $info,
-        #                 api: $api,
-        #                 metadata: $metadata,
-        #                 version: $version,
-        #                 state: {
-        #                     available: $version.success,
-        #                     engine: $version.engine,
-        #                 }
-        #             }
-        #         '
-        #         return 0
-        #     else
-        #         __scanner:info "$@"
-        #         __scanner:api "$@"
-        #         {
-        #             echo -n "{"
-        #             echo -n "\"error\":\"${SCANNER_NAME} not implemented\""
-        #             echo -n "}"
-        #         } | jq -c '
-        #             .[0] as $info |
-        #             .[1] as $api |
-        #             .[2] as $error |
-        #             {
-        #                 info: $info,
-        #                 api: $api,
-        #                 error: $error
-        #             }
-        #         '
-        #         return 1
-        #     fi
-        # else
-        #     {
-        #         echo -n "{"
-        #         echo -n "\"error\":\"${SCANNER_NAME} not found\""
-        #         echo -n "}"
-        #     } | jq -c .
-        #     return 1
-        # fi
     }
-    run() {
+    __scanner:run() {
         local SCANNER_START_AT="$(date +%s)"
-        local DOCKER_ARGS=(
-            "--rm"
-            "--name" "ywt-scanners-${SCANNER_UID}"
-            "-v" "$(pwd):/ywt-workdir"
-            "-v" "/var/run/docker.sock:/var/run/docker.sock"
-            "-v" "/tmp:/tmp"
-            "ywt-sca:latest"
-        )
-        local SCANNER="$(__scanner:info)"
-        case "$SCANNER_NAME" in
-        cloc)
-            local SCANNER_METADATA=$(__scanner:cloc metadata)
-            local SCANNER_RESULT=$(__scanner:cloc scan "$@")
-            ;;
-        esac
-        jq -n \
-            --argjson scanner "$SCANNER" \
-            --argjson metadata "$SCANNER_METADATA" \
-            --argjson result "$SCANNER_RESULT" '
+        # local SCANNER_METADATA=$(__scanner:metadata "$@")
+        # local SCANNER_RESULT=$(__scanner:"${SCANNER_NAME}" cli "$@")
+        local SCANNER_RUN_OUTPUT="${SCANNER_OUTPUT//.ywt/.result}.ywt"
+        {
+            __scanner:metadata "$@"
+            __scanner:"${SCANNER_NAME}" cli "$@"
+            __scanner:"${SCANNER_NAME}" summary "$SCANNER_OUTPUT"
+        } >"$SCANNER_RUN_OUTPUT"
+        # cat "$SCANNER_RUN_OUTPUT" && return 0
+        jq -cs \ '
+            .[0] as $metadata |
+            .[1] as $result |
+            .[2] as $summary |
             {
-                scanner: {
-                    id: $scanner.scanner,
-                    metadata: $metadata,
-                },
+                scanner: $metadata,
                 report: {
-                    output: $scanner.output,
-                    start: $scanner.start,
+                    output: $metadata.info.output,
+                    start: '"$SCANNER_START_AT"',
                     end: $result.data.end,
-                    elapsed: ($result.data.end - $scanner.start),
+                    elapsed: ($result.data.end - '"$SCANNER_START_AT"'),
                     error: $result.error,
                     $result
-                }
+                },
+                summary: $summary
             }
-        '
+        ' "$SCANNER_RUN_OUTPUT"
+        return 0
     }
-    __scanner:metadata "$@"
-
-}
-scanner:v1() {
-    local SCANNER_NAME="$1" && shift && SCANNER_NAME="${SCANNER_NAME,,}" && SCANNER_NAME="${SCANNER_NAME// /-}" && SCANNER_NAME="${SCANNER_NAME//./-}" && SCANNER_NAME="${SCANNER_NAME//:/-}" && SCANNER_NAME="${SCANNER_NAME//\//-}"
-    local RESULT_FILE="$(mktemp -u -t ywt-XXXXXX --suffix=".$SCANNER_NAME" -p /tmp)"
-    local SCANNER_UID="$(basename "$RESULT_FILE")" && SCANNER_UID="${SCANNER_UID//./-}"
-    local DOCKER_ARGS=(
-        "--rm"
-        "--name" "${SCANNER_UID}"
-        "-v" "$(pwd):/ywt-workdir"
-        "-v" "/var/run/docker.sock:/var/run/docker.sock"
-        "ywt-sca:latest"
-    )
+    __scanner:list:functions() {
+        declare -F |
+            grep -oP "__scanner:\K\w+" |
+            jq -R . |
+            jq -s . |
+            jq -rc '
+                map(
+                    select(
+                        . as $name |
+                        "result cli info api state metadata run network list validate" |
+                        split(" ") | 
+                        map(select(. == $name)) | length == 0
+                    )
+                ) |
+                sort |
+                .[]                
+            '
+        return 0
+    }
+    list() {
+        {
+            while read -r S_NAME; do
+                echo -n "{"
+                echo -n "\"name\":\"$S_NAME\","
+                echo -n "\"info\":"
+                __scanner:info "$S_NAME"
+                echo -n ","
+                echo -n "\"state\":"
+                __scanner:state "$S_NAME"
+                echo -n "}"
+            done < <(__scanner:list:functions)
+        } | jq -s .
+        return 0
+    }
+    inspect(){
+        local SCANNER_NAME="$1" && shift
+        __scanner:metadata "$SCANNER_NAME" "$@"
+        return 0
+    }
     case "$SCANNER_NAME" in
-    network-hsts)
-        __scanner:network:hsts "$@"
+    inspect)
+        inspect "$@"
         ;;
-    cloc)
-        __scanner:cloc "$@"
-        ;;
-    trivy)
-        __scanner:trivy "$@"
-        ;;
-    trufflehog)
-        __scanner:trufflehog "$@"
+    list)
+        list | jq -c .
+        return 0
         ;;
     *)
-        __nnf "$@" || usage "tests" "$?" "$@" && return 1
+        __scanner:run "$@"
+        return "$?"
         ;;
     esac
+    return 0
 }
-(
-    export -f scanner
-)
+# scanner:v1() {
+#     local SCANNER_NAME="$1" && shift && SCANNER_NAME="${SCANNER_NAME,,}" && SCANNER_NAME="${SCANNER_NAME// /-}" && SCANNER_NAME="${SCANNER_NAME//./-}" && SCANNER_NAME="${SCANNER_NAME//:/-}" && SCANNER_NAME="${SCANNER_NAME//\//-}"
+#     local RESULT_FILE="$(mktemp -u -t ywt-XXXXXX --suffix=".$SCANNER_NAME" -p /tmp)"
+#     local SCANNER_UID="$(basename "$RESULT_FILE")" && SCANNER_UID="${SCANNER_UID//./-}"
+#     local DOCKER_ARGS=(
+#         "--rm"
+#         "--name" "${SCANNER_UID}"
+#         "-v" "$(pwd):/ywt-workdir"
+#         "-v" "/var/run/docker.sock:/var/run/docker.sock"
+#         "ywt-sca:latest"
+#     )
+#     case "$SCANNER_NAME" in
+#     network-hsts)
+#         __scanner:network:hsts "$@"
+#         ;;
+#     cloc)
+#         __scanner:cloc "$@"
+#         ;;
+#     trivy)
+#         __scanner:trivy "$@"
+#         ;;
+#     trufflehog)
+#         __scanner:trufflehog "$@"
+#         ;;
+#     *)
+#         __nnf "$@" || usage "tests" "$?" "$@" && return 1
+#         ;;
+#     esac
+# }
+# (
+#     export -f scanner
+# )

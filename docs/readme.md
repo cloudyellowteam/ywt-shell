@@ -2,9 +2,13 @@
 
 > **2024.04.01**
 ```shell
+clear; ./ywt.sh scanner inspect trufflehog
+clear; ./ywt.sh scanner list
 clear; ./ywt.sh scanner cloc /ywt-workdir
 clear; ./ywt.sh scanner trufflehog filesystem /ywt-workdir
+clear; ./ywt.sh scanner trufflehog docker --image=ywt-shell:latest
 clear; ./ywt.sh scanner trivy fs /ywt-workdir
+clear; ./ywt.sh scanner trivy image ywt-shell:latest
 ```
 
 > **2024.03.22**
@@ -14,6 +18,7 @@ clear; ./ywt.sh scanner trivy fs /ywt-workdir
 clear; ./ywt.sh scanner trivy image ywt-shell:latest
 clear; ./ywt.sh scanner trufflehog docker --image=ywt-shell:latest
 clear; ./ywt.sh scanner trufflehog filesystem /ywt-workdir
+clear; ./ywt.sh scanner trufflehog syslog
 ```
 
 
