@@ -5,6 +5,12 @@ __scanner:trivy() {
         "--quiet"
         "--format" "sarif"
     )
+    trivy:install(){
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    }
+    trivy:uninstall(){
+        rm -f /usr/local/bin/trivy
+    }
     trivy:cli() {
         __scanner:cli "trivy" "${DEFAULT_ARGS[@]}" "$@"
     }
@@ -19,7 +25,14 @@ __scanner:trivy() {
             echo -n "\"capabilities\":[\"filesystem\"],"
             echo -n "\"features\":[\"code\", \"vulnerabilities\"],"
             echo -n "\"engines\":[\"host\",\"docker\"],"
-            echo -n "\"formats\":[\"json\",\"sarif\"]"
+            echo -n "\"formats\":[\"json\",\"sarif\"],"
+            echo -n "\"priority\":1,"
+            echo -n "\"tool\":{"
+            echo -n "\"driver\":{"
+            echo -n "\"name\":\"trivy\","
+            echo -n "\"informationUri\":\"https://github.com/aquasecurity/trivy\","
+            echo -n "\"version\":\"0.50.0\""
+            echo -n "} }"
             echo -n "}"
         } | jq -c .
         return 0
@@ -45,6 +58,47 @@ __scanner:trivy() {
           }
         ' "$1"
     }
+    trivy:asset(){
+        local ASSET="$1" && shift
+        if ! __is json "$ASSET"; then
+            echo "{\"error\":\"Invalid asset\"}"
+            return 1
+        fi
+        case "$(jq -r '.type' <<<"$ASSET")" in
+            docker:image)
+                local DOCKER_IMAGE="$(jq -r '.target' <<<"$ASSET")"
+                if [ -z "$DOCKER_IMAGE" ]; then
+                    echo "{\"error\":\"Invalid image\"}"
+                    return 1
+                fi
+                trivy:cli image "$DOCKER_IMAGE"
+                return 0
+                ;;
+            repository)
+                local REPOSITORY="$(jq -r '.target' <<<"$ASSET")"
+                if [ ! -d "$REPOSITORY" ]; then
+                    echo "{\"error\":\"Invalid repository path\"}"
+                    return 1
+                fi
+                trivy:cli repository "/ywt-workdir$REPOSITORY"
+                return 0
+                ;;
+            filesystem)
+                local ASSET_PATH="$(jq -r '.target' <<<"$ASSET")"
+                if [ ! -d "$ASSET_PATH" ]; then
+                    echo "{\"error\":\"Invalid asset path\"}"
+                    return 1
+                fi
+                trivy:cli fs "/ywt-workdir$ASSET_PATH"
+                return 0
+                ;;
+            *)
+                echo "{\"error\":\"Invalid asset type\"}"
+                return 1
+                ;;
+        esac
+    }
     local ACTION="$1" && shift
     __nnf "trivy:$ACTION" "$@"
+    return $?
 }

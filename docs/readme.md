@@ -1,5 +1,13 @@
 # ywt.sh | yw-sh
 
+> **2024.04.02**
+```shell
+clear; ./ywt.sh scan apply ./assests-to-scan.json
+clear; ./ywt.sh scan summary ./assests-to-scan.json
+clear; ./ywt.sh scan plan ./assests-to-scan.json
+clear; ./ywt.sh scanner inspect cloc
+clear; ./ywt.sh scanner list
+```
 > **2024.04.01**
 ```shell
 clear; ./ywt.sh scanner inspect trufflehog

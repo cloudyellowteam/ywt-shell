@@ -3,8 +3,8 @@
 export YWT_SDK_FILE="${BASH_SOURCE[0]:-$0}" && readonly YWT_SDK_FILE
 sdk() {
     set -e -o pipefail
-    trap '__teardown' EXIT
-    trap '__fail $? "An error occurred"' ERR INT TERM
+    # trap '__teardown' EXIT
+    # trap '__fail $? "An error occurred"' ERR INT TERM
     ___create_unit_tests() {
         while read -r FILE; do
             local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
