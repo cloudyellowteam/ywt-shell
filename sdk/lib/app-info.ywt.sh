@@ -2,7 +2,7 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ywt:info() {
     package() {
-        [ -n "$YWT_PACKAGE" ] && echo "$YWT_PACKAGE" && return 0
+        [[ -n "$YWT_PACKAGE" ]] && echo "$YWT_PACKAGE" && return 0
         local YWT_PACKAGE && YWT_PACKAGE=$(jq -c <"./package.json" 2>/dev/null) && export YWT_PACKAGE && readonly YWT_PACKAGE
         echo "$YWT_PACKAGE"
     }

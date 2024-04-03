@@ -1,6 +1,116 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317,SC2120
 builder() {
+    YWT_LOG_CONTEXT="BUILDER"
+    config() {
+        local DEFAULT_EXPIRES_AT="${YWT_CONFIG_BUILDER_EXPIRES_AT:-"31/12/2999"}"
+        local PATH_DIST=${2:-"${YWT_CONFIG_BUILDER_DIST:-"$(jq -r .path.dist <<<"$YWT_CONFIG")"}"} && readonly PATH_DIST
+        local PATH_SRC=${3:-"${YWT_CONFIG_BUILDER_SRC:-"$(jq -r .path.src <<<"$YWT_CONFIG")"}"} && readonly PATH_SRC
+        local PATH_SDK=$(jq -r .path.sdk <<<"$YWT_CONFIG") && SDK=$(realpath -- "$PATH_SDK") && readonly PATH_SDK
+        local PATH_BIN=$(jq -r .path.bin <<<"$YWT_CONFIG") && readonly PATH_BIN
+        {
+            echo -n "{"
+            echo -n "\"expires\": \"$DEFAULT_EXPIRES_AT\","
+            echo -n "\"path/dist\": \"$PATH_DIST\","
+            echo -n "\"path/src\": \"$PATH_SRC\","
+            echo -n "\"path/sdk\": \"$PATH_SDK\","
+            echo -n "\"path/bin\": \"$PATH_BIN\""
+            echo -n "}"
+        } | jq -c .
+    }
+    info() {
+        {
+            echo -n "{"
+            echo -n "\"date\": \"$(date -Iseconds)\","
+            echo -n "\"id\": \"$(git rev-parse HEAD 2>/dev/null || echo "Unknown")\","
+            echo -n "\"branch\": \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "Unknown")\","
+            echo -n "\"tag\": \"$(git describe --tags 2>/dev/null || echo "Unknown")\","
+            echo -n "\"commit\": \"$(git rev-parse --short HEAD 2>/dev/null || echo "Unknown")\","
+            echo -n "\"author\": \"$(git log -1 --pretty=format:'%an <%ae>' 2>/dev/null || echo "Unknown")\","
+            echo -n "\"message\": \"$(git log -1 --pretty=format:'%s' 2>/dev/null || echo "Unknown")\""
+            echo -n "}"
+        } | jq -c .
+    }
+    _prepare() {
+        while read -r KEY VALUE; do
+            [[ "$KEY" =~ ^path/ ]] && [[ ! -d "$VALUE" ]] && mkdir -p "${VALUE}" && echo "Created directory ${VALUE}" | logger verbose
+        done < <(jq -r 'to_entries|map("\(.key) \(.value|tostring)")|.[]' <<<"$(config "$@")")
+        echo "Directories created" | logger info
+    }
+    _cleanup() {
+        local KEEP_SOURCE="${YWT_CONFIG_BUILDER_KEEP_SOURCE:-false}"
+        [[ "$KEEP_SOURCE" == true ]] && echo "Keeping sources" | logger info && return 0
+        local CONFIG=$(config "$@")
+        local DIST=$(jq -r '.["path/dist"]' <<<"$CONFIG")
+        rm -f "${DIST}/"*.sh >/dev/null
+        rm -f "${DIST}/"*.c >/dev/null
+        echo "Sources removed" | logger info
+    }
+    _bundle:validate() {
+        local CONFIG=$(config "$@")
+        local SRC_FILE=${1:?} && [ ! -f "$SRC_FILE" ] && echo "{ \"error\": \"Invalid source file\" }" && return 1
+        local FILE_EXT="${SRC_FILE##*.}" && [[ "$FILE_EXT" != "sh" ]] && echo "{ \"error\": \"Invalid file extension\" }" && return 1
+
+        if ! grep -q "^#!/usr/bin/env bash$" "$SRC_FILE"; then
+            echo "{ \"error\": \"Invalid shebang\" }" && return 1
+            return 1
+        fi
+        local FILENAME=$(basename -- "$SRC_FILE") && FILENAME="${FILENAME%.*}"
+        local BUNDLE_NAME="${2:-"${FILENAME}.sh"}" && [ -z "$BUNDLE_NAME" ] && echo "{ \"error\": \"Invalid bundle name\" }" && return 1
+        local FILE_BASEPATH=$(dirname -- "$SRC_FILE")
+        local FILE_REALPATH=$(realpath -- "$FILE_BASEPATH")
+        local FILE_RELATIVEPATH=$(realpath --relative-to="$SRC_FILE" "$FILE_BASEPATH")
+        local SRC_PATH=$(jq -r '.["path/src"]' <<<"$CONFIG")
+        local TARGET_FILE="${SRC_PATH}/${BUNDLE_NAME}" && [[ -f "$TARGET_FILE" ]] && rm -f "$TARGET_FILE"
+        {
+            echo -n "$CONFIG"
+            echo -n "{"
+            echo -n "\"success\": true,"
+            echo -n "\"file\": \"$SRC_FILE\","
+            echo -n "\"filename\": \"$FILENAME\","
+            echo -n "\"extension\": \"$FILE_EXT\","
+            echo -n "\"basepath\": \"$FILE_BASEPATH\","
+            echo -n "\"realpath\": \"$FILE_REALPATH\","
+            echo -n "\"relativepath\": \"$FILE_RELATIVEPATH\","
+            echo -n "\"name\": \"$BUNDLE_NAME\","
+            echo -n "\"output\": \"$TARGET_FILE\""
+            echo -n "}"
+        } | jq -sc '
+            .[0] as $config | 
+            .[1] as $validation |
+            {
+                config: $config,
+                validation: $validation
+            }
+        '
+        return 0
+    }
+    _bundle:inject() {
+        local FILE="$1"
+        [[ ! -f "$FILE" ]] && echo "{ \"error\": \"$FILE is not a valid file\" }" && return 0
+        grep -v "^#" "$FILE" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$"
+    }
+    bundle() {
+        local VALIDATION=$(_bundle:validate "$@")
+        if ! jq -r '.validation.success' <<<"$VALIDATION" | grep -q true; then
+            echo "$VALIDATION" | jq -c .
+            return 1
+        fi
+        _prepare
+        _cleanup
+        local BUNDLE_FILE=$(jq -r '.validation.output' <<<"$VALIDATION")
+        echo -n "$VALIDATION" | jq .
+        echo "#!/bin/bash" >"$BUNDLE_FILE"
+        {
+            copyright
+        } >>"$BUNDLE_FILE"
+        cat "$BUNDLE_FILE"
+    }
+
+    __nnf "$@" || usage "$?" "builder" "$@" && return 1
+    return 0
+}
+builder:v1() {
     YWT_LOG_CONTEXT="BUILDER"
     local CONFIG_EXPIRES_AT="${YWT_CONFIG_BUILDER_EXPIRES_AT:-"31/12/2999"}"
     local DIST=${2:-"${YWT_CONFIG_BUILDER_DIST:-"$(jq -r .path.dist <<<"$YWT_CONFIG")"}"} && readonly DIST
@@ -144,10 +254,7 @@ builder() {
     }
     inspect() {
         jq -r '.path' <<<"$YWT_CONFIG"
-    }   
+    }
     __nnf "$@" || usage "$?" "builder" "$@" && return 1
     return 0
 }
-(
-    export -f builder
-)
