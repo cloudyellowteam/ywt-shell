@@ -1,5 +1,15 @@
 # ywt.sh | yw-sh
-
+> **2004.04.04**
+```shell
+# ydk included in the async command, you can use any command from the ywt.sh
+clear; ./ywt.sh async "sleep 1; ywt inspect"
+```
+> **2024.04.03**
+```shell
+clear; ./ywt.sh async "sleep 1; ./ywt.sh inspect" "sleep 15; ./ywt.sh inspect"
+clear; ./ywt.sh async "sleep 1; echo Task 1 completed" "sleep 2; echo Task 2 completed; exit 1"  "sleep 1; echo Task 3 completed"
+clear; ./ywt.sh builder bundle ./sdk/sdk.sh
+```
 > **2024.04.02**
 ```shell
 clear; ./ywt.sh scan apply ./assests-to-scan.json

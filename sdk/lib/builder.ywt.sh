@@ -60,6 +60,9 @@ builder() {
         local FILE_BASEPATH=$(dirname -- "$SRC_FILE")
         local FILE_REALPATH=$(realpath -- "$FILE_BASEPATH")
         local FILE_RELATIVEPATH=$(realpath --relative-to="$SRC_FILE" "$FILE_BASEPATH")
+        if [[ ! -d "${FILE_REALPATH}/lib" ]]; then
+            echo "{ \"error\": \"${FILE_REALPATH}/lib is not a valid directory\" }" && return 1
+        fi
         local SRC_PATH=$(jq -r '.["path/src"]' <<<"$CONFIG")
         local TARGET_FILE="${SRC_PATH}/${BUNDLE_NAME}" && [[ -f "$TARGET_FILE" ]] && rm -f "$TARGET_FILE"
         {
@@ -72,6 +75,7 @@ builder() {
             echo -n "\"basepath\": \"$FILE_BASEPATH\","
             echo -n "\"realpath\": \"$FILE_REALPATH\","
             echo -n "\"relativepath\": \"$FILE_RELATIVEPATH\","
+            echo -n "\"lib\": \"$FILE_REALPATH/lib\","
             echo -n "\"name\": \"$BUNDLE_NAME\","
             echo -n "\"output\": \"$TARGET_FILE\""
             echo -n "}"
@@ -88,7 +92,25 @@ builder() {
     _bundle:inject() {
         local FILE="$1"
         [[ ! -f "$FILE" ]] && echo "{ \"error\": \"$FILE is not a valid file\" }" && return 0
-        grep -v "^#" "$FILE" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$"
+        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#"
+    }
+    _bundle:checksum:generate() {
+        local TARGET=${1:?}
+        local EXPIRES_AT="${2:-$CONFIG_EXPIRES_AT}"
+        local FILENAME && FILENAME=$(basename -- "$TARGET") && FILENAME="${FILENAME%.*}"
+        local IS_BINARY=false
+        LC_ALL=C grep -a '[^[:print:][:space:]]' "$TARGET" >/dev/null && IS_BINARY=true
+        echo "{"
+        echo "  \"file\": \"$TARGET\","
+        echo "  \"expires_at\": \"$EXPIRES_AT\","
+        echo "  \"size\": \"$(du -h "$TARGET" | awk '{print $1}' 2>/dev/null)\","
+        echo "  \"md5\": \"$(md5sum "$TARGET" | awk '{print $1}' 2>/dev/null)\","
+        echo "  \"sha1\": \"$(sha1sum "$TARGET" | awk '{print $1}' 2>/dev/null)\","
+        echo "  \"sha256\": \"$(sha256sum "$TARGET" | awk '{print $1}' 2>/dev/null)\","
+        echo "  \"sha512\": \"$(sha512sum "$TARGET" | awk '{print $1}' 2>/dev/null)\"",
+        echo "  \"created_at\": \"$(date -Iseconds)\"",
+        echo "  \"binary\": $IS_BINARY"
+        echo "}"
     }
     bundle() {
         local VALIDATION=$(_bundle:validate "$@")
@@ -99,12 +121,37 @@ builder() {
         _prepare
         _cleanup
         local BUNDLE_FILE=$(jq -r '.validation.output' <<<"$VALIDATION")
-        echo -n "$VALIDATION" | jq .
+        local BUNDLE_LIB_PATH=$(jq -r '.validation.lib' <<<"$VALIDATION")
+        local BUNDLE_SRC_PATH=$(jq -r '.config["path/src"]' <<<"$VALIDATION")
+        local BUNDLE_OUTPUT_TMP=$(mktemp -u -t "ywt-XXXX")
         echo "#!/bin/bash" >"$BUNDLE_FILE"
         {
             copyright
+            while read -r FILE; do
+                local FILENAME && FILENAME=$(basename -- "$FILE")
+                local RELATIVE_PATH && RELATIVE_PATH=$(realpath --relative-to="$BUNDLE_SRC_PATH" "$FILE")
+                local RELATIVE_PATH && RELATIVE_PATH=$(dirname -- "$RELATIVE_PATH")
+                echo "# <$FILENAME>"
+                _bundle:inject "$FILE"
+                echo "# </$FILENAME>"
+                {
+                    echo -n "{"
+                    echo -n "\"file\": \"$FILE\","
+                    echo -n "\"path\": \"$RELATIVE_PATH\","
+                    echo -n "\"content\": \"$(cat "$FILE" | base64 -w 0)\","
+                    echo -n "\"checksum\": $(_bundle:checksum:generate "$FILE")"
+                    echo -n "}"
+                } >>"$BUNDLE_OUTPUT_TMP"
+            done < <(find "$BUNDLE_LIB_PATH" -type f -name "*.ywt.sh" | sort)
+
+            local SRC_FILE=$(jq -r '.validation.file' <<<"$VALIDATION")
+            echo "# <$SRC_FILE>"
+            _bundle:inject "$SRC_FILE"
+            echo "# </$SRC_FILE>"
         } >>"$BUNDLE_FILE"
+        echo "Bundle created" | logger info
         cat "$BUNDLE_FILE"
+        # jq -s '.' "$BUNDLE_OUTPUT_TMP"
     }
 
     __nnf "$@" || usage "$?" "builder" "$@" && return 1

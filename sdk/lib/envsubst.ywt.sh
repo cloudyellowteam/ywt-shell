@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 
-if ! __is command envsubst; then
-    __debug "envsubst not found, injecting polyfill..."
+# if ! __is command envsubst; then
+#     __debug "envsubst not found, injecting polyfill..."
+if ! command -v envsubst >/dev/null 2>&1; then
+    # __debug "envsubst not found, injecting polyfill..."
     envsubst() {
         export YWT_LOG_CONTEXT="ENVSUBST"
         local FILE_PATH="$1"

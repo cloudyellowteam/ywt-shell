@@ -28,8 +28,8 @@ sdk() {
                 echo "# TEST_NAME=${TEST_NAME}"
                 echo "# CMD_NAME=${CMD_NAME}"
                 echo "# bats test_tags=${TEST_NAME}, usage"
-                echo "@test \"ywt ${TEST_NAME} should be called\" {"
-                echo "  run ywt ${CMD_NAME}"
+                echo "@test \"ydk ${TEST_NAME} should be called\" {"
+                echo "  run ydk ${CMD_NAME}"
                 echo "  test_report"
                 echo "  assert_success \"${LIB_NAME} should be called\""
                 echo "  assert_output --partial \"Available functions\""
@@ -534,7 +534,7 @@ sdk() {
         [ -z "$*" ] && return 0
         local ARGS=("${@:2}")
         [ -n "${ARGS[0]}" ] && ARGS[0]="${RED}${UNDERLINE}${ARGS[0]}${NC}${NSTL}"
-        __log info "(${RED}$ERROR_CODE${NC}) ${YELLOW}YWT Usage${NC}: ${YELLOW}ywt ${GREEN}$CONTEXT${NC} (${ARGS[*]}${NC}) ${CYAN}${#ARGS[@]} length${NC}"
+        __log info "(${RED}$ERROR_CODE${NC}) ${YELLOW}YWT Usage${NC}: ${YELLOW}ydk ${GREEN}$CONTEXT${NC} (${ARGS[*]}${NC}) ${CYAN}${#ARGS[@]} length${NC}"
         __log info "Available functions: " #| logger info # (${YELLOW}${FUNC_LIST}${NC})" | logger info
         for FUNC in $FUNC_LIST; do
             [[ "$FUNC" == bats_* ]] && continue
@@ -544,7 +544,7 @@ sdk() {
             [[ "$FUNC" == "ywt" ]] && continue
             [[ "$FUNC" == *"sdk"* ]] && continue
             FUNC=${FUNC%,}
-            __log info "${YELLOW}ywt ${GREEN}${CONTEXT} ${BLUE}$FUNC${NC}"
+            __log info "${YELLOW}ydk ${GREEN}${CONTEXT} ${BLUE}$FUNC${NC}"
         done
         return 1
     }
@@ -556,7 +556,7 @@ sdk() {
     __nnf "$@" && return 0
     local STATUS=$? && usage "$STATUS" "" "$@" && return 1
 }
-ywt() {
+ydk() {
     [ "$#" -eq 0 ] && return 0
     local FUNC=${1} && [ -z "$FUNC" ] && return 1
     FUNC=${FUNC#_} && FUNC=${FUNC#__}
@@ -564,20 +564,20 @@ ywt() {
     sdk "$FUNC" "${ARGS[@]}"
     return 0
 }
-(
-    export -f ywt
-)
+ywt(){
+    ydk "$@"
+}
 
 if [ "$#" -gt 0 ]; then
     SDK_FILE="$(realpath -- "${YWT_SDK_FILE}")" && export SDK_FILE
     if ! LC_ALL=C grep -a '[^[:print:][:space:]]' "$SDK_FILE" >/dev/null; then
-        ywt "$@"
+        ydk "$@"
         # __teardown
         exit $?
     else
         # binary injection
         # echo "Binary file ($#) $*" 1>&2
-        ywt "$@"
+        ydk "$@"
         # __teardown
         exit $?
     fi
