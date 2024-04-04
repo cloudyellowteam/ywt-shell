@@ -63,6 +63,20 @@ spinner() {
         done
         printf "\b\b\b\b"
     }
+    examples(){
+        # loop into each name
+        local COMMANDS=()
+        local SPINNERS_NAMES=($(names))
+        local SPINNER_INDEX=0
+        for SPINNER_NAME in "${SPINNERS_NAMES[@]}"; do
+            local MESSAGE="Spinner $SPINNER_NAME ${SPINNER_INDEX} of ${#SPINNERS_NAMES[@]}"
+            echo "$MESSAGE" | logger info
+            COMMANDS+=("sleep ${SPINNER_INDEX}; echo $MESSAGE")
+            SPINNER_INDEX=$((SPINNER_INDEX + 1))
+        done
+        async "${COMMANDS[@]}"
+    }
+
     __nnf "$@" || usage "$?" "spinner" "$@" && return 1
     return 0
 }

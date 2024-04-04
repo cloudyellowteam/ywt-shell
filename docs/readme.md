@@ -1,6 +1,9 @@
 # ywt.sh | yw-sh
 > **2004.04.04**
 ```shell
+clear; ./ywt.sh spinner spin $$ "dd" 
+clear; ./ywt.sh spinner random
+clear; ./ywt.sh spinner names
 # run from bundle
 clear; chmod +x ./src/sdk.sh; ./src/sdk.sh async "sleep 1; echo Task 1 completed" "sleep 2; echo Task 2 completed; exit 1"  "sleep 1; echo Task 3 completed"
 clear; ./ywt.sh builder bundle ./sdk/sdk.sh
