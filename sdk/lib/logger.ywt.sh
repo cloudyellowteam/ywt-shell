@@ -57,7 +57,7 @@ logger() {
         MESSAGE="${LINES[*]//$'\n'/$'\n' }"
         echo -n "$MESSAGE"
     }
-    _log:level(){
+    _log:level() {
         local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error|success)$ ]] && LEVEL=info
         local COLOR=white
         local ICON=""
@@ -91,17 +91,17 @@ logger() {
             echo -n "}"
         } | jq -c .
     }
-    _log:message(){
+    _log:message() {
         local MESSAGE=${1:-}
         local LINES=()
         [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
         [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
         MESSAGE="${LINES[*]//$'\n'/$'\n' }"
-        
+
         MESSAGE=$(echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g")
         echo -n "$MESSAGE"
     }
-    log() {
+    _log:json() {
         local LOG_LEVEL="$(_log:level "$1")"
         local LOG_MESSAGE="$(_log:message "$2")"
         jq -cn \
@@ -109,8 +109,12 @@ logger() {
             --argjson config "$YWT_CONFIG" \
             --arg message "${LOG_MESSAGE:-}" \
             '{
-                "@timestamp": (now | todate),
-                "@version": $config.yellowteam.version,                
+                "signal": $level.icon,
+                "context": "'"${YWT_LOG_CONTEXT,,}"'",   
+                "level": $level.level,
+                "message": $message,
+                "timestamp": (now | todate),
+                "version": $config.yellowteam.version,                
                 "tags": ["'"ywt:${YWT_LOG_CONTEXT,,}:context"'"],
                 "path": "",
                 "host": "'"$(hostname)"'",
@@ -119,16 +123,89 @@ logger() {
                 "color": $level.color,
                 "icon": $level.icon,
                 "pid": "'$$'",
-                "ppid": "'$PPID'",
+                "ppid": "'"$PPID"'",
                 "cmd": "'"$YWT_CMD_NAME"'",
-                "name": "'"$YWT_CMD_NAME"'",
-                "context": "'"${YWT_LOG_CONTEXT,,}"'",
-                "signal": $level.icon,
-                "level": $level.level,
-                "message": $message,
+                "name": "'"$YWT_CMD_NAME"'",                
                 "etime": "'"$(__etime)"'"
-            }'
+            }' | jq -c '
+                . |
+                map_values(
+                    if type == "string" then
+                        . | gsub("\n"; " ")
+                    else
+                        .
+                    end
+                ) |
+                .
+            '
+    }
+    _log:loki() {
+        local LOG_JSON=$1
+        echo "$LOG_JSON" | jq -r .
+    }
+    _log:upstash() {
+        local LOG_JSON=$1
+        echo "$LOG_JSON" | jq -r .
+    }
+    _log:template() {
+        local LOG_JSON=$1
+        local LOG_FORMAT="${YELLOW}[${YWT_CMD_NAME^^}]${NC}" &&
+            LOG_FORMAT+=" ${BRIGHT_BLACK}[\(.pid)]${NC}" &&
+            LOG_TEMPLATE+=" ${BLUE}[\(.timestamp)]${NC}" &&
+            LOG_FORMAT+=" \(.signal)" &&
+            LOG_FORMAT+=" \(.level | ascii_upcase)" &&
+            LOG_FORMAT+=" ${YELLOW}\(.context | ascii_upcase)${NC}" &&
+            LOG_FORMAT+=" \(.message)" &&
+            # LOG_TEMPLATE+=" \(.package)" &&
+            LOG_FORMAT+=" [${BRIGHT_BLACK}\(.etime)${NC}]"
+        # local LOG_FORMAT="${YELLOW}[\(.pid)]${NC} \(.signal) \(.level | ascii_upcase) \(.message) \(.package) \(.etime)"
+        echo "$LOG_JSON" | jq --arg format "$LOG_FORMAT" -rc '
+            . |
+            "'"$LOG_FORMAT"'"
+        '
+    }
+    log() {
+        _log:template "$(_log:json "$@")"
         return 0
+        # local LOG_LEVEL="$(_log:level "$1")"
+        # local LOG_MESSAGE="$(_log:message "$2")"
+
+        # jq -cn \
+        #     --argjson level "$LOG_LEVEL" \
+        #     --argjson config "$YWT_CONFIG" \
+        #     --arg message "${LOG_MESSAGE:-}" \
+        #     '{
+        #         "signal": $level.icon,
+        #         "context": "'"${YWT_LOG_CONTEXT,,}"'",   
+        #         "level": $level.level,
+        #         "message": $message,
+        #         "@timestamp": (now | todate),
+        #         "@version": $config.yellowteam.version,                
+        #         "tags": ["'"ywt:${YWT_LOG_CONTEXT,,}:context"'"],
+        #         "path": "",
+        #         "host": "'"$(hostname)"'",
+        #         "type": "'"${YWT_LOG_CONTEXT,,}-log"'",
+        #         "package": "\($config.yellowteam.name):\($config.yellowteam.version):\($config.yellowteam.license)",
+        #         "color": $level.color,
+        #         "icon": $level.icon,
+        #         "pid": "'$$'",
+        #         "ppid": "'$PPID'",
+        #         "cmd": "'"$YWT_CMD_NAME"'",
+        #         "name": "'"$YWT_CMD_NAME"'",                
+        #         "etime": "'"$(__etime)"'"
+        #     }' | jq --arg format "$LOG_FORMAT" -rc '
+        #         . |
+        #         map_values(
+        #             if type == "string" then
+        #                 . | gsub("\n"; " ")
+        #             else
+        #                 .
+        #             end
+        #         ) |
+        #         "'"$LOG_FORMAT"'"
+        #     '
+        # #. | $format
+        # return 0
 
         # [ "$1" == "debug" ] && __debug "logger:" "$@" && return 0
         # _log_level "$1"
