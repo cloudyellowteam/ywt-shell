@@ -6,15 +6,15 @@ __scanner:cloc() {
         "--quiet"
         "--exclude-dir=sys,.git,vendor,node_modules,tests,tests-*,test,tests-*,.git,.github,.vscode,.idea,build,dist,docs,examples,examples-*,samples,spec,specs,spec-*,specs-*,tmp,log,logs,cache,bin,lib,libs,src,assets,resources,static,public,web,webroot,webapp,webapps,webroot,webroots,app,apps,app-*,apps-*,dist,build,builds,deploy,deploys,deployment,deployments,release,releases,backup,backups,backup-*,backups-*,temp,temporary,template,templates,config,configs,configuration,configurations,settings,setting,settings-*,setting-*,conf,confs,conf-*,confs-*,env,envs,env-*,envs-*,log,logs,log-*,logs-*,tmp,temp,tmp-*,temp-*,cache,caches,cache-*,caches-*,data,datas,data-*,datas-*,db,dbs,db-*,dbs-*,database,databases,database-*,databases-*,doc,docs,doc-*,docs-*,document,documents,document-*,documents-*,image,images,image-*,images-*,img,imgs,img-*,imgs-*,media,medias,media-*,medias-*,video,videos,video-*,videos-*,audio,audios,audio-*,audios-*,bin,binaries,binary,binaries-*,binary-*,lib,libs,lib-*,libs-*,libra"
     )
-    cloc:install(){
+    cloc:install() {
         curl -sSfL https://raw.githubusercontent.com/AlDanial/cloc/master/cloc -o /usr/local/bin/cloc
         chmod +x /usr/local/bin/cloc
     }
-    cloc:uninstall(){
+    cloc:uninstall() {
         rm -f /usr/local/bin/cloc
     }
     cloc:cli() {
-        __scanner:cli "cloc" "${DEFAULT_ARGS[@]}" "$@"        
+        __scanner:cli "cloc" "${DEFAULT_ARGS[@]}" "$@"
     }
     cloc:version() {
         cloc:cli --version
@@ -43,10 +43,10 @@ __scanner:cloc() {
         echo "{}"
         return 0
     }
-    cloc:result(){
+    cloc:result() {
         jq -c . "$1"
     }
-    cloc:summary(){
+    cloc:summary() {
         [ ! -f "$1" ] && echo -n "{}" && return 0
         jq -c '
             . as $root |
@@ -61,26 +61,26 @@ __scanner:cloc() {
             }
         ' "$1"
     }
-    cloc:asset(){
-        local ASSET="$1" && shift
+    cloc:asset() {        
+        local ASSET="${1//\\\"/\"}" && shift
         if ! __is json "$ASSET"; then
             echo "{\"error\":\"Invalid asset\"}"
             return 1
         fi
         case "$(jq -r '.type' <<<"$ASSET")" in
-            filesystem)
-                local ASSET_PATH="$(jq -r '.target' <<<"$ASSET")"
-                if [ ! -d "$ASSET_PATH" ]; then
-                    echo "{\"error\":\"Invalid asset path\"}"
-                    return 1
-                fi
-                cloc:cli "/ywt-workdir$ASSET_PATH"
-                return 0
-                ;;
-            *)
-                echo "{\"error\":\"Invalid asset type\"}"
+        filesystem)
+            local ASSET_PATH="$(jq -r '.target' <<<"$ASSET")"
+            if [ ! -d "$ASSET_PATH" ]; then
+                echo "{\"error\":\"Invalid asset path\"}"
                 return 1
-                ;;
+            fi
+            cloc:cli "/ywt-workdir$ASSET_PATH"
+            return 0
+            ;;
+        *)
+            echo "{\"error\":\"Invalid asset type\"}"
+            return 1
+            ;;
         esac
     }
     # cloc:scan() {

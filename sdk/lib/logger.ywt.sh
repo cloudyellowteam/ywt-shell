@@ -96,8 +96,7 @@ logger() {
         local LINES=()
         [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
         [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
-        MESSAGE="${LINES[*]//$'\n'/$'\n' }"
-
+        MESSAGE="${LINES[*]//$'\n'/\\n}"
         MESSAGE=$(echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g")
         echo -n "$MESSAGE"
     }
@@ -165,6 +164,7 @@ logger() {
         '
     }
     log() {
+        [ "$1" == "debug" ] && __debug "logger:" "$@" && return 0
         _log:template "$(_log:json "$@")"
         return 0
         # local LOG_LEVEL="$(_log:level "$1")"

@@ -1,6 +1,27 @@
 # ywt.sh | yw-sh
+> **2024.04.05**
+```shell
+clear; ./ywt.sh async \
+    "scanner cloc asset '{\"type\":\"filesystem\",\"target\":\"/\"}' " \
+    "scanner trivy asset '{\"type\":\"filesystem\",\"target\":\"/\"}' " \
+    "scanner trufflehog asset '{\"type\":\"filesystem\",\"target\":\"/\"}' " \
+    "scanner trufflehog asset '{\"type\":\"repository\",\"target\":\"https://github.com/DefectDojo/django-DefectDojo.git\",\"local\":\"django-DefectDojo\",\"clone\":{\"branch\":\"main\",\"args\":[\"--depth=1\"]},\"branches\":[\"main\"]}' " \
+    "scanner trufflehog asset '{\"type\":\"docker:image\",\"target\":\"defectdojo/django-DefectDojo\",\"tags\":[\"latest\"]}'"
+
+
+clear; ./ywt.sh async \
+    "scanner cloc asset '{\"type\":\"filesystem\",\"target\":\"/\"}'" \
+    "scanner trivy asset '{\"type\":\"filesystem\",\"target\":\"/\"}'" \
+    "scanner trufflehog asset '{\"type\":\"filesystem\",\"target\":\"/\"}'"
+clear; ./ywt.sh scan apply ./assests-to-scan.json
+clear; ./ywt.sh scanner cloc asset "{\"type\":\"filesystem\",\"target\":\"/\"}" & \
+    ./ywt.sh scanner trivy asset "{\"type\":\"filesystem\",\"target\":\"/\"}" & \
+    ./ywt.sh scanner trufflehog asset "{\"type\":\"filesystem\",\"target\":\"/\"}" & \
+    wait
+```
 > **2004.04.04**
 ```shell
+clear; ./ywt.sh spinner examples
 clear; ./ywt.sh spinner spin $$ "dd" 
 clear; ./ywt.sh spinner random
 clear; ./ywt.sh spinner names

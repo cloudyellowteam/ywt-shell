@@ -204,6 +204,7 @@ scanner() {
         fi
 
         local SCANNER_NAME="$(jq -r .header.name <<<"$SCANNER_METADATA")"
+        local SCANNER_UID="$(jq -r .header.uid <<<"$SCANNER_METADATA")"
         [ -z "$SCANNER_OUTPUT" ] &&  local SCANNER_OUTPUT="$(jq -r .header.output <<<"$SCANNER_METADATA")"
         local DOCKER_ARGS=(
             "--rm"

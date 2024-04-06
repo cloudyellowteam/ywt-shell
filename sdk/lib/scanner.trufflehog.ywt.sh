@@ -94,7 +94,7 @@ __scanner:trufflehog() {
         }' >"$sarif_output"
     }
     trufflehog:asset(){
-        local ASSET="$1" && shift
+        local ASSET="${1//\\\"/\"}" && shift
         if ! __is json "$ASSET"; then
             echo "{\"error\":\"Invalid asset\"}"
             return 1
