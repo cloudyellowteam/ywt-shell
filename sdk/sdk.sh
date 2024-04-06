@@ -3,8 +3,6 @@
 export YWT_SDK_FILE="${BASH_SOURCE[0]:-$0}" && readonly YWT_SDK_FILE
 sdk() {
     set -e -o pipefail
-    # trap '__teardown' EXIT
-    # trap '__fail $? "An error occurred"' ERR INT TERM
     ___create_unit_tests() {
         while read -r FILE; do
             local FILE_REALPATH=$(realpath -- "$FILE") && [ ! -f "$FILE_REALPATH" ] && continue
@@ -66,6 +64,8 @@ sdk() {
         kill -s EXIT $$ 2>/dev/null
         # echo "$MESSAGE" 1>&2
     }
+    trap '__teardown' EXIT
+    trap '__fail $? "An error occurred"' ERR INT TERM
     export YWT_LOG_DEFAULT_CONTEXT="ywt" && readonly YWT_LOG_DEFAULT_CONTEXT
     export YWT_LOG_CONTEXT="$YWT_LOG_DEFAULT_CONTEXT"
     local YWT_CMD_NAME="$YWT_LOG_DEFAULT_CONTEXT" && readonly YWT_CMD_NAME
@@ -484,12 +484,12 @@ sdk() {
                 --argjson params "$YWT_PARAMS" \
                 '{yellowteam: $package, path: $path, process: $process, env: $env, flags: $flags, params: $params}'
         ) && readonly YWT_CONFIG
-        __debug "Package Info $(jq -C .yellowteam <<<"$YWT_CONFIG")"
-        __debug "Paths $(jq -C .path <<<"$YWT_CONFIG")"
-        __debug "Process $(jq -C .process <<<"$YWT_CONFIG")"
-        __debug "Dotenv $(jq -C .env <<<"$YWT_CONFIG")"
-        __debug "Flags $(jq -C .flags <<<"$YWT_CONFIG")"
-        __debug "Params $(jq -C .params <<<"$YWT_CONFIG")"
+        # __debug "Package Info $(jq -C .yellowteam <<<"$YWT_CONFIG")"
+        # __debug "Paths $(jq -C .path <<<"$YWT_CONFIG")"
+        # __debug "Process $(jq -C .process <<<"$YWT_CONFIG")"
+        # __debug "Dotenv $(jq -C .env <<<"$YWT_CONFIG")"
+        # __debug "Flags $(jq -C .flags <<<"$YWT_CONFIG")"
+        # __debug "Params $(jq -C .params <<<"$YWT_CONFIG")"
         ywt:info welcome
         for LOG in "${YWT_LOGS[@]}"; do logger info "$LOG"; done
         # ___create_unit_tests && logger info "Unit tests created" && exit 244
@@ -518,9 +518,8 @@ sdk() {
     usage() {
         local ERROR_CODE=${1:-0} && shift
         local CONTEXT=${1:-} && [ -z "$CONTEXT" ] && CONTEXT=""
-        local CONTEXT_PATH=$(jq -r ".lib" <<<"$YWT_PATHS")
-        local CONTEX_FILE=$(find "$CONTEXT_PATH" -type f -name "${CONTEXT}.ywt.sh" | head -n 1) && [ ! -f "$CONTEX_FILE" ] && CONTEX_FILE="${YWT_SDK_FILE}"
-
+        # local CONTEXT_PATH=$(jq -r ".lib" <<<"$YWT_PATHS")
+        # local CONTEX_FILE=$(find "$CONTEXT_PATH" -type f -name "${CONTEXT}.ywt.sh" | head -n 1) && [ ! -f "$CONTEX_FILE" ] && CONTEX_FILE="${YWT_SDK_FILE}"
         # local LIBS=$(__libraries "$CONTEXT_PATH")
         # __libraries "$CONTEXT_PATH"
         # if [ -d "$CONTEXT_PATH" ]; then
@@ -548,6 +547,49 @@ sdk() {
         done
         return 1
     }
+    install() {
+        YWT_LOG_CONTEXT="install"
+        echo "Installing required packages" | logger info
+        {
+            apk add --update &&
+            apk add --no-cache bash jq git parallel &&
+            apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils &&
+            rm -rf /var/cache/apk/* /root/.npm /tmp/*
+        } >/dev/null 2>&1
+        echo "Packages installed" | logger success
+        echo "Getting version info" | logger info
+        {
+            bash --version &&
+            jq --version &&
+            git --version &&
+            parallel --version &&
+            curl --version &&
+            make --version &&
+            gcc --version &&
+            g++ --version &&
+            grep --version &&
+            find --version &&
+            util-linux --version &&
+            binutils --version &&
+            npm --version &&
+            node --version &&
+            python2 --version &&
+            openssl version
+        } >/dev/null 2>&1
+        if [[ ! -f "./package.json" ]]; then
+            echo "Getting package information" | logger info
+            curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/package.json
+        fi
+        ywt:info welcome
+        echo "Verifing path" | logger info
+        [ ! -d "/usr/local/bin/yellowteam" ] && mkdir -p /usr/local/bin/yellowteam
+        echo "Installing ywt" | logger info
+        # curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/ywt.sh
+        # chmod +x ywt.sh
+        # mv ywt.sh /usr/local/bin/yellowteam/ywt
+        echo "ywt installed" | logger success 
+        return 0       
+    }
     [ -z "$YWT_PATHS" ] && __paths >/dev/null
     [ -z "$YWT_FLAGS" ] && __argv "$@" >/dev/null
     [ -z "$YWT_PARAMS" ] && __params "$@" >/dev/null
@@ -564,7 +606,7 @@ ydk() {
     sdk "$FUNC" "${ARGS[@]}"
     return 0
 }
-ywt(){
+ywt() {
     ydk "$@"
 }
 

@@ -1,6 +1,18 @@
 # ywt.sh | yw-sh
+> **2024.04.06**
+```shell
+docker run --rm -it \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v $(pwd):/ywt-workdir \
+    -w /ywt-workdir \
+    alpine:3.14
+
+```
 > **2024.04.05**
 ```shell
+curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/src/ydk.sh \
+    && chmod +x ./ydk.sh \
+    && ./ydk.sh inspect
 
 clear; chmod +x ./src/sdk.sh; ./src/sdk.sh scan apply ./assests-to-scan.json
 clear; ./ywt.sh scan apply ./assests-to-scan.json

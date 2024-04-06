@@ -3,6 +3,20 @@
 ywt:info() {
     package() {
         [[ -n "$YWT_PACKAGE" ]] && echo "$YWT_PACKAGE" && return 0
+        if [[ ! -f "./package.json" ]]; then
+            {
+                echo -n "{"
+                echo -n '"name": "yyellowteam",'
+                echo -n '"version": "0.0.0-0",'
+                echo -n '"description": "Yellow Team CLI",'
+                echo -n '"homepage": "https://yellow.team"'
+                echo -n "}"
+            } | jq -c && return 1
+            # echo -n "{}" && return 1
+            # curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/package.json
+            # [[ ! -f "./package.json" ]] && echo -n "{}" && return 1
+            # jq -c <"./package.json" 2>/dev/null || echo -n "{}"
+        fi
         local YWT_PACKAGE && YWT_PACKAGE=$(jq -c <"./package.json" 2>/dev/null) && export YWT_PACKAGE && readonly YWT_PACKAGE
         echo "$YWT_PACKAGE"
     }
