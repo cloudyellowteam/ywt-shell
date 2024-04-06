@@ -1,6 +1,9 @@
 # ywt.sh | yw-sh
 > **2024.04.05**
 ```shell
+
+clear; chmod +x ./src/sdk.sh; ./src/sdk.sh scan apply ./assests-to-scan.json
+clear; ./ywt.sh scan apply ./assests-to-scan.json
 clear; ./ywt.sh async \
     "scanner cloc asset '{\"type\":\"filesystem\",\"target\":\"/\"}' " \
     "scanner trivy asset '{\"type\":\"filesystem\",\"target\":\"/\"}' " \
