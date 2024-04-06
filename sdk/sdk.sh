@@ -46,20 +46,22 @@ sdk() {
         done < <(find "$(jq -r '.lib' <<<"$YWT_PATHS")" -type f -name "*.bats" | sort)
     }
     __teardown() {
-        __debug "__teardown"
+        echo "fail"
+        # __debug "__teardown"
         [ -p "$YWT_DEBUG_FIFO" ] && rm -f "$YWT_DEBUG_FIFO" 2>/dev/null
         [ -p "$YWT_LOGGER_FIFO" ] && rm -f "$YWT_LOGGER_FIFO" 2>/dev/null
         [ -p "$YWT_TRACE_FIFO" ] && rm -f "$YWT_TRACE_FIFO" 2>/dev/null
         [ -p "$YWT_OUTPUT_FIFO" ] && rm -f "$YWT_OUTPUT_FIFO" 2>/dev/null
         # [ -p "$YWT_FIFO" ] && rm -f "$YWT_FIFO" 2>/dev/null
+        exit 0
     }
     __fail() {
-        __log "__fail"
-        local RESULT=${1:$?} && shift
-        [[ "$RESULT" -eq 0 ]] && return 0
-        local MESSAGE=${1:-"An error occurred"} && shift
-        local ERROR && ERROR=$(jq -n --arg result "$RESULT" --arg message "$MESSAGE" --arg caller "${FUNCNAME[*]}" --arg args "$* ($!)" '{result: $result, message: $message, caller: $caller, args: $args}')
-        __log error "$ERROR"
+        # __log "__fail"
+        # local RESULT=${1:$?} && shift
+        # [[ "$RESULT" -eq 0 ]] && return 0
+        # local MESSAGE=${1:-"An error occurred"} && shift
+        # local ERROR && ERROR=$(jq -n --arg result "$RESULT" --arg message "$MESSAGE" --arg caller "${FUNCNAME[*]}" --arg args "$* ($!)" '{result: $result, message: $message, caller: $caller, args: $args}')
+        # __log error "$ERROR"
         __teardown
         kill -s EXIT $$ 2>/dev/null
         # echo "$MESSAGE" 1>&2

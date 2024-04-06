@@ -6,10 +6,13 @@ __scanner:trufflehog() {
         "--json"
     )
     trufflehog:install() {
-        curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+        {
+            curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+        } >/dev/null 2>&1
+
     }
     trufflehog:uninstall() {
-        rm -f /usr/local/bin/trufflehog
+        rm -f /usr/local/bin/trufflehog >/dev/null 2>&1
     }
     trufflehog:cli() {
         __scanner:cli "trufflehog" "${DEFAULT_ARGS[@]}" "$@"
@@ -93,44 +96,44 @@ __scanner:trufflehog() {
             ]
         }' >"$sarif_output"
     }
-    trufflehog:asset(){
+    trufflehog:asset() {
         local ASSET="${1//\\\"/\"}" && shift
         if ! __is json "$ASSET"; then
             echo "{\"error\":\"Invalid asset\"}"
             return 1
         fi
         case "$(jq -r '.type' <<<"$ASSET")" in
-            docker:image)
-                local DOCKER_IMAGE="$(jq -r '.target' <<<"$ASSET")"
-                if [ -z "$DOCKER_IMAGE" ]; then
-                    echo "{\"error\":\"Invalid image\"}"
-                    return 1
-                fi
-                trufflehog:cli docker --image="$DOCKER_IMAGE"
-                return 0
-                ;;
-            repository)
-                local REPOSITORY_URL="$(jq -r '.target' <<<"$ASSET")"
-                if [ -z "$REPOSITORY_URL" ]; then
-                    echo "{\"error\":\"Invalid repository URL\"}"
-                    return 1
-                fi
-                trufflehog:cli git "$REPOSITORY_URL"
-                return 0
-                ;;
-            filesystem)
-                local ASSET_PATH="$(jq -r '.target' <<<"$ASSET")"
-                if [ ! -d "$ASSET_PATH" ]; then
-                    echo "{\"error\":\"Invalid asset path\"}"
-                    return 1
-                fi
-                trufflehog:cli filesystem "/ywt-workdir$ASSET_PATH"
-                return 0
-                ;;
-            *)
-                echo "{\"error\":\"Invalid asset type\"}"
+        docker:image)
+            local DOCKER_IMAGE="$(jq -r '.target' <<<"$ASSET")"
+            if [ -z "$DOCKER_IMAGE" ]; then
+                echo "{\"error\":\"Invalid image\"}"
                 return 1
-                ;;
+            fi
+            trufflehog:cli docker --image="$DOCKER_IMAGE"
+            return 0
+            ;;
+        repository)
+            local REPOSITORY_URL="$(jq -r '.target' <<<"$ASSET")"
+            if [ -z "$REPOSITORY_URL" ]; then
+                echo "{\"error\":\"Invalid repository URL\"}"
+                return 1
+            fi
+            trufflehog:cli git "$REPOSITORY_URL"
+            return 0
+            ;;
+        filesystem)
+            local ASSET_PATH="$(jq -r '.target' <<<"$ASSET")"
+            if [ ! -d "$ASSET_PATH" ]; then
+                echo "{\"error\":\"Invalid asset path\"}"
+                return 1
+            fi
+            trufflehog:cli filesystem "/ywt-workdir$ASSET_PATH"
+            return 0
+            ;;
+        *)
+            echo "{\"error\":\"Invalid asset type\"}"
+            return 1
+            ;;
         esac
     }
     local ACTION="$1" && shift

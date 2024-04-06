@@ -1,18 +1,30 @@
 # ywt.sh | yw-sh
 > **2024.04.06**
 ```shell
-docker run --rm -it \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v $(pwd):/ywt-workdir \
-    -w /ywt-workdir \
-    alpine:3.14
+
+clear; ./ydk.sh scan plan ./assets.json
+clear; ./ydk.sh scan summary ./assets.json
+clear; ./ydk.sh scan apply ./assets.json
+# -v /var/run/docker.sock:/var/run/docker.sock \
+# -v $(pwd):/ywt-workdir \
+docker run --rm -it -w /ywt-workdir alpine:3.14
+
+apk add --update > /dev/null && \
+apk add --no-cache bash curl jq > /dev/null && \
+curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/src/ydk.sh &&
+chmod +x ./ydk.sh &&
+./ydk.sh install &&
+./ydk.sh inspect
+
 
 ```
 > **2024.04.05**
 ```shell
-curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/src/ydk.sh \
-    && chmod +x ./ydk.sh \
-    && ./ydk.sh inspect
+    apk add --update > /dev/null && \
+    apk add --no-cache bash curl jq > /dev/null && \
+    curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/src/ydk.sh &&
+    chmod +x ./ydk.sh &&
+    ./ydk.sh inspect
 
 clear; chmod +x ./src/sdk.sh; ./src/sdk.sh scan apply ./assests-to-scan.json
 clear; ./ywt.sh scan apply ./assests-to-scan.json

@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ywt:info() {
+    repo(){
+        local YWT_REPO_OWNER="ywteam"
+        local YWT_REPO_NAME="devsecops.rest"
+        local YWT_REPO_BRANCH="main"
+        { 
+            echo -n "{"
+            echo -n "\"owner\": \"$YWT_REPO_OWNER\","
+            echo -n "\"name\": \"$YWT_REPO_NAME\","
+            echo -n "\"api\": \"https://api.github.com/repos/$YWT_REPO_OWNER/$YWT_REPO_NAME\","
+            echo -n "\"raw\": \"https://raw.githubusercontent.com/$YWT_REPO_OWNER/$YWT_REPO_NAME/${YWT_REPO_BRANCH}\""
+            echo -n "}"
+        } | jq -c && return 0
+    }
     package() {
         [[ -n "$YWT_PACKAGE" ]] && echo "$YWT_PACKAGE" && return 0
-        if [[ ! -f "./package.json" ]]; then
+        local YWT_PACKAGE_FILE="./assets/package.json"
+        if [[ ! -f "$YWT_PACKAGE_FILE" ]]; then
             {
                 echo -n "{"
                 echo -n '"name": "yyellowteam",'
-                echo -n '"version": "0.0.0-0",'
+                echo -n '"version": "0.0.0-local.0",'
                 echo -n '"description": "Yellow Team CLI",'
                 echo -n '"homepage": "https://yellow.team"'
+                echo -n "\"repository\": $(repo)"                
                 echo -n "}"
-            } | jq -c && return 1
+            } | jq -c && return 0
             # echo -n "{}" && return 1
-            # curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/package.json
+            # curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/assets/package.json
             # [[ ! -f "./package.json" ]] && echo -n "{}" && return 1
             # jq -c <"./package.json" 2>/dev/null || echo -n "{}"
         fi
-        local YWT_PACKAGE && YWT_PACKAGE=$(jq -c <"./package.json" 2>/dev/null) && export YWT_PACKAGE && readonly YWT_PACKAGE
-        echo "$YWT_PACKAGE"
+        local YWT_PACKAGE && YWT_PACKAGE=$(jq -c <"$YWT_PACKAGE_FILE" 2>/dev/null) && export YWT_PACKAGE && readonly YWT_PACKAGE
+        echo "$YWT_PACKAGE" | jq -c \
+            --argjson repo "$(repo)" \
+            '. + $repo' && return 0
     }
     welcome() {
         local YWT_PACKAGE=$(package)
