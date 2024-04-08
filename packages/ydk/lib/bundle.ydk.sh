@@ -117,8 +117,8 @@ ydk:bundle() {
         } >>"$BUNDLE_TMP"
         jq . <<<"$VALIDATION"
         cat "$BUNDLE_TMP" > "$BUNDLE_FILE"
-        # chmod +x "$BUNDLE_TMP"
-        # "$BUNDLE_TMP" -v        
+        # chmod +x "$BUNDLE_FILE"
+        # "$BUNDLE_FILE" -v        
         rm -f "$BUNDLE_TMP"
         return 0
     }
