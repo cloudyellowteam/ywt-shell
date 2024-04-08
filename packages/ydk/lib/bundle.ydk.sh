@@ -97,10 +97,10 @@ ydk:bundle() {
             copyright
             local COPYRIGHT=$(ydk:version | jq -cr .)
             COPYRIGHT=${COPYRIGHT//\"/\\\"}
-            echo "# Bundle: $BUNDLE_FILE"
-            echo "# Source: $(jq -r '.source' <<<"$VALIDATION")"
-            echo "# Basepath: $(jq -r '.basepath' <<<"$VALIDATION")"
-            echo "# Realpath: $(jq -r '.realpath' <<<"$VALIDATION")"
+            # echo "# Bundle: $BUNDLE_FILE"
+            # echo "# Source: $(jq -r '.source' <<<"$VALIDATION")"
+            # echo "# Basepath: $(jq -r '.basepath' <<<"$VALIDATION")"
+            # echo "# Realpath: $(jq -r '.realpath' <<<"$VALIDATION")"
             echo "# Relativepath: $(jq -r '.relativepath' <<<"$VALIDATION")"
             echo "# Created: $(date)"
             echo "# Version: $(date +%Y%m%d%H%M%S)"

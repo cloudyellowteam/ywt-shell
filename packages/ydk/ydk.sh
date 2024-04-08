@@ -9,17 +9,13 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:25:19+00:00
-# Commit: {"id":"395373e","hash":"395373efc4245ef4e187260846b1f7c35e3e0511","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
-# Bundle: /workspace/rapd-shell/packages/ydk/ydk.sh
-# Source: ./packages/ydk/ydk.cli.sh
-# Basepath: ./packages/ydk
-# Realpath: /workspace/rapd-shell/packages/ydk
+# Release Date: 2024-04-08T22:26:59+00:00
+# Commit: {"id":"ec53b1d","hash":"ec53b1d0289d5fd74e6cf8c8e99aad5ef6488733","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
 # Relativepath: ..
-# Created: Mon Apr  8 22:25:19 UTC 2024
-# Version: 20240408222519
+# Created: Mon Apr  8 22:27:00 UTC 2024
+# Version: 20240408222700
 # Builder: root
-export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:25:19+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:25:19+00:00\"},\"commit\":{\"id\":\"395373e\",\"hash\":\"395373efc4245ef4e187260846b1f7c35e3e0511\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update author email in ydk.cli.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
+export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:26:59+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:26:59+00:00\"},\"commit\":{\"id\":\"ec53b1d\",\"hash\":\"ec53b1d0289d5fd74e6cf8c8e99aad5ef6488733\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update author email in ydk.cli.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
 # File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
 ydk:is() {
     case "$1" in
@@ -323,10 +319,6 @@ ydk:bundle() {
             copyright
             local COPYRIGHT=$(ydk:version | jq -cr .)
             COPYRIGHT=${COPYRIGHT//\"/\\\"}
-            echo "# Bundle: $BUNDLE_FILE"
-            echo "# Source: $(jq -r '.source' <<<"$VALIDATION")"
-            echo "# Basepath: $(jq -r '.basepath' <<<"$VALIDATION")"
-            echo "# Realpath: $(jq -r '.realpath' <<<"$VALIDATION")"
             echo "# Relativepath: $(jq -r '.relativepath' <<<"$VALIDATION")"
             echo "# Created: $(date)"
             echo "# Version: $(date +%Y%m%d%H%M%S)"
@@ -924,5 +916,5 @@ ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STAT
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:25:19+00:00
-# Commit: {"id":"395373e","hash":"395373efc4245ef4e187260846b1f7c35e3e0511","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
+# Release Date: 2024-04-08T22:27:00+00:00
+# Commit: {"id":"ec53b1d","hash":"ec53b1d0289d5fd74e6cf8c8e99aad5ef6488733","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
