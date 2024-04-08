@@ -5,21 +5,21 @@
 # Homepage: https://yellowteam.cloud
 # License: MIT
 # Repository: https://github.com/ywteam/ydk-shell.git
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:24:04+00:00
-# Commit: {"id":"b76e705","hash":"b76e705578455a9a79aa85b62897ded142f5f2f8","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
-# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
+# Release Date: 2024-04-08T22:25:19+00:00
+# Commit: {"id":"395373e","hash":"395373efc4245ef4e187260846b1f7c35e3e0511","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
 # Bundle: /workspace/rapd-shell/packages/ydk/ydk.sh
 # Source: ./packages/ydk/ydk.cli.sh
 # Basepath: ./packages/ydk
 # Realpath: /workspace/rapd-shell/packages/ydk
 # Relativepath: ..
-# Created: Mon Apr  8 22:24:04 UTC 2024
-# Version: 20240408222404
+# Created: Mon Apr  8 22:25:19 UTC 2024
+# Version: 20240408222519
 # Builder: root
-export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:24:04+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:24:04+00:00\"},\"commit\":{\"id\":\"b76e705\",\"hash\":\"b76e705578455a9a79aa85b62897ded142f5f2f8\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update author email in ydk.cli.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
+export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:25:19+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:25:19+00:00\"},\"commit\":{\"id\":\"395373e\",\"hash\":\"395373efc4245ef4e187260846b1f7c35e3e0511\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update author email in ydk.cli.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
 # File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
 ydk:is() {
     case "$1" in
@@ -297,12 +297,12 @@ ydk:bundle() {
                 "Homepage: \(.homepage)",
                 "License: \(.license)",
                 "Repository: \(.repository.url)",
+                "Author: \(.author.name) <\(.author.email)> \(.author.url)",
                 "Build: \(.build.name)",
                 "Build Date: \(.build.data)",
                 "Release: \(.release.name)",
                 "Release Date: \(.release.date)",
-                "Commit: \(.commit)",
-                "Author: \(.author.name) <\(.author.email)> \(.author.url)"
+                "Commit: \(.commit)"                
             ' | while read -r LINE; do
             echo "# $LINE"
         done
@@ -920,9 +920,9 @@ ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STAT
 # Homepage: https://yellowteam.cloud
 # License: MIT
 # Repository: https://github.com/ywteam/ydk-shell.git
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:24:04+00:00
-# Commit: {"id":"b76e705","hash":"b76e705578455a9a79aa85b62897ded142f5f2f8","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
-# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
+# Release Date: 2024-04-08T22:25:19+00:00
+# Commit: {"id":"395373e","hash":"395373efc4245ef4e187260846b1f7c35e3e0511","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}

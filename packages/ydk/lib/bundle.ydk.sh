@@ -71,12 +71,12 @@ ydk:bundle() {
                 "Homepage: \(.homepage)",
                 "License: \(.license)",
                 "Repository: \(.repository.url)",
+                "Author: \(.author.name) <\(.author.email)> \(.author.url)",
                 "Build: \(.build.name)",
                 "Build Date: \(.build.data)",
                 "Release: \(.release.name)",
                 "Release Date: \(.release.date)",
-                "Commit: \(.commit)",
-                "Author: \(.author.name) <\(.author.email)> \(.author.url)"
+                "Commit: \(.commit)"                
             ' | while read -r LINE; do
             echo "# $LINE"
         done
