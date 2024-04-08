@@ -240,6 +240,7 @@ ydk() {
         )
         local RAW_URL="https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main"
         local YDK_RUNTIME=$(ydk:cli | jq -c '.')
+        echo "$YDK_RUNTIME"
         local YDK_RUNTIME_DIR=$(jq -r '.path' <<<"${YDK_RUNTIME}")
         ydk:log "INFO" "Setting up ydk ${YDK_RUNTIME_DIR}"
         ydk:log "INFO" "Downloading libraries"
