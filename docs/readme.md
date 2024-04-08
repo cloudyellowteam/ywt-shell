@@ -9,8 +9,9 @@ clear; ./ydk.sh scan apply ./assets.json
 docker run --rm -it -w /ywt-workdir alpine:3.14
 ```
 
+clear && \
 apk add --update > /dev/null && \
-apk add --no-cache bash curl jq > /dev/null && \
+apk add --no-cache bash curl jq util-linux coreutils > /dev/null && \
 curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh &&
 chmod +x ./ydk.cli.sh &&
 ./ydk.cli.sh install &&

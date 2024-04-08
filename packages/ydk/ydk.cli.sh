@@ -255,7 +255,7 @@ ydk() {
             local LIB_PATH="${YDK_RUNTIME_DIR}/lib/${LIB_FILE}"
             if [ ! -f "${LIB_PATH}" ]; then
                 ydk:log "INFO" "Downloading library: ${LIB_FILE}"
-                if ! curl -sfL "${LIB_URL}" -o "${LIB_PATH}" >/dev/null 2>&1; then
+                if ! curl -sfL "${LIB_URL}" -o "${LIB_PATH}" 2>&1; then
                     ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
                 fi
                 [[ ! -f "${LIB_PATH}" ]] && ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
