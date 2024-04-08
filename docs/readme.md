@@ -1,4 +1,12 @@
 # ywt.sh | yw-sh
+> **2024.04.08**
+```shell
+clear; docker run --rm -it -w /ywt-workdir kalilinux/kali-rolling bash -c "apt-get update > /dev/null && apt-get install -y bash curl jq util-linux coreutils openssl bsdmainutils > /dev/null && curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh && chmod +x ./ydk.cli.sh && ./ydk.cli.sh install"
+
+clear; docker run --rm -it -w /ywt-workdir ubuntu:20.04 bash -c "apt-get update > /dev/null && apt-get install -y bash curl jq util-linux coreutils openssl bsdmainutils > /dev/null && curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh && chmod +x ./ydk.cli.sh && ./ydk.cli.sh install"
+
+clear; docker run --rm -it -w /ywt-workdir alpine:3.14 sh -c "apk add --update > /dev/null && apk add --no-cache bash curl jq util-linux coreutils openssl > /dev/null && curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh && chmod +x ./ydk.cli.sh && ./ydk.cli.sh install"
+```
 > **2024.04.06**
 ```shell
 clear; ./ydk.sh scan plan ./assets.json
@@ -7,11 +15,12 @@ clear; ./ydk.sh scan apply ./assets.json
 # -v /var/run/docker.sock:/var/run/docker.sock \
 # -v $(pwd):/ywt-workdir \
 docker run --rm -it -w /ywt-workdir alpine:3.14
-```
+
+clear; docker run --rm -it -w /ywt-workdir alpine:3.14 sh -c "apk add --update > /dev/null && apk add --no-cache bash curl jq util-linux coreutils openssl > /dev/null && curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh && chmod +x ./ydk.cli.sh && ./ydk.cli.sh install"
 
 clear && \
 apk add --update > /dev/null && \
-apk add --no-cache bash curl jq util-linux coreutils > /dev/null && \
+apk add --no-cache bash curl jq util-linux coreutils openssl > /dev/null && \
 curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh &&
 chmod +x ./ydk.cli.sh &&
 ./ydk.cli.sh install &&

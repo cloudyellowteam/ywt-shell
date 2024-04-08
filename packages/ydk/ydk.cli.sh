@@ -93,6 +93,22 @@ ydk() {
         echo -n "   \"name\": \"Raphael Rego\","
         echo -n "   \"email\": \"raphael@yellowteam.cloud\","
         echo -n "   \"url\": \"https://raphaelcarlosr.dev\""
+        echo -n "},"
+        echo -n "\"build\": {"
+        echo -n "   \"name\": \"ydk-shell\","
+        echo -n "   \"date\": \"$(date -Iseconds)\""
+        echo -n "},"
+        echo -n "\"release\": {"
+        echo -n "   \"name\": \"ydk-shell\","
+        echo -n "   \"date\": \"$(date -Iseconds)\""
+        echo -n "},"
+        echo -n "\"commit\": {"
+        echo -n "   \"id\": \"$(git rev-parse --short HEAD 2>/dev/null || echo "Unknown")\","
+        echo -n "   \"hash\": \"$(git rev-parse HEAD 2>/dev/null || echo "Unknown")\","
+        echo -n "   \"branch\": \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "Unknown")\","
+        echo -n "   \"tag\": \"$(git describe --tags 2>/dev/null || echo "Unknown")\","
+        echo -n "   \"author\": \"$(git log -1 --pretty=format:'%an <%ae>' 2>/dev/null || echo "Unknown")\","
+        echo -n "   \"message\": \"$(git log -1 --pretty=format:'%s' 2>/dev/null || echo "Unknown")\""
         echo -n "}"
         echo -n "}"
         echo
@@ -319,12 +335,4 @@ ydk() {
     [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
     return "${YDK_STATUS:-0}"
 }
-(
-    [[ -z "$YDK_ERRORS_MESSAGES" ]] && declare -a YDK_ERRORS_MESSAGES=(
-        [255]="An error occurred"
-        [254]="Failed to install ydk"
-        [253]="Failed to install libraries"
-        [252]="Failed to download"
-    ) && export YDK_ERRORS_MESSAGES
-)
 ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
