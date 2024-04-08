@@ -8,18 +8,18 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:23:43+00:00
-# Commit: {"id":"ef06b24","hash":"ef06b24da5e21d90f9448b9a4b514a894bc5ce55","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts"}
+# Release Date: 2024-04-08T22:24:04+00:00
+# Commit: {"id":"b76e705","hash":"b76e705578455a9a79aa85b62897ded142f5f2f8","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
 # Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
 # Bundle: /workspace/rapd-shell/packages/ydk/ydk.sh
 # Source: ./packages/ydk/ydk.cli.sh
 # Basepath: ./packages/ydk
 # Realpath: /workspace/rapd-shell/packages/ydk
 # Relativepath: ..
-# Created: Mon Apr  8 22:23:43 UTC 2024
-# Version: 20240408222343
+# Created: Mon Apr  8 22:24:04 UTC 2024
+# Version: 20240408222404
 # Builder: root
-export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:23:43+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:23:43+00:00\"},\"commit\":{\"id\":\"ef06b24\",\"hash\":\"ef06b24da5e21d90f9448b9a4b514a894bc5ce55\",\"branch\":\"main\",\"tag\":\"Unknown\",\"author\":\"Raphael C. Rego <raphaelcarlosr@gmail.com>\",\"message\":\"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
+export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:24:04+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:24:04+00:00\"},\"commit\":{\"id\":\"b76e705\",\"hash\":\"b76e705578455a9a79aa85b62897ded142f5f2f8\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update author email in ydk.cli.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
 # File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
 ydk:is() {
     case "$1" in
@@ -694,7 +694,6 @@ ydk() {
         echo -n "   \"hash\": \"$(git rev-parse HEAD 2>/dev/null || echo "Unknown")\","
         echo -n "   \"branch\": \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "Unknown")\","
         echo -n "   \"tag\": \"$(git describe --tags 2>/dev/null || echo "Unknown")\","
-        echo -n "   \"author\": \"$(git log -1 --pretty=format:'%an <%ae>' 2>/dev/null || echo "Unknown")\","
         echo -n "   \"message\": \"$(git log -1 --pretty=format:'%s' 2>/dev/null || echo "Unknown")\""
         echo -n "}"
         echo -n "}"
@@ -924,6 +923,6 @@ ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STAT
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:23:44+00:00
-# Commit: {"id":"ef06b24","hash":"ef06b24da5e21d90f9448b9a4b514a894bc5ce55","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts"}
+# Release Date: 2024-04-08T22:24:04+00:00
+# Commit: {"id":"b76e705","hash":"b76e705578455a9a79aa85b62897ded142f5f2f8","branch":"main","tag":"Unknown","message":"Update author email in ydk.cli.sh and ydk.sh scripts"}
 # Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
