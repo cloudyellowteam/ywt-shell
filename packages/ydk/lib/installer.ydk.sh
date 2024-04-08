@@ -56,7 +56,7 @@ ydk:installer() {
         local YDK_TMP=$(ydk:temp "install")
         trap 'rm -f "${YDK_TMP}" >/dev/null 2>&1' EXIT
         # mkdir -p "$(dirname "${YDK_INSTALL_PATH}")"
-        echo "Installing required packages into ${YDK_PATH}"
+        ydk:log "INFO" "Installing required packages into ${YDK_PATH}"
         # TODO: Add support for other package managers and uncomment the following lines
         # {
         #     apk add --update
@@ -64,9 +64,9 @@ ydk:installer() {
         #     apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
         #     rm -rf /var/cache/apk/* /root/.npm /tmp/*
         # } > "$YDK_TMP" # >/dev/null 2>&1
-        echo "Packages installed, verifying dependencies"
+        ydk:log "INFO" "Packages installed, verifying dependencies"
         ydk:require "${YDK_DEPENDENCIES[@]}"
-        echo "Done, Getting version info"
+        ydk:log "INFO" "Done, Getting version info"
         {
             for DEPENDENCY in "${YDK_DEPENDENCIES[@]}"; do
                 echo -n "{"
@@ -76,6 +76,9 @@ ydk:installer() {
                     case "$DEPENDENCY" in
                     awk)
                         local VERSION="$("$DEPENDENCY" -W version 2>&1)"
+                        ;;
+                    curl)
+                        local VERSION="$("$DEPENDENCY" -V 2>&1 | head -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
                         ;;
                     *)
                         if "$DEPENDENCY" --version >/dev/null 2>&1; then
@@ -124,11 +127,11 @@ ydk:installer() {
                 # fi
             fi
             if [ "$DEPENDENCY_PATH" == "null" ]; then
-                echo "Dependency not found: $DEPENDENCY_NAME"
+                ydk:log "INFO" "Dependency not found: $DEPENDENCY_NAME"
                 ydk:throw 253 "ERR" "Dependency not found: $DEPENDENCY_NAME"
             fi
             if [ "$DEPENDENCY_VERSION" == "null" ]; then
-                echo "Dependency version not found: $DEPENDENCY_NAME"
+                ydk:log "INFO" "Dependency version not found: $DEPENDENCY_NAME"
                 ydk:throw 252 "ERR" "Dependency version not found: $DEPENDENCY_NAME"
             fi
         done < <(jq -c '
@@ -148,14 +151,17 @@ ydk:installer() {
             ) |
             .[]
         ' "$YDK_TMP")
-        jq -cr '
+        {
+            echo -e "Name\tVersion\tPath"
+            jq -cr '
             .dependencies[] |
             [
                 .name,
                 .version,
                 .path
             ] | @tsv
-        ' "$YDK_TMP" | column -t -s $'\t'
+        ' "$YDK_TMP"
+        } | column -t -s $'\t'
 
         jq '
             . |

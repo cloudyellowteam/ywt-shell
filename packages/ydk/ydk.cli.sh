@@ -7,11 +7,16 @@ ydk() {
     local YDK_POSITIONAL=()
     local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
     local YDK_MISSING_DEPENDENCIES=()
+    ydk:log() {
+        local YDK_LOG_LEVEL="${1:-"INFO"}"
+        local YDK_LOG_MESSAGE="${2:-""}"
+        local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+        echo "[YDK][$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^}: $YDK_LOG_MESSAGE" 1>&2
+
+    }
     ydk:require() {
         for DEPENDENCY in "${@}"; do
-            # add into YDK_DEPENDENCIES if not exists
-            ! echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" && YDK_DEPENDENCIES+=("${DEPENDENCY}")
-            # YDK_DEPENDENCIES+=("${DEPENDENCY}")
+            ! echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && YDK_DEPENDENCIES+=("${DEPENDENCY}")
             if ! command -v "$DEPENDENCY" >/dev/null 2>&1; then
                 YDK_MISSING_DEPENDENCIES+=("${DEPENDENCY}")
                 # return 1
@@ -96,26 +101,35 @@ ydk() {
         local YDK_EXIT_CODE="${1:-$?}"
         local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
         local YDK_BUGS_REPORT=$(ydk:version | jq -r '.bugs.url') && [ "$YDK_BUGS_REPORT" == "null" ] && YDK_BUGS_REPORT="https://bugs.yellowteam.cloud"
-        {
-            if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
-                echo "An error (${YDK_EXIT_CODE}) occurred, see you later"
-                echo "Please report this issue at: ${YDK_BUGS_REPORT}"
-            else
-                echo "${YDK_EXIT_MESSAGE}, see you later"
-            fi
-        } 1>&2
+        if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
+            ydk:log "ERROR" "An error (${YDK_EXIT_CODE}) occurred, see you later"
+            ydk:log "INFO" "Please report this issue at: ${YDK_BUGS_REPORT}"
+        else
+            ydk:log "INFO" "Done, ${YDK_EXIT_MESSAGE}, see you later"
+            ydk:log "${YDK_EXIT_MESSAGE}, see you later"
+        fi
         exit "${YDK_EXIT_CODE}"
     }
     ydk:terminate() {
         local YDK_TERM="${1:-"ERR"}"
         local YDK_TERM_MESSAGE="${2:-"terminate with: ${YDK_TERM}"}"
-        echo "($YDK_TERM) ${YDK_TERM_MESSAGE}" 1>&2
+        ydk:log "ERROR" "($YDK_TERM) ${YDK_TERM_MESSAGE}"
         kill -s "${YDK_TERM}" $$ 2>/dev/null
+    }
+    ydk:raize() {
+        local ERROR_CODE="${1:-$?}" && ERROR_CODE=${ERROR_CODE//[^0-9]/} && ERROR_CODE=${ERROR_CODE:-255}
+        local ERROR_CUSTOM_MESSAGE="${2:-}"
+        local ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$ERROR_CODE]:-An error occurred}" && ERROR_MESSAGE="${ERROR_MESSAGE} ${ERROR_CUSTOM_MESSAGE}"
+        shift 2
+        jq -cn \
+            --arg code "${ERROR_CODE}" \
+            --arg message "${ERROR_MESSAGE}" \
+            '{ code: $code, message: $message }' | jq -c .
     }
     ydk:catch() {
         local YDK_CATH_STATUS="${1:-$?}"
         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
-        echo "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}" 1>&2
+        ydk:log "ERROR" "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
         return "${YDK_CATH_STATUS}"
     }
     ydk:throw() {
@@ -217,19 +231,60 @@ ydk() {
         # ydk:throw "$YDK_USAGE_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
         return "$YDK_USAGE_STATUS"
     }
+    ydk:setup() {
+        local REQUIRED_LIBS=(
+            "1.is"
+            "2.nnf"
+            "3.argv"
+            "installer"
+        )
+        local RAW_URL="https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/"
+        local YDK_RUNTIME=$(ydk:cli | jq -c '.')
+        local YDK_RUNTIME_DIR=$(jq -r '.path' <<<"${YDK_RUNTIME}")
+        ydk:log "INFO" "Setting up ydk"
+        ydk:log "INFO" "Downloading libraries"
+        ydk:log "INFO" "Downloading libraries from: ${RAW_URL}"
+        ydk:log "INFO" "Installing libraries into: ${YDK_RUNTIME_DIR}"
+        for LIB in "${REQUIRED_LIBS[@]}"; do
+            if type -t "ydk:$LIB" = function >/dev/null 2>&1; then
+                ydk:log "INFO" "Library $LIB is already installed"
+                continue
+            fi
+            local LIB_FILE="${LIB}.ydk.sh"
+            local LIB_URL="${RAW_URL}/packages/ydk/lib/${LIB_FILE}"
+            local LIB_PATH="${YDK_RUNTIME_DIR}/lib/${LIB_FILE}"
+            if [ ! -f "${LIB_PATH}" ]; then
+                ydk:log "INFO" "Downloading library: ${LIB_FILE}"
+                if ! curl -sfL "${LIB_URL}" -o "${LIB_PATH}" >/dev/null 2>&1; then
+                    ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
+                fi
+                [[ ! -f "${LIB_PATH}" ]] && ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
+            fi
+            ydk:log "INFO" "Installing library: ${LIB_FILE}"
+            # shellcheck source=/dev/null
+            source "${LIB_PATH}"
+        done
+        ydk:log "INFO" "All libraries are installed"
+        return 0
+    }
     ydk:entrypoint() {
         YDK_POSITIONAL=()
         while [[ $# -gt 0 ]]; do
             case "$1" in
             -i | --install | install)
                 shift
-                local TYPE="$(type -t "$2" >/dev/null 2>&1 && echo function)"
-                if [ -n "$TYPE" ] && [ "$TYPE" = function ]; then
-                    ydk:installer install "$@"
-                    exit 0
+                if ! type -t "ydk:installer" = function >/dev/null 2>&1; then
+                    ydk:log "INFO" "Downloading installer library"
+                    if ! ydk:setup "$@"; then
+                        ydk:throw 253 "ERR" "Failed to install libraries"
+                    fi
                 fi
-                echo "ydk:installer is not defined"                    
-                exit 1
+                ydk:log "INFO" "Installing ydk"
+                if ! ydk:installer install "$@"; then
+                    ydk:throw 254 "ERR" "Failed to install ydk"
+                fi
+                ydk:log "INFO" "Installation done"
+                exit 0
                 ;;
             -v | --version)
                 shift
@@ -262,156 +317,12 @@ ydk() {
     [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
     return "${YDK_STATUS:-0}"
 }
+(
+    [[ -z "$YDK_ERRORS_MESSAGES" ]] && declare -a YDK_ERRORS_MESSAGES=(
+        [255]="An error occurred"
+        [254]="Failed to install ydk"
+        [253]="Failed to install libraries"
+        [252]="Failed to download"
+    ) && export YDK_ERRORS_MESSAGES
+)
 ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
-
-# exit 1
-
-# ydk() {
-#     set -e -o pipefail
-#     ydk:is() {
-#         case "$1" in
-#         not-defined)
-#             [ -z "$2" ] && return 0
-#             [ "$2" == "null" ] && return 0
-#             ;;
-#         defined)
-#             [ -n "$2" ] && return 0
-#             [ "$2" != "null" ] && return 0
-#             ;;
-#         rw)
-#             [ -r "$2" ] && [ -w "$2" ] && return 0
-#             ;;
-#         owner)
-#             [ -O "$2" ] && return 0
-#             ;;
-#         writable)
-#             [ -w "$2" ] && return 0
-#             ;;
-#         readable)
-#             [ -r "$2" ] && return 0
-#             ;;
-#         executable)
-#             [ -x "$2" ] && return 0
-#             ;;
-#         nil)
-#             [ -z "$2" ] && return 0
-#             [ "$2" == "null" ] && return 0
-#             ;;
-#         number)
-#             [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]] && return 0
-#             ;;
-#         string)
-#             [ -n "$2" ] && [[ "$2" =~ ^[a-zA-Z0-9_]+$ ]] && return 0
-#             ;;
-#         boolean)
-#             [ -n "$2" ] && [[ "$2" =~ ^(true|false)$ ]] && return 0
-#             ;;
-#         date)
-#             [ -n "$2" ] && [[ "$2" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && return 0
-#             ;;
-#         url)
-#             [ -n "$2" ] && [[ "$2" =~ ^https?:// ]] && return 0
-#             ;;
-#         json)
-#             jq -e . <<<"$2" >/dev/null 2>&1 && return 0
-#             ;;
-#         fnc | function)
-#             local TYPE="$(type -t "$2")"
-#             [ -n "$TYPE" ] && [ "$TYPE" = function ] && return 0
-#             ;;
-#         cmd | command)
-#             command -v "$2" >/dev/null 2>&1 && return 0
-#             ;;
-#         f | file)
-#             [ -f "$2" ] && return 0
-#             ;;
-#         d | dir)
-#             [ -d "$2" ] && return 0
-#             ;;
-#         esac
-#         return 1
-#     }
-#     ydk:teardown() {
-#         local YDK_EXIT_CODE="${1:-$?}"
-#         local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
-#         echo "${YDK_EXIT_MESSAGE}, see you later" 1>&2
-#         exit "${YDK_EXIT_CODE}"
-#     }
-#     ydk:catch() {
-#         local YDK_CATH_STATUS="${1:-$?}"
-#         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
-#         echo "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}" 1>&2
-#         return "${YDK_CATH_STATUS}"
-#     }
-#     ydk:throw() {
-#         local YDK_THROW_STATUS="${1:-$?}"
-#         local YDK_TERM="${2:-"ERR"}"
-#         local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
-#         ydk:catch "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
-#         kill -s "${YDK_TERM}" $$ 2>/dev/null
-#     }
-#     ydk:dependencies() {
-#         [[ ! -d "${1}" ]] && echo -n "[]" | jq -c '.' && return 1
-#         {
-#             while read -r LIB_ENTRYPOINT; do
-#                 local LIB_ENTRYPOINT_NAME && LIB_ENTRYPOINT_NAME=$(basename -- "$LIB_ENTRYPOINT") && LIB_ENTRYPOINT_NAME=$(echo "$LIB_ENTRYPOINT_NAME" | tr '[:upper:]' '[:lower:]')
-#                 local LIB_NAME="${LIB_ENTRYPOINT_NAME//.ydk.sh/}"
-#                 local LIB_ENTRYPOINT_TYPE="$(type -t "ydk:$LIB_NAME")"
-#                 {
-#                     echo -n "{"
-#                     echo -n "\"file\": \"${LIB_ENTRYPOINT_NAME}\","
-#                     echo -n "\"name\": \"${LIB_NAME}\","
-#                     echo -n "\"entrypoint\": \"${LIB_ENTRYPOINT}\","
-#                     echo -n "\"path\": \"${1}\","
-#                     echo -n "\"type\": \"${LIB_ENTRYPOINT_TYPE}\","
-#                     if [ -n "$LIB_ENTRYPOINT_TYPE" ] && [ "$LIB_ENTRYPOINT_TYPE" = function ]; then
-#                         echo -n "\"imported\": false"
-#                     else
-#                         echo -n "\"imported\": true,"
-#                         # shellcheck source=/dev/null # echo "source $FILE" 1>&2 &&
-#                         source "${LIB_ENTRYPOINT}" && echo -n "\"activated\": true"
-#                         echo -n ",\"echo\": \"$(ydk:strings)\""
-#                         export -f "ydk:$LIB_NAME"
-#                     fi
-#                     echo -n "}"
-#                 } | jq -c '.'
-#             done < <(find "$1" -type f -name "*.ydk.sh" | sort)
-#         } | jq -sc '.'
-#         return 0
-#     }
-#     ydk:info() {
-#         YDK_PKG_ENTRYPOINT="${BASH_SOURCE[0]:-$0}" && readonly YDK_PKG_ENTRYPOINT
-#         YDK_PKG_ENTRYPOINT_NAME=$(basename "${YDK_PKG_ENTRYPOINT}") && readonly YDK_PKG_ENTRYPOINT_NAME
-#         YDK_PKG_NAME="${YDK_PKG_ENTRYPOINT_NAME//.cli.sh/}" && readonly YDK_PKG_NAME
-#         YDK_PKG_DIR=$(cd "$(dirname "${YDK_PKG_ENTRYPOINT}")" && pwd) && readonly YDK_PKG_DIR
-#         YDK_PKG_VERSION="0.0.0-dev-0"
-#         [ -f "${YDK_PKG_DIR}/package.json" ] && {
-#             YDK_PKG_VERSION=$(jq -r '.version' "${YDK_PKG_DIR}/package.json")
-#         } || [ -f "${YDK_PKG_DIR}/VERSION" ] && {
-#             YDK_PKG_VERSION=$(cat "./VERSION")
-#         }
-#         {
-#             echo -n "{"
-#             echo -n "\"file\": \"${YDK_PKG_ENTRYPOINT_NAME}\","
-#             echo -n "\"name\": \"${YDK_PKG_NAME}\","
-#             echo -n "\"entrypoint\": \"${YDK_PKG_ENTRYPOINT}\","
-#             echo -n "\"path\": \"${YDK_PKG_DIR}\","
-#             echo -n "\"version\": \"${YDK_PKG_VERSION:-"0.0.0-local-0"}\","
-#             echo -n "\"dependencies\": "
-#             ydk:dependencies "${YDK_PKG_DIR}/lib"
-#             echo -n "}"
-#         } | jq -c '.'
-#         return 0
-#     }
-#     trap 'ydk:catch $? "An error occurred"' ERR INT TERM
-#     trap 'ydk:teardown $? "Exit with: $?"' EXIT
-#     local YDK_PACKAGE="$(jq -c . <<<"$(ydk:info "$@")")"
-#     local YDK_PKG_DIR="${YDK_PKG_DIR:-$(jq -r '.path' <<<"${YDK_PACKAGE}")}"
-#     # shellcheck source=/dev/null # echo "source $FILE" 1>&2 &&
-#     source "${YDK_PKG_DIR}/lib/strings.ydk.sh" # && export -f ydk:strings
-#     if ! ydk:strings 2>/dev/null; then ydk:throw "$?" "An error occurred in ydk:strings"; fi
-
-#     # echo "DONE"
-#     return 0
-# }
-# ydk "$@" && echo "thank's for usage" && exit 0
