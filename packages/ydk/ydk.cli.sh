@@ -238,7 +238,7 @@ ydk() {
             "3.argv"
             "installer"
         )
-        local RAW_URL="https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/"
+        local RAW_URL="https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main"
         local YDK_RUNTIME=$(ydk:cli | jq -c '.')
         local YDK_RUNTIME_DIR=$(jq -r '.path' <<<"${YDK_RUNTIME}")
         ydk:log "INFO" "Setting up ydk"
@@ -273,6 +273,7 @@ ydk() {
             case "$1" in
             -i | --install | install)
                 shift
+                ydk:log "INFO" "Installing ydk"
                 if ! type -t "ydk:installer" = function >/dev/null 2>&1; then
                     ydk:log "INFO" "Downloading installer library"
                     if ! ydk:setup "$@"; then
