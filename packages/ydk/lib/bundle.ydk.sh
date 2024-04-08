@@ -101,10 +101,10 @@ ydk:bundle() {
             # echo "# Source: $(jq -r '.source' <<<"$VALIDATION")"
             # echo "# Basepath: $(jq -r '.basepath' <<<"$VALIDATION")"
             # echo "# Realpath: $(jq -r '.realpath' <<<"$VALIDATION")"
-            echo "# Relativepath: $(jq -r '.relativepath' <<<"$VALIDATION")"
+            # echo "# Relativepath: $(jq -r '.relativepath' <<<"$VALIDATION")"
             echo "# Created: $(date)"
             echo "# Version: $(date +%Y%m%d%H%M%S)"
-            echo "# Builder: $(whoami)"
+            echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
             echo "export YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
             while read -r FILE; do
                 echo "# File: $FILE"
@@ -116,9 +116,9 @@ ydk:bundle() {
             copyright
         } >>"$BUNDLE_TMP"
         jq . <<<"$VALIDATION"
-        cat "$BUNDLE_TMP" > "$BUNDLE_FILE"
+        cat "$BUNDLE_TMP" >"$BUNDLE_FILE"
         # chmod +x "$BUNDLE_FILE"
-        # "$BUNDLE_FILE" -v        
+        # "$BUNDLE_FILE" -v
         rm -f "$BUNDLE_TMP"
         return 0
     }
