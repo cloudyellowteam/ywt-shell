@@ -91,7 +91,7 @@ ydk() {
         echo -n "},"
         echo -n "\"author\": {"
         echo -n "   \"name\": \"Raphael Rego\","
-        echo -n "   \"email\": \"raphael@yellowteam.cloud\","
+        echo -n "   \"email\": \"hello@raphaelcarlosr.dev\","
         echo -n "   \"url\": \"https://raphaelcarlosr.dev\""
         echo -n "},"
         echo -n "\"build\": {"

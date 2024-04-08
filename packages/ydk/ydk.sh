@@ -8,18 +8,18 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:22:15+00:00
-# Commit: {"id":"2fb7880","hash":"2fb788021b505eec9036542de2412a72e5495774","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Fix bundle.ydk.sh script to use correct file permissions"}
-# Author: Raphael Rego <raphael@yellowteam.cloud> https://raphaelcarlosr.dev
+# Release Date: 2024-04-08T22:23:43+00:00
+# Commit: {"id":"ef06b24","hash":"ef06b24da5e21d90f9448b9a4b514a894bc5ce55","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts"}
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
 # Bundle: /workspace/rapd-shell/packages/ydk/ydk.sh
 # Source: ./packages/ydk/ydk.cli.sh
 # Basepath: ./packages/ydk
 # Realpath: /workspace/rapd-shell/packages/ydk
 # Relativepath: ..
-# Created: Mon Apr  8 22:22:15 UTC 2024
-# Version: 20240408222215
+# Created: Mon Apr  8 22:23:43 UTC 2024
+# Version: 20240408222343
 # Builder: root
-export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"raphael@yellowteam.cloud\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:22:15+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:22:15+00:00\"},\"commit\":{\"id\":\"2fb7880\",\"hash\":\"2fb788021b505eec9036542de2412a72e5495774\",\"branch\":\"main\",\"tag\":\"Unknown\",\"author\":\"Raphael C. Rego <raphaelcarlosr@gmail.com>\",\"message\":\"Fix bundle.ydk.sh script to use correct file permissions\"}}" && readonly YDK_VERSION_LOCK
+export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:23:43+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:23:43+00:00\"},\"commit\":{\"id\":\"ef06b24\",\"hash\":\"ef06b24da5e21d90f9448b9a4b514a894bc5ce55\",\"branch\":\"main\",\"tag\":\"Unknown\",\"author\":\"Raphael C. Rego <raphaelcarlosr@gmail.com>\",\"message\":\"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
 # File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
 ydk:is() {
     case "$1" in
@@ -678,7 +678,7 @@ ydk() {
         echo -n "},"
         echo -n "\"author\": {"
         echo -n "   \"name\": \"Raphael Rego\","
-        echo -n "   \"email\": \"raphael@yellowteam.cloud\","
+        echo -n "   \"email\": \"hello@raphaelcarlosr.dev\","
         echo -n "   \"url\": \"https://raphaelcarlosr.dev\""
         echo -n "},"
         echo -n "\"build\": {"
@@ -924,6 +924,6 @@ ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STAT
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:22:15+00:00
-# Commit: {"id":"2fb7880","hash":"2fb788021b505eec9036542de2412a72e5495774","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Fix bundle.ydk.sh script to use correct file permissions"}
-# Author: Raphael Rego <raphael@yellowteam.cloud> https://raphaelcarlosr.dev
+# Release Date: 2024-04-08T22:23:44+00:00
+# Commit: {"id":"ef06b24","hash":"ef06b24da5e21d90f9448b9a4b514a894bc5ce55","branch":"main","tag":"Unknown","author":"Raphael C. Rego <raphaelcarlosr@gmail.com>","message":"Update YDK version lock in bundle.ydk.sh and ydk.sh scripts"}
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
