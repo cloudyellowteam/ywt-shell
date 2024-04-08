@@ -60,7 +60,7 @@ ydk:bundle() {
     ydk:bundle:santize() {
         local FILE="$1"
         [[ ! -f "$FILE" ]] && jq -n --arg src "$FILE" '{"error": "Source file not found: \($src). Use ydk:bundle validate <package>.ydk.sh"}' && return 1
-        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#"
+        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#" |  sed -e 's/^/\t/'        
     }
     copyright() {
         ydk:version | jq -cr '
@@ -105,20 +105,27 @@ ydk:bundle() {
             echo "# Created: $(date)"
             echo "# Version: $(date +%Y%m%d%H%M%S)"
             echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
-            echo "export YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
+            echo "ydk:packer(){"
+            echo -e "\tset -e -o pipefail"
+            echo -e "\texport YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
             while read -r FILE; do
                 # echo "# File: $FILE"
                 ydk:bundle:santize "$FILE"
             done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
             # echo "# Entrypoint: $BUNDLE_ENTRYPOINT"
             ydk:bundle:santize "$BUNDLE_ENTRYPOINT"
+            echo "}"
+            echo "ydk:packer \"\$@\""
+            echo "exit \$?"
+
+            # ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
             # echo "# End of bundle"
             copyright
         } >>"$BUNDLE_TMP"
         jq . <<<"$VALIDATION"
         cat "$BUNDLE_TMP" >"$BUNDLE_FILE"
-        # chmod +x "$BUNDLE_FILE"
-        # "$BUNDLE_FILE" -v
+        chmod +x "$BUNDLE_FILE"
+        "$BUNDLE_FILE" -v
         rm -f "$BUNDLE_TMP"
         return 0
     }
