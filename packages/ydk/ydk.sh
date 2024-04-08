@@ -9,13 +9,12 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:27:50+00:00
-# Commit: {"id":"b03c422","hash":"b03c422cbb41ff7f6c9136858185757fc953a366","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}
-# Created: Mon Apr  8 22:27:50 UTC 2024
-# Version: 20240408222750
+# Release Date: 2024-04-08T22:29:02+00:00
+# Commit: {"id":"8a83c91","hash":"8a83c91ad6c9ac88d75799a1f6c12e3b48047516","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}
+# Created: Mon Apr  8 22:29:02 UTC 2024
+# Version: 20240408222902
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
-export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:27:50+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:27:50+00:00\"},\"commit\":{\"id\":\"b03c422\",\"hash\":\"b03c422cbb41ff7f6c9136858185757fc953a366\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update bundle.ydk.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
-# File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
+export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:29:02+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:29:02+00:00\"},\"commit\":{\"id\":\"8a83c91\",\"hash\":\"8a83c91ad6c9ac88d75799a1f6c12e3b48047516\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update bundle.ydk.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
 ydk:is() {
     case "$1" in
     not-defined)
@@ -79,7 +78,6 @@ ydk:is() {
     esac
     return 1
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/2.nnf.ydk.sh
 ydk:nnf() {
     local IOC_TARGET=${1} && shift && [ -z "$IOC_TARGET" ] && return 1
     IOC_TARGET=${IOC_TARGET#_} && IOC_TARGET=${IOC_TARGET#__} && IOC_TARGET="${IOC_TARGET//_/-5f}" && IOC_TARGET="${IOC_TARGET//-/-2d}" && IOC_TARGET="${IOC_TARGET// /_}"
@@ -102,7 +100,6 @@ ydk:nnf() {
     exec 3>&-
     return $IOC_STATUS
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/3.argv.ydk.sh
 ydk:argv() {
     values() {
         [ -n "$YDK_ARGV" ] && echo "$YDK_ARGV" | jq -c . && return 0
@@ -222,7 +219,6 @@ ydk:argv() {
     ydk:try:nnf "$@"
     return $?
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/bundle.ydk.sh
 ydk:bundle() {
     validate() {
         local SRC_FILE=${1} && [ ! -f "$SRC_FILE" ] && jq -n --arg src "$SRC_FILE" '{"error": "Source file not found: \($src). Use ydk:bundle validate <package>.ydk.sh"}' && return 1
@@ -323,12 +319,9 @@ ydk:bundle() {
             echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
             echo "export YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
             while read -r FILE; do
-                echo "# File: $FILE"
                 ydk:bundle:santize "$FILE"
             done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
-            echo "# Entrypoint: $BUNDLE_ENTRYPOINT"
             ydk:bundle:santize "$BUNDLE_ENTRYPOINT"
-            echo "# End of bundle"
             copyright
         } >>"$BUNDLE_TMP"
         jq . <<<"$VALIDATION"
@@ -339,7 +332,6 @@ ydk:bundle() {
     ydk:try:nnf "$@"
     return $?
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/errors.ydk.sh
 ydk:errors() {
     ydk:try:nnf "$@"
     return $?
@@ -352,7 +344,6 @@ ydk:errors() {
         [252]="Failed to download"
     ) && export YDK_ERRORS_MESSAGES
 )
-# File: /workspace/rapd-shell/packages/ydk/lib/installer.ydk.sh
 ydk:installer() {
     install() {
         local YDK_BINARY_PATH=/usr/local/bin
@@ -527,7 +518,6 @@ ydk:installer() {
     ydk:try:nnf "$@"
     return $?
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/process.ydk.sh
 ydk:process() {
     etime() {
         if grep -q 'Alpine' /etc/os-release; then
@@ -573,12 +563,10 @@ ydk:process() {
     ydk:try:nnf "$@"
     return $?
 }
-# File: /workspace/rapd-shell/packages/ydk/lib/strings.ydk.sh
 ydk:strings() {
     echo "strings"
     return 0
 }
-# Entrypoint: ./packages/ydk/ydk.cli.sh
 YDK_CLI_ARGS=("$@")
 ydk() {
     set -e -o pipefail
@@ -903,7 +891,6 @@ ydk() {
     return "${YDK_STATUS:-0}"
 }
 ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
-# End of bundle
 # Name: @ywteam/ydk-shell
 # Version: 0.0.0-dev-0
 # Description: Cloud Yellow Team | Shell SDK
@@ -914,5 +901,5 @@ ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STAT
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:27:50+00:00
-# Commit: {"id":"b03c422","hash":"b03c422cbb41ff7f6c9136858185757fc953a366","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}
+# Release Date: 2024-04-08T22:29:02+00:00
+# Commit: {"id":"8a83c91","hash":"8a83c91ad6c9ac88d75799a1f6c12e3b48047516","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}

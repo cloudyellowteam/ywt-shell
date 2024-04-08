@@ -107,12 +107,12 @@ ydk:bundle() {
             echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
             echo "export YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
             while read -r FILE; do
-                echo "# File: $FILE"
+                # echo "# File: $FILE"
                 ydk:bundle:santize "$FILE"
             done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
-            echo "# Entrypoint: $BUNDLE_ENTRYPOINT"
+            # echo "# Entrypoint: $BUNDLE_ENTRYPOINT"
             ydk:bundle:santize "$BUNDLE_ENTRYPOINT"
-            echo "# End of bundle"
+            # echo "# End of bundle"
             copyright
         } >>"$BUNDLE_TMP"
         jq . <<<"$VALIDATION"
