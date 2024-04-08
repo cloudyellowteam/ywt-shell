@@ -105,7 +105,7 @@ ydk:bundle() {
             echo "# Created: $(date)"
             echo "# Version: $(date +%Y%m%d%H%M%S)"
             echo "# Builder: $(whoami)"
-            echo "export YDK_LOCK=\"$COPYRIGHT\" && readonly YDK_COPYRIGHT"
+            echo "export YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
             while read -r FILE; do
                 echo "# File: $FILE"
                 ydk:bundle:santize "$FILE"
