@@ -1,7 +1,7 @@
 # ywt.sh | yw-sh
 > **2024.04.06**
 ```shell
-
+docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiYjQ0M2Q2OGUxMTI2NGMxZTI3Njk3NmRiZDM3YzNiNzgiLCJ0IjoiM2Q2ZjNiOTgtMGQ4Ny00ZjRiLWFjYzEtMTNiZTI1NmVkOWFiIiwicyI6Ik9UQTBPVEE0TlRNdFpUVXhPQzAwWWprMExUbGtOekV0TkRNMk5HWXpObU0wTVRZMCJ9
 clear; ./ydk.sh scan plan ./assets.json
 clear; ./ydk.sh scan summary ./assets.json
 clear; ./ydk.sh scan apply ./assets.json
