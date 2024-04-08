@@ -5,11 +5,13 @@ ydk() {
     set -e -o pipefail
     local YDK_INITIALIZED=false
     local YDK_POSITIONAL=()
-    local YDK_DEPENDENCIES=()
+    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
     local YDK_MISSING_DEPENDENCIES=()
     ydk:require() {
         for DEPENDENCY in "${@}"; do
-            YDK_DEPENDENCIES+=("${DEPENDENCY}")
+            # add into YDK_DEPENDENCIES if not exists
+            ! echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" && YDK_DEPENDENCIES+=("${DEPENDENCY}")
+            # YDK_DEPENDENCIES+=("${DEPENDENCY}")
             if ! command -v "$DEPENDENCY" >/dev/null 2>&1; then
                 YDK_MISSING_DEPENDENCIES+=("${DEPENDENCY}")
                 # return 1
@@ -28,10 +30,6 @@ ydk() {
         }
         echo
         exit 255
-    }
-    ydk:require:deps() {
-        ydk:require "jq" "sed" "awk" "tr" "sort" "basename" "dirname" "pwd" "cd" "mktemp" "command" "source" "openssl"
-        return $?
     }
     ydk:cli() {
         YDK_RUNTIME_ENTRYPOINT="${BASH_SOURCE[0]:-$0}"
@@ -150,6 +148,7 @@ ydk() {
                 )
             local LIB_NAME="${LIB_ENTRYPOINT_NAME//.ydk.sh/}" &&
                 LIB_NAME=$(echo "$LIB_NAME" | sed 's/^[0-9]*\.//')
+            local LIB_ENTRYPOINT_TYPE="$(type -t "ydk:$LIB_NAME")"
             {
                 echo -n "{"
                 echo -n "\"file\": \"${LIB_ENTRYPOINT_NAME}\","
@@ -218,56 +217,19 @@ ydk() {
         # ydk:throw "$YDK_USAGE_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
         return "$YDK_USAGE_STATUS"
     }
-    ydk:install() {
-        ydk:require:deps
-        echo "Installing required packages"
-        # {
-        #     apk add --update
-        #     apk add --no-cache bash jq git parallel
-        #     apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
-        #     rm -rf /var/cache/apk/* /root/.npm /tmp/*
-        # } >/dev/null 2>&1
-        echo "Packages installed"
-        echo "Getting version info"
-        {
-            for DEPENDENCY in "${YDK_DEPENDENCIES[@]}"; do            
-                echo -n "{"
-                echo -n "\"name\": \"${DEPENDENCY}\","
-                if command -v "$DEPENDENCY" >/dev/null 2>&1; then
-                    echo -n "\"path\": \"$(command -v "$DEPENDENCY")\","
-                    case "$DEPENDENCY" in
-                    awk)
-                        local VERSION="$("$DEPENDENCY" -W version 2>&1)"
-                        ;;
-                    *)
-                        if "$DEPENDENCY" --version >/dev/null 2>&1; then
-                            local VERSION="$("$DEPENDENCY" --version 2>&1)"
-                        elif "$DEPENDENCY" version >/dev/null 2>&1; then
-                            local VERSION="$("$DEPENDENCY" version 2>&1)"
-                        else
-                            local VERSION="null"
-                        fi
-                        ;;
-                    esac
-                    VERSION=${VERSION//\"/\\\"}
-                    VERSION=$(echo "$VERSION" | head -n 1)
-                    # VERSION=${VERSION//$'\n'/\\n}
-                    echo -n "\"version\": \"$VERSION\""
-                else
-                    echo -n "\"path\": \"null\""
-                fi
-                echo -n "}"
-            done 
-        } | jq -s '.' >/dev/null 2>&1
-    }
-    ydk:actions() {
+    ydk:entrypoint() {
         YDK_POSITIONAL=()
         while [[ $# -gt 0 ]]; do
             case "$1" in
-            -i | --install)
+            -i | --install | install)
                 shift
-                ydk:install "$@"
-                exit 0
+                local TYPE="$(type -t "$2" >/dev/null 2>&1 && echo function)"
+                if [ -n "$TYPE" ] && [ "$TYPE" = function ]; then
+                    ydk:installer install "$@"
+                    exit 0
+                fi
+                echo "ydk:installer is not defined"                    
+                exit 1
                 ;;
             -v | --version)
                 shift
@@ -285,10 +247,13 @@ ydk() {
         set -- "${YDK_POSITIONAL[@]}"
         return 0
     }
+    ydk:welcome() {
+        ydk:version | jq '.'
+    }
     trap 'ydk:catch $? "An error occurred"' ERR INT TERM
     trap 'ydk:teardown $? "Exit with: $?"' EXIT
-    [[ "$1" != "install" ]] && ydk:require:deps
-    ydk:actions "$@" || unset -f "ydk:actions"
+    [[ "$1" != "install" ]] && ydk:require "${YDK_DEPENDENCIES[@]}"
+    ydk:entrypoint "$@" || unset -f "ydk:entrypoint"
     ydk:boostrap >/dev/null 2>&1 || unset -f "ydk:boostrap"
     ydk:argv flags "$@" || set -- "${YDK_POSITIONAL[@]}"
     jq -c '.' <<<"$YDK_FLAGS"
