@@ -9,15 +9,15 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T19:16:41+00:00
-# Commit: {"id":"8bd888d","hash":"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58","branch":"main","tag":"0.0.0-alpha-0","message":"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function"}
-# Created: Mon Apr 15 19:16:41 UTC 2024
-# Version: 20240415191641
+# Release Date: 2024-04-15T21:12:56+00:00
+# Commit: {"id":"cc4414e","hash":"cc4414ed687a56ea9e2518e923db4b19aa60d78f","branch":"main","tag":"0.0.0-alpha-0-2-gcc4414e","message":"Update global Git user email and name configuration"}
+# Created: Mon Apr 15 21:12:56 UTC 2024
+# Version: 20240415211256
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:entrypoint(){
 	set -e -o pipefail
-	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T19:16:41+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T19:16:41+00:00\"},\"commit\":{\"id\":\"8bd888d\",\"hash\":\"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0\",\"message\":\"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function\"}}" && readonly YDK_VERSION_LOCK
+	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:12:56+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:12:56+00:00\"},\"commit\":{\"id\":\"cc4414e\",\"hash\":\"cc4414ed687a56ea9e2518e923db4b19aa60d78f\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-2-gcc4414e\",\"message\":\"Update global Git user email and name configuration\"}}" && readonly YDK_VERSION_LOCK
 	ydk:is() {
 	    case "$1" in
 	    not-defined)
@@ -249,6 +249,7 @@ ydk:entrypoint(){
 	    return $?
 	}
 	ydk:bundle() {
+	    [[ -z "$YDK_BUILDER_DEFAULTS_EXPIRES_AT" ]] && local YDK_BUILDER_DEFAULTS_EXPIRES_AT="31/12/2999"
 	    validate() {
 	        local SRC_FILE=${1} && [ ! -f "$SRC_FILE" ] && jq -n --arg src "$SRC_FILE" '{"error": "Source file not found: \($src). Use ydk:bundle validate <package>.ydk.sh"}' && return 1
 	        [[ "$SRC_FILE" != *".cli.sh" ]] && [[ "$SRC_FILE" != *".ydk.sh" ]] && jq -n --arg src "$SRC_FILE" --arg ext "$FILE_EXT" '{"error": "Invalid package file extension \($ext): \($src). Use <package>.ydk.sh"}' && return 1
@@ -387,9 +388,75 @@ ydk:entrypoint(){
 	        else
 	            ydk:log "INFO" "Checksum verification passed: $BUNDLE_FILE"
 	        fi
-	        chmod +x "$BUNDLE_FILE"
-	        "$BUNDLE_FILE" -v
 	        return 0
+	    }
+	    compiler() {
+	        if ! command -v shc >/dev/null 2>&1; then
+	            echo "Compiler is not installed, trying install"
+	            apt-get install shc -y >/dev/null 2>&1 && return 0
+	            return 1
+	        fi
+	        local EXPIRES_AT="${YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+	        if [[ ! $EXPIRES_AT =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]]; then
+	            echo "Invalid date format: $EXPIRES_AT. Use dd/mm/yyyy."
+	            return 1
+	        fi
+	        IFS='/' read -r EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR <<<"$EXPIRES_AT"
+	        if ! date -d "$EXPIRES_AT_YEAR-$EXPIRES_AT_MONTH-$EXPIRES_AT_DAY" "+%Y-%m-%d" &>/dev/null; then
+	            echo "Error: Invalid date ${EXPIRES_AT}"
+	            return 1
+	        fi
+	        unset EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR
+	        local EXPIRES_MESSAGE="File expired since ${EXPIRES_AT}, please contact us to renew"
+	        local SHC_ARGS=()
+	        while [[ $# -gt 0 ]]; do
+	            case "$1" in
+	            -e)
+	                EXPIRES_AT="${2}" && shift 2
+	                ;;
+	            -m)
+	                EXPIRES_MESSAGE+=". ${2}" && shift 2
+	                ;;
+	            *)
+	                SHC_ARGS+=("$1")
+	                shift
+	                ;;
+	            esac
+	        done
+	        shc -e "${EXPIRES_AT}" \
+	            -m "${EXPIRES_MESSAGE}" \
+	            "${SHC_ARGS[@]}"
+	        return $?
+	    }
+	    compile() {
+	        local FILE=$1 && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" && return 0
+	        local EXPIRES_AT="${2}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+	        local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
+	        local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}" && FILENAME="${FILENAME%.*}" && [ -z "$FILENAME" ] && echo "Invalid file name: $FILE" && return 1
+	        echo "Compiling $FILE, expires at $EXPIRES_AT"
+	        [[ -f "${FILE_DIR}/${FILENAME}.bin" ]] && rm -f "${FILE_DIR}/${FILENAME}.bin"
+	        [[ -f "${FILE_DIR}/${FILENAME}.sh.x.c" ]] && rm -f "${FILE_DIR}/${FILENAME}.sh.x.c"
+	        compiler -r \
+	            -f "${FILE}" \
+	            -e "${EXPIRES_AT}" \
+	            -o "${FILE_DIR}/${FILENAME}.bin"
+	        local BUILD_STATUS=$?
+	        if [[ $BUILD_STATUS -eq 0 ]]; then
+	            echo "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
+	            "${FILE_DIR}/${FILENAME}.bin" process inspect | jq . 
+	            return $?
+	        else
+	            echo "Error: File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
+	            return 1
+	        fi
+	    }
+	    build() {
+	        local FILE=$1 && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" && return 0
+	        local EXPIRES_AT="${2:-$YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+	        local BUNDLE=$(pack "$FILE")
+	        local BUNDLE_FILE=$(jq -r '.realpath' <<<"$BUNDLE")/$(jq -r '.bundle' <<<"$BUNDLE")
+	        compile "$BUNDLE_FILE" "$EXPIRES_AT"
+	        return $?
 	    }
 	    ydk:try:nnf "$@"
 	    return $?
@@ -505,6 +572,17 @@ ydk:entrypoint(){
 	        local YDK_TMP=$(ydk:temp "install")
 	        trap 'rm -f "${YDK_TMP}" >/dev/null 2>&1' EXIT
 	        ydk:log "INFO" "Installing required packages into ${YDK_PATH}"
+	        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+	            apk add --update
+	            apk add --no-cache bash jq git parallel
+	            apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
+	            rm -rf /var/cache/apk/* /root/.npm /tmp/*
+	        } >"$YDK_TMP" # >/dev/null 2>&1
+	        ydk:log "INFO" "Packages installed, verifying dependencies"
+	        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+	            echo "Failed to install required packages"
+	            ydk:throw 255 "ERR" "Failed to install required packages"
+	        }        
 	        ydk:log "INFO" "Packages installed, verifying dependencies"
 	        ydk:require "${YDK_DEPENDENCIES[@]}"
 	        ydk:log "INFO" "Done, Getting version info"
@@ -672,6 +750,7 @@ ydk:entrypoint(){
 	    echo "strings"
 	    return 0
 	}
+	YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 	YDK_CLI_ARGS=("$@")
 	ydk() {
 	    set -e -o pipefail
@@ -702,12 +781,11 @@ ydk:entrypoint(){
 	            done | sed 's/,$//'
 	            echo -n "]"
 	            echo -n "}"
-	        }
-	        echo
-	        exit 255
+	        } | jq -c .
+	        return 1
 	    }
 	    ydk:cli() {
-	        YDK_RUNTIME_ENTRYPOINT="${BASH_SOURCE[0]:-$0}"
+	        YDK_RUNTIME_ENTRYPOINT="$YDK_CLI_ENTRYPOINT"
 	        YDK_RUNTIME_ENTRYPOINT_NAME=$(basename "${YDK_RUNTIME_ENTRYPOINT}")
 	        YDK_RUNTIME_IS_CLI=false
 	        [[ "${YDK_RUNTIME_ENTRYPOINT_NAME}" == *".cli.sh" ]] && YDK_RUNTIME_IS_CLI=true
@@ -719,9 +797,26 @@ ydk:entrypoint(){
 	        } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
 	            YDK_RUNTIME_VERSION=$(cat "./VERSION")
 	        }
+	        YDK_RUNTIME_IS_BINARY=false
+	        if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
+	            if command -v file >/dev/null 2>&1; then
+	                file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
+	            elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
+	                YDK_RUNTIME_IS_BINARY=true
+	            else
+	                YDK_RUNTIME_IS_BINARY=false
+	            fi
+	        fi
 	        echo -n "{"
 	        echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
 	        echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
+	        echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
+	        echo -n "\"sources\": ["
+	        for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
+	            YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
+	            echo -n "\"${YDK_BASH_SOURCE}\","
+	        done | sed 's/,$//'
+	        echo -n "],"
 	        echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
 	        echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
 	        echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
@@ -985,7 +1080,7 @@ ydk:entrypoint(){
 	    }
 	    trap 'ydk:catch $? "An error occurred"' ERR INT TERM
 	    trap 'ydk:teardown $? "Exit with: $?"' EXIT
-	    [[ "$1" != "install" ]] && ydk:require "${YDK_DEPENDENCIES[@]}"
+	    [[ "$1" != "install" ]] && ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 255 "ERR" "Failed to install required packages"
 	    ydk:entrypoint "$@" || unset -f "ydk:entrypoint"
 	    ydk:boostrap >/dev/null 2>&1 || unset -f "ydk:boostrap"
 	    ydk:argv flags "$@" || set -- "${YDK_POSITIONAL[@]}"
@@ -995,7 +1090,7 @@ ydk:entrypoint(){
 	    [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
 	    return "${YDK_STATUS:-0}"
 	}
-	ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
+	ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"
 }
 ydk:entrypoint "$@"
 exit $?
@@ -1009,5 +1104,5 @@ exit $?
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T19:16:41+00:00
-# Commit: {"id":"8bd888d","hash":"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58","branch":"main","tag":"0.0.0-alpha-0","message":"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function"}
+# Release Date: 2024-04-15T21:12:56+00:00
+# Commit: {"id":"cc4414e","hash":"cc4414ed687a56ea9e2518e923db4b19aa60d78f","branch":"main","tag":"0.0.0-alpha-0-2-gcc4414e","message":"Update global Git user email and name configuration"}

@@ -8,6 +8,7 @@
 
 > **2024.04.15**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/ydk/ydk.cli.sh 31/12/2999
 # compile a bundle 
 clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999
 # bundle a package, it's generate ydk.sh file

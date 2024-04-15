@@ -156,18 +156,48 @@ ydk:bundle() {
         else
             ydk:log "INFO" "Checksum verification passed: $BUNDLE_FILE"
         fi
-        chmod +x "$BUNDLE_FILE"
-        "$BUNDLE_FILE" -v
-
+        # chmod +x "$BUNDLE_FILE"
+        # "$BUNDLE_FILE" -v
         return 0
     }
     compiler() {
-        if ! command -v shc &>/dev/null; then
+        if ! command -v shc >/dev/null 2>&1; then
             echo "Compiler is not installed, trying install"
+            # TODO: Add support for other package managers
             apt-get install shc -y >/dev/null 2>&1 && return 0
             return 1
         fi
-        shc "$@"
+        local EXPIRES_AT="${YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+        if [[ ! $EXPIRES_AT =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]]; then
+            echo "Invalid date format: $EXPIRES_AT. Use dd/mm/yyyy."
+            return 1
+        fi
+        IFS='/' read -r EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR <<<"$EXPIRES_AT"
+        if ! date -d "$EXPIRES_AT_YEAR-$EXPIRES_AT_MONTH-$EXPIRES_AT_DAY" "+%Y-%m-%d" &>/dev/null; then
+            echo "Error: Invalid date ${EXPIRES_AT}"
+            return 1
+        fi
+        unset EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR
+
+        local EXPIRES_MESSAGE="File expired since ${EXPIRES_AT}, please contact us to renew"
+        local SHC_ARGS=()
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+            -e)
+                EXPIRES_AT="${2}" && shift 2
+                ;;
+            -m)
+                EXPIRES_MESSAGE+=". ${2}" && shift 2
+                ;;
+            *)
+                SHC_ARGS+=("$1")
+                shift
+                ;;
+            esac
+        done
+        shc -e "${EXPIRES_AT}" \
+            -m "${EXPIRES_MESSAGE}" \
+            "${SHC_ARGS[@]}"
         return $?
 
         # -e %s  Expiration date in dd/mm/yyyy format [none]
@@ -191,17 +221,7 @@ ydk:bundle() {
     }
     compile() {
         local FILE=$1 && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" && return 0
-        local EXPIRES_AT="${2:-$YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
-        if [[ ! $EXPIRES_AT =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]]; then
-            echo "Invalid date format: $EXPIRES_AT. Use dd/mm/yyyy."
-            return 1
-        fi
-        IFS='/' read -r EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR <<<"$EXPIRES_AT"
-        if ! date -d "$EXPIRES_AT_YEAR-$EXPIRES_AT_MONTH-$EXPIRES_AT_DAY" "+%Y-%m-%d" &>/dev/null; then
-            echo "Error: Invalid date ${EXPIRES_AT}"
-            return 1
-        fi
-        unset EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR
+        local EXPIRES_AT="${2}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
         local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
         local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}" && FILENAME="${FILENAME%.*}" && [ -z "$FILENAME" ] && echo "Invalid file name: $FILE" && return 1
         echo "Compiling $FILE, expires at $EXPIRES_AT"
@@ -210,17 +230,24 @@ ydk:bundle() {
         compiler -r \
             -f "${FILE}" \
             -e "${EXPIRES_AT}" \
-            -m "File expired since ${EXPIRES_AT}, please contact us to renew" \
             -o "${FILE_DIR}/${FILENAME}.bin"
         local BUILD_STATUS=$?
         if [[ $BUILD_STATUS -eq 0 ]]; then
             echo "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
-            "${FILE_DIR}/${FILENAME}.bin" process inspect | jq .
-            return 0
+            "${FILE_DIR}/${FILENAME}.bin" process inspect | jq . 
+            return $?
         else
             echo "Error: File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
             return 1
         fi
+    }
+    build() {
+        local FILE=$1 && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" && return 0
+        local EXPIRES_AT="${2:-$YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+        local BUNDLE=$(pack "$FILE")
+        local BUNDLE_FILE=$(jq -r '.realpath' <<<"$BUNDLE")/$(jq -r '.bundle' <<<"$BUNDLE")
+        compile "$BUNDLE_FILE" "$EXPIRES_AT"
+        return $?
     }
     ydk:try:nnf "$@"
     return $?

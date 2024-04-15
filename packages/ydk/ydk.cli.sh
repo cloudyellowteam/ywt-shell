@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
 ydk() {
     set -e -o pipefail
     local YDK_INITIALIZED=false
     local YDK_POSITIONAL=()
-    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column" "file")
+    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
     local YDK_MISSING_DEPENDENCIES=()
     ydk:log() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
@@ -36,7 +37,7 @@ ydk() {
         return 1
     }
     ydk:cli() {
-        YDK_RUNTIME_ENTRYPOINT="${BASH_SOURCE[0]:-$0}"
+        YDK_RUNTIME_ENTRYPOINT="$YDK_CLI_ENTRYPOINT"
         YDK_RUNTIME_ENTRYPOINT_NAME=$(basename "${YDK_RUNTIME_ENTRYPOINT}")
         YDK_RUNTIME_IS_CLI=false
         [[ "${YDK_RUNTIME_ENTRYPOINT_NAME}" == *".cli.sh" ]] && YDK_RUNTIME_IS_CLI=true
@@ -52,7 +53,7 @@ ydk() {
         if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
             if command -v file >/dev/null 2>&1; then
                 file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
-            elif [[ "$YDK_RUNTIME_ENTRYPOINT_NAME" == "environment" ]]; then
+            elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
                 YDK_RUNTIME_IS_BINARY=true
             else
                 YDK_RUNTIME_IS_BINARY=false
@@ -62,8 +63,13 @@ ydk() {
         echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
         echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
         echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
+        echo -n "\"sources\": ["
+        for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
+            YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
+            echo -n "\"${YDK_BASH_SOURCE}\","
+        done | sed 's/,$//'
+        echo -n "],"
         echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
-        echo -n "\"name2\": \"${YDK_RUNTIME_NAME}\","
         echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
         echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
         echo -n "\"args\": ["
