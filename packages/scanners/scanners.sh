@@ -9,15 +9,44 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T21:34:59+00:00
+# Release Date: 2024-04-15T21:34:33+00:00
 # Commit: {"id":"443ecf7","hash":"443ecf7ca644f334025e6347bfcfcb0346340afa","branch":"main","tag":"0.0.0-alpha-0-3-g443ecf7","message":"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
-# Created: Mon Apr 15 21:34:59 UTC 2024
-# Version: 20240415213459
+# Created: Mon Apr 15 21:34:33 UTC 2024
+# Version: 20240415213433
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
 # shellcheck disable=SC2044,SC2155,SC2317
-ydk:cli(){
+ydk:scanners:addon(){
 	set -e -o pipefail
-	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:59+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:59+00:00\"},\"commit\":{\"id\":\"443ecf7\",\"hash\":\"443ecf7ca644f334025e6347bfcfcb0346340afa\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-3-g443ecf7\",\"message\":\"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script\"}}" && readonly YDK_VERSION_LOCK
+	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:33+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:33+00:00\"},\"commit\":{\"id\":\"443ecf7\",\"hash\":\"443ecf7ca644f334025e6347bfcfcb0346340afa\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-3-g443ecf7\",\"message\":\"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script\"}}" && readonly YDK_VERSION_LOCK
+	scanner1(){
+	    echo "run scanner 1"
+	}
+	scanners(){
+	    echo "scanners package"
+	}
+	ydk:try:nnf "$@"
+	return $?
+}
+#!/bin/bash
+# Name: @ywteam/ydk-shell
+# Version: 0.0.0-dev-0
+# Description: Cloud Yellow Team | Shell SDK
+# Homepage: https://yellowteam.cloud
+# License: MIT
+# Repository: https://github.com/ywteam/ydk-shell.git
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
+# Build: ydk-shell
+# Build Date: null
+# Release: ydk-shell
+# Release Date: 2024-04-15T21:12:56+00:00
+# Commit: {"id":"cc4414e","hash":"cc4414ed687a56ea9e2518e923db4b19aa60d78f","branch":"main","tag":"0.0.0-alpha-0-2-gcc4414e","message":"Update global Git user email and name configuration"}
+# Created: Mon Apr 15 21:12:56 UTC 2024
+# Version: 20240415211256
+# Builder: 74cc1c60799e0a786ac7094b532f01b1
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:entrypoint(){
+	set -e -o pipefail
+	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:12:56+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:12:56+00:00\"},\"commit\":{\"id\":\"cc4414e\",\"hash\":\"cc4414ed687a56ea9e2518e923db4b19aa60d78f\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-2-gcc4414e\",\"message\":\"Update global Git user email and name configuration\"}}" && readonly YDK_VERSION_LOCK
 	ydk:is() {
 	    case "$1" in
 	    not-defined)
@@ -360,11 +389,7 @@ ydk:cli(){
 	            local COPYRIGHT=$(ydk:version | jq -cr .)
 	            COPYRIGHT=${COPYRIGHT//\"/\\\"}
 	            local BUNDLE_NAME=$(jq -r '.name' <<<"$VALIDATION")
-	            if [[ "$BUNDLE_NAME" == "ydk" ]]; then 
-	                BUNDLE_NAME="cli"
-	            else
-	                BUNDLE_NAME="${BUNDLE_NAME}:addon"
-	            fi
+	            [[ "$BUNDLE_NAME" == "ydk" ]] && BUNDLE_NAME="entrypoint"
 	            echo "# Created: $(date)"
 	            echo "# Version: $(date +%Y%m%d%H%M%S)"
 	            echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
@@ -376,15 +401,9 @@ ydk:cli(){
 	                bundle:santize "$FILE"
 	            done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
 	            bundle:santize "$BUNDLE_ENTRYPOINT"
-	            echo -e "\tydk:try:nnf \"\$@\""
-	            echo -e "\treturn \$?"
 	            echo "}"
-	            if [[ "$BUNDLE_NAME" == "cli" ]]; then
-	                echo "ydk:${BUNDLE_NAME} \"\$@\""
-	                echo "exit \$?"
-	            else 
-	                curl -sSL https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
-	            fi 
+	            echo "ydk:${BUNDLE_NAME} \"\$@\""
+	            echo "exit \$?"
 	            copyright
 	        } >>"$BUNDLE_TMP"
 	        jq . <<<"$VALIDATION"
@@ -443,7 +462,7 @@ ydk:cli(){
 	        local EXPIRES_AT="${2}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
 	        local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
 	        local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}" && FILENAME="${FILENAME%.*}" && [ -z "$FILENAME" ] && echo "Invalid file name: $FILE" && return 1
-	        ydk:log "info" "Compiling $FILE, expires at $EXPIRES_AT"
+	        echo "Compiling $FILE, expires at $EXPIRES_AT"
 	        [[ -f "${FILE_DIR}/${FILENAME}.bin" ]] && rm -f "${FILE_DIR}/${FILENAME}.bin"
 	        [[ -f "${FILE_DIR}/${FILENAME}.sh.x.c" ]] && rm -f "${FILE_DIR}/${FILENAME}.sh.x.c"
 	        compiler -r \
@@ -452,11 +471,11 @@ ydk:cli(){
 	            -o "${FILE_DIR}/${FILENAME}.bin"
 	        local BUILD_STATUS=$?
 	        if [[ $BUILD_STATUS -eq 0 ]]; then
-	            ydk:log "info" "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
-	            ydk:log "info" "Run ${FILE_DIR}/${FILENAME}.bin process inspect | jq ."
-	            return "$BUILD_STATUS"
+	            echo "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
+	            "${FILE_DIR}/${FILENAME}.bin" process inspect | jq . 
+	            return $?
 	        else
-	            ydk:log "Error" "File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
+	            echo "Error: File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
 	            return 1
 	        fi
 	    }
@@ -1101,10 +1120,8 @@ ydk:cli(){
 	    return "${YDK_STATUS:-0}"
 	}
 	ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"
-	ydk:try:nnf "$@"
-	return $?
 }
-ydk:cli "$@"
+ydk:entrypoint "$@"
 exit $?
 # Name: @ywteam/ydk-shell
 # Version: 0.0.0-dev-0
@@ -1116,5 +1133,17 @@ exit $?
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T21:34:59+00:00
+# Release Date: 2024-04-15T21:12:56+00:00
+# Commit: {"id":"cc4414e","hash":"cc4414ed687a56ea9e2518e923db4b19aa60d78f","branch":"main","tag":"0.0.0-alpha-0-2-gcc4414e","message":"Update global Git user email and name configuration"}
+# Name: @ywteam/ydk-shell
+# Version: 0.0.0-dev-0
+# Description: Cloud Yellow Team | Shell SDK
+# Homepage: https://yellowteam.cloud
+# License: MIT
+# Repository: https://github.com/ywteam/ydk-shell.git
+# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
+# Build: ydk-shell
+# Build Date: null
+# Release: ydk-shell
+# Release Date: 2024-04-15T21:34:33+00:00
 # Commit: {"id":"443ecf7","hash":"443ecf7ca644f334025e6347bfcfcb0346340afa","branch":"main","tag":"0.0.0-alpha-0-3-g443ecf7","message":"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}

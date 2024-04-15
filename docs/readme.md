@@ -5,9 +5,16 @@
 ```
 
 
-
+clear; ./packages/ydk/ydk.cli.sh bundle pack ./packages/scanners/scanners.cli.sh
+clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/scanners/scanners.sh 31/12/2999
+clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/scanners/scanners.cli.sh 31/12/2999
 > **2024.04.15**
 ```shell
+# run from binary
+clear; /workspace/rapd-shell/packages/ydk/ydk.bin process inspect | jq .
+# run from bundle
+clear; /workspace/rapd-shell/packages/ydk/ydk.sh process inspect | jq .
+# pack and build a bundle
 clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/ydk/ydk.cli.sh 31/12/2999
 # compile a bundle 
 clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999

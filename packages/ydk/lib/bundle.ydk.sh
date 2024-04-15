@@ -115,7 +115,11 @@ ydk:bundle() {
             COPYRIGHT=${COPYRIGHT//\"/\\\"}
 
             local BUNDLE_NAME=$(jq -r '.name' <<<"$VALIDATION")
-            [[ "$BUNDLE_NAME" == "ydk" ]] && BUNDLE_NAME="entrypoint"
+            if [[ "$BUNDLE_NAME" == "ydk" ]]; then 
+                BUNDLE_NAME="cli"
+            else
+                BUNDLE_NAME="${BUNDLE_NAME}:addon"
+            fi
 
             # echo "# Bundle: $BUNDLE_FILE"
             # echo "# Source: $(jq -r '.source' <<<"$VALIDATION")"
@@ -135,10 +139,17 @@ ydk:bundle() {
             done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
             # echo "# Entrypoint: $BUNDLE_ENTRYPOINT"
             bundle:santize "$BUNDLE_ENTRYPOINT"
+            echo -e "\tydk:try:nnf \"\$@\""
+            echo -e "\treturn \$?"
             echo "}"
-            echo "ydk:${BUNDLE_NAME} \"\$@\""
-            echo "exit \$?"
-
+            if [[ "$BUNDLE_NAME" == "cli" ]]; then
+                echo "ydk:${BUNDLE_NAME} \"\$@\""
+                echo "exit \$?"
+            else 
+                # https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
+                curl -sSL https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
+                # cat /workspace/rapd-shell/packages/ydk/ydk.sh
+            fi 
             # ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
             # echo "# End of bundle"
             copyright
@@ -224,7 +235,7 @@ ydk:bundle() {
         local EXPIRES_AT="${2}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
         local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
         local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}" && FILENAME="${FILENAME%.*}" && [ -z "$FILENAME" ] && echo "Invalid file name: $FILE" && return 1
-        echo "Compiling $FILE, expires at $EXPIRES_AT"
+        ydk:log "info" "Compiling $FILE, expires at $EXPIRES_AT"
         [[ -f "${FILE_DIR}/${FILENAME}.bin" ]] && rm -f "${FILE_DIR}/${FILENAME}.bin"
         [[ -f "${FILE_DIR}/${FILENAME}.sh.x.c" ]] && rm -f "${FILE_DIR}/${FILENAME}.sh.x.c"
         compiler -r \
@@ -233,11 +244,11 @@ ydk:bundle() {
             -o "${FILE_DIR}/${FILENAME}.bin"
         local BUILD_STATUS=$?
         if [[ $BUILD_STATUS -eq 0 ]]; then
-            echo "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
-            "${FILE_DIR}/${FILENAME}.bin" process inspect | jq . 
-            return $?
+            ydk:log "info" "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
+            ydk:log "info" "Run ${FILE_DIR}/${FILENAME}.bin process inspect | jq ."
+            return "$BUILD_STATUS"
         else
-            echo "Error: File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
+            ydk:log "Error" "File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
             return 1
         fi
     }
