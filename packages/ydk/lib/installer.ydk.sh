@@ -57,13 +57,17 @@ ydk:installer() {
         trap 'rm -f "${YDK_TMP}" >/dev/null 2>&1' EXIT
         # mkdir -p "$(dirname "${YDK_INSTALL_PATH}")"
         ydk:log "INFO" "Installing required packages into ${YDK_PATH}"
-        # TODO: Add support for other package managers and uncomment the following lines
-        # {
-        #     apk add --update
-        #     apk add --no-cache bash jq git parallel
-        #     apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
-        #     rm -rf /var/cache/apk/* /root/.npm /tmp/*
-        # } > "$YDK_TMP" # >/dev/null 2>&1
+        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+            apk add --update
+            apk add --no-cache bash jq git parallel
+            apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
+            rm -rf /var/cache/apk/* /root/.npm /tmp/*
+        } >"$YDK_TMP" # >/dev/null 2>&1
+        ydk:log "INFO" "Packages installed, verifying dependencies"
+        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+            echo "Failed to install required packages"
+            ydk:throw 255 "ERR" "Failed to install required packages"
+        }        
         ydk:log "INFO" "Packages installed, verifying dependencies"
         ydk:require "${YDK_DEPENDENCIES[@]}"
         ydk:log "INFO" "Done, Getting version info"

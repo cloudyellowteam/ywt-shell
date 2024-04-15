@@ -5,7 +5,7 @@ ydk() {
     set -e -o pipefail
     local YDK_INITIALIZED=false
     local YDK_POSITIONAL=()
-    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
+    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column" "file")
     local YDK_MISSING_DEPENDENCIES=()
     ydk:log() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
@@ -32,9 +32,8 @@ ydk() {
             done | sed 's/,$//'
             echo -n "]"
             echo -n "}"
-        }
-        echo
-        exit 255
+        } | jq -c .
+        return 1
     }
     ydk:cli() {
         YDK_RUNTIME_ENTRYPOINT="${BASH_SOURCE[0]:-$0}"
@@ -49,10 +48,22 @@ ydk() {
         } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
             YDK_RUNTIME_VERSION=$(cat "./VERSION")
         }
+        YDK_RUNTIME_IS_BINARY=false
+        if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
+            if command -v file >/dev/null 2>&1; then
+                file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
+            elif [[ "$YDK_RUNTIME_ENTRYPOINT_NAME" == "environment" ]]; then
+                YDK_RUNTIME_IS_BINARY=true
+            else
+                YDK_RUNTIME_IS_BINARY=false
+            fi
+        fi
         echo -n "{"
         echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
         echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
+        echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
         echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
+        echo -n "\"name2\": \"${YDK_RUNTIME_NAME}\","
         echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
         echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
         echo -n "\"args\": ["
@@ -325,7 +336,7 @@ ydk() {
     }
     trap 'ydk:catch $? "An error occurred"' ERR INT TERM
     trap 'ydk:teardown $? "Exit with: $?"' EXIT
-    [[ "$1" != "install" ]] && ydk:require "${YDK_DEPENDENCIES[@]}"
+    [[ "$1" != "install" ]] && ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 255 "ERR" "Failed to install required packages"
     ydk:entrypoint "$@" || unset -f "ydk:entrypoint"
     ydk:boostrap >/dev/null 2>&1 || unset -f "ydk:boostrap"
     ydk:argv flags "$@" || set -- "${YDK_POSITIONAL[@]}"
@@ -335,4 +346,4 @@ ydk() {
     [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
     return "${YDK_STATUS:-0}"
 }
-ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
+ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"

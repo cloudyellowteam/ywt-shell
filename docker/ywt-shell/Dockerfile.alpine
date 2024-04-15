@@ -24,7 +24,7 @@ RUN mkdir -p /usr/local/bin/ywt-shell/sdk && \
 
 COPY ["sdk", "/usr/local/bin/ywt-shell/sdk"]
 COPY ["ywt.sh", "/usr/local/bin/ywt-shell/"]
-COPY ["package.json", "/usr/local/bin/ywt-shell/"]
+# COPY ["package.json", "/usr/local/bin/ywt-shell/"]
 COPY ["tests/helpers/setup.sh", "/usr/local/bin/ywt-shell/tests/helpers"]
 
 

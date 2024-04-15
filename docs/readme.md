@@ -1,4 +1,13 @@
 # ywt.sh | yw-sh
+> **2024.04.15**
+```shell
+# compile a bundle 
+clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999
+# bundle a package, it's generate ydk.sh file
+clear; ./packages/ydk/ydk.cli.sh bundle pack ./packages/ydk/ydk.cli.sh
+# load latest version
+curl -sIX HEAD https://github.com/cloudyellowteam/ywt-shell/releases/latest | grep -i ^location: | grep -Eo '[0-9]+.[0-9]+.[0-9]+?-[a-z]+-[0-9]+'
+```
 > **2024.04.08**
 ```shell
 clear; docker run --rm -it -w /ywt-workdir kalilinux/kali-rolling bash -c "apt-get update > /dev/null && apt-get install -y bash curl jq util-linux coreutils openssl bsdmainutils > /dev/null && curl -sO https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.cli.sh && chmod +x ./ydk.cli.sh && ./ydk.cli.sh install"

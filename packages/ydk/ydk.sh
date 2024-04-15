@@ -9,14 +9,15 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:40:15+00:00
-# Commit: {"id":"890e238","hash":"890e238e883c3fb87a176bd30959b75fef60f3bf","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}
-# Created: Mon Apr  8 22:40:15 UTC 2024
-# Version: 20240408224015
+# Release Date: 2024-04-15T19:16:41+00:00
+# Commit: {"id":"8bd888d","hash":"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58","branch":"main","tag":"0.0.0-alpha-0","message":"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function"}
+# Created: Mon Apr 15 19:16:41 UTC 2024
+# Version: 20240415191641
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
-ydk:packer(){
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:entrypoint(){
 	set -e -o pipefail
-	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:40:15+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-08T22:40:15+00:00\"},\"commit\":{\"id\":\"890e238\",\"hash\":\"890e238e883c3fb87a176bd30959b75fef60f3bf\",\"branch\":\"main\",\"tag\":\"Unknown\",\"message\":\"Update bundle.ydk.sh and ydk.sh scripts\"}}" && readonly YDK_VERSION_LOCK
+	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T19:16:41+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T19:16:41+00:00\"},\"commit\":{\"id\":\"8bd888d\",\"hash\":\"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0\",\"message\":\"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function\"}}" && readonly YDK_VERSION_LOCK
 	ydk:is() {
 	    case "$1" in
 	    not-defined)
@@ -65,8 +66,7 @@ ydk:packer(){
 	        jq -e . <<<"$2" >/dev/null 2>&1 && return 0
 	        ;;
 	    fnc | function)
-	        local TYPE="$(type -t "$2" >/dev/null 2>&1 && echo function)"
-	        [ -n "$TYPE" ] && [ "$TYPE" = function ] && return 0
+	        type -t "$2" >/dev/null 2>&1 && return 0
 	        ;;
 	    cmd | command)
 	        command -v "$2" >/dev/null 2>&1 && return 0
@@ -221,6 +221,33 @@ ydk:packer(){
 	    ydk:try:nnf "$@"
 	    return $?
 	}
+	ydk:assets() {
+	    local YDK_USERNAME="cloudyellowteam"
+	    local YDK_REPO_NAME="ywt-shell"
+	    local YDK_REPO_BRANCH="main"
+	    local YDK_REPO_URL="https://github.com/${YDK_USERNAME}/${YDK_REPO_NAME}"
+	    local YDK_REPO_RAW_URL="https://raw.githubusercontent.com/${YDK_USERNAME}/${YDK_REPO_NAME}/${YDK_REPO_BRANCH}"
+	    download(){
+	        local YDK_ASSET_PATH="${1}"
+	        local YDK_ASSET_URL="${YDK_REPO_RAW_URL}/${YDK_ASSET_PATH}"
+	        local YDK_ASSET_FILE=$(basename -- "$YDK_ASSET_PATH")
+	        local YDK_ASSET_TMP=$(ydk:temp "download")
+	        trap 'rm -f "${YDK_ASSET_TMP}" >/dev/null 2>&1' EXIT
+	        if [[ -f "${YDK_ASSET_FILE}" ]]; then
+	            ydk:log "INFO" "Asset already exists: ${YDK_ASSET_FILE}"
+	            return 0
+	        fi
+	        ydk:log "INFO" "Downloading asset from ${YDK_ASSET_URL}"
+	        if ! curl -sSL -o "${YDK_ASSET_TMP}" "${YDK_ASSET_URL}"; then
+	            ydk:log "ERROR" "Failed to download asset from ${YDK_ASSET_URL}"
+	            return 1
+	        fi
+	        mv "${YDK_ASSET_TMP}" "${YDK_ASSET_FILE}"
+	        return $?
+	    }    
+	    ydk:try:nnf "$@"
+	    return $?
+	}
 	ydk:bundle() {
 	    validate() {
 	        local SRC_FILE=${1} && [ ! -f "$SRC_FILE" ] && jq -n --arg src "$SRC_FILE" '{"error": "Source file not found: \($src). Use ydk:bundle validate <package>.ydk.sh"}' && return 1
@@ -250,6 +277,20 @@ ydk:packer(){
 	            --arg basepath "$FILE_BASEPATH" \
 	            --arg realpath "$FILE_REALPATH" \
 	            --arg relativepath "$FILE_RELATIVEPATH" \
+	            --argjson lib "$({
+	                echo -n "["
+	                for FILE in $(
+	                    find "$FILE_REALPATH" \
+	                        -not -path "$FILE_REALPATH" \
+	                        -type f \
+	                        -name "*.ydk.sh" \
+	                        -not -name "*.cli.sh" |
+	                        sort
+	                ); do
+	                    echo -n "\"$FILE\","
+	                done | sed 's/,$//'
+	                echo -n "]"
+	            })" \
 	            --argjson bundles "$({
 	                echo -n "{"
 	                for BUNDLE in "${BUNDLES[@]}"; do
@@ -272,14 +313,15 @@ ydk:packer(){
 	                "basepath": $basepath, 
 	                "realpath": $realpath, 
 	                "relativepath": $relativepath,
-	                "bundles": $bundles
+	                "bundles": $bundles,
+	                "lib": $lib
 	            }'
 	        return 0
 	    }
-	    ydk:bundle:santize() {
+	    bundle:santize() {
 	        local FILE="$1"
 	        [[ ! -f "$FILE" ]] && jq -n --arg src "$FILE" '{"error": "Source file not found: \($src). Use ydk:bundle validate <package>.ydk.sh"}' && return 1
-	        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#" |  sed -e 's/^/\t/'        
+	        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#" | sed -e 's/^/\t/'
 	    }
 	    copyright() {
 	        ydk:version | jq -cr '
@@ -316,27 +358,81 @@ ydk:packer(){
 	            copyright
 	            local COPYRIGHT=$(ydk:version | jq -cr .)
 	            COPYRIGHT=${COPYRIGHT//\"/\\\"}
+	            local BUNDLE_NAME=$(jq -r '.name' <<<"$VALIDATION")
+	            [[ "$BUNDLE_NAME" == "ydk" ]] && BUNDLE_NAME="entrypoint"
 	            echo "# Created: $(date)"
 	            echo "# Version: $(date +%Y%m%d%H%M%S)"
 	            echo "# Builder: $(whoami | md5sum | cut -d' ' -f1)"
-	            echo "ydk:packer(){"
+	            echo "# shellcheck disable=SC2044,SC2155,SC2317"
+	            echo "ydk:${BUNDLE_NAME}(){"
 	            echo -e "\tset -e -o pipefail"
 	            echo -e "\texport YDK_VERSION_LOCK=\"$COPYRIGHT\" && readonly YDK_VERSION_LOCK"
 	            while read -r FILE; do
-	                ydk:bundle:santize "$FILE"
+	                bundle:santize "$FILE"
 	            done < <(jq -r '.bundles.lib.files[]' <<<"$VALIDATION")
-	            ydk:bundle:santize "$BUNDLE_ENTRYPOINT"
+	            bundle:santize "$BUNDLE_ENTRYPOINT"
 	            echo "}"
-	            echo "ydk:packer \"\$@\""
+	            echo "ydk:${BUNDLE_NAME} \"\$@\""
 	            echo "exit \$?"
 	            copyright
 	        } >>"$BUNDLE_TMP"
 	        jq . <<<"$VALIDATION"
 	        cat "$BUNDLE_TMP" >"$BUNDLE_FILE"
+	        rm -f "$BUNDLE_TMP"
+	        local BUNDLE_CHECKSUM=$(ydk:checksum generate "$BUNDLE_FILE" "sha256")
+	        ydk:log "info" "Checksum: $BUNDLE_CHECKSUM"
+	        echo "$BUNDLE_CHECKSUM" >"$BUNDLE_FILE.checksum"
+	        if ! ydk:checksum verify "$BUNDLE_FILE" "$BUNDLE_CHECKSUM" "sha256"; then
+	            ydk:log "ERROR" "Checksum verification failed: $BUNDLE_FILE"
+	        else
+	            ydk:log "INFO" "Checksum verification passed: $BUNDLE_FILE"
+	        fi
 	        chmod +x "$BUNDLE_FILE"
 	        "$BUNDLE_FILE" -v
-	        rm -f "$BUNDLE_TMP"
 	        return 0
+	    }
+	    ydk:try:nnf "$@"
+	    return $?
+	}
+	ydk:checksum() {
+	    hash(){
+	        local HASH=${1:-"sha256"}
+	        local FILE=${2} && [ ! -f "$FILE" ] && echo "File not found: $FILE" && return 1
+	        local HASH_CMD=""
+	        case "${HASH}" in
+	        "sha256")
+	            HASH_CMD="sha256sum"
+	            ;;
+	        "sha512")
+	            HASH_CMD="sha512sum"
+	            ;;
+	        "md5")
+	            HASH_CMD="md5sum"
+	            ;;
+	        "sha1")
+	            HASH_CMD="sha1sum"
+	            ;;
+	        *)
+	            echo "Unknown hash algorithm: ${HASH}"
+	            return 1
+	            ;;
+	        esac
+	        ${HASH_CMD} "${FILE}" | awk '{print $1}'
+	        return $?
+	    }
+	    generate() {
+	        local FILE=${1} && [ ! -f "$FILE" ] && echo "File not found: $FILE" && return 1
+	        local HASH=${2:-"sha256"}
+	        hash "${HASH}" "${FILE}"
+	    }
+	    verify(){
+	        local FILE=${1} && [ ! -f "$FILE" ] && echo "File not found: $FILE" && return 1
+	        local HASH=${2} && [ -z "$HASH" ] && echo "Hash not found" && return 1
+	        local HASH_TYPE=${3:-"sha256"}
+	        local FILE_HASH=$(hash "${HASH_TYPE}" "${FILE}")
+	        [ "$FILE_HASH" == "$HASH" ] && return 0
+	        echo "Hash mismatch: $FILE_HASH != $HASH"
+	        return 1        
 	    }
 	    ydk:try:nnf "$@"
 	    return $?
@@ -901,7 +997,7 @@ ydk:packer(){
 	}
 	ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
 }
-ydk:packer "$@"
+ydk:entrypoint "$@"
 exit $?
 # Name: @ywteam/ydk-shell
 # Version: 0.0.0-dev-0
@@ -913,5 +1009,5 @@ exit $?
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-08T22:40:15+00:00
-# Commit: {"id":"890e238","hash":"890e238e883c3fb87a176bd30959b75fef60f3bf","branch":"main","tag":"Unknown","message":"Update bundle.ydk.sh and ydk.sh scripts"}
+# Release Date: 2024-04-15T19:16:41+00:00
+# Commit: {"id":"8bd888d","hash":"8bd888d47a39a5f02fe2d9a04aa38d0c5cc50c58","branch":"main","tag":"0.0.0-alpha-0","message":"Refactor bundle.ydk.sh script to improve readability and add ydk:packer function"}

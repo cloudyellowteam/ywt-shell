@@ -48,8 +48,7 @@ ydk:is() {
         jq -e . <<<"$2" >/dev/null 2>&1 && return 0
         ;;
     fnc | function)
-        local TYPE="$(type -t "$2" >/dev/null 2>&1 && echo function)"
-        [ -n "$TYPE" ] && [ "$TYPE" = function ] && return 0
+        type -t "$2" >/dev/null 2>&1 && return 0
         ;;
     cmd | command)
         command -v "$2" >/dev/null 2>&1 && return 0
