@@ -9,15 +9,15 @@
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T21:34:33+00:00
-# Commit: {"id":"443ecf7","hash":"443ecf7ca644f334025e6347bfcfcb0346340afa","branch":"main","tag":"0.0.0-alpha-0-3-g443ecf7","message":"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
-# Created: Mon Apr 15 21:34:33 UTC 2024
-# Version: 20240415213433
+# Release Date: 2024-04-15T21:35:16+00:00
+# Commit: {"id":"c61263f","hash":"c61263f98e365865def7d11cedd3e00078def45f","branch":"main","tag":"0.0.0-alpha-0-4-gc61263f","message":"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
+# Created: Mon Apr 15 21:35:16 UTC 2024
+# Version: 20240415213516
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:scanners:addon(){
 	set -e -o pipefail
-	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:33+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:34:33+00:00\"},\"commit\":{\"id\":\"443ecf7\",\"hash\":\"443ecf7ca644f334025e6347bfcfcb0346340afa\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-3-g443ecf7\",\"message\":\"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script\"}}" && readonly YDK_VERSION_LOCK
+	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:35:16+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:35:16+00:00\"},\"commit\":{\"id\":\"c61263f\",\"hash\":\"c61263f98e365865def7d11cedd3e00078def45f\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-4-gc61263f\",\"message\":\"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script\"}}" && readonly YDK_VERSION_LOCK
 	scanner1(){
 	    echo "run scanner 1"
 	}
@@ -1145,5 +1145,5 @@ exit $?
 # Build: ydk-shell
 # Build Date: null
 # Release: ydk-shell
-# Release Date: 2024-04-15T21:34:33+00:00
-# Commit: {"id":"443ecf7","hash":"443ecf7ca644f334025e6347bfcfcb0346340afa","branch":"main","tag":"0.0.0-alpha-0-3-g443ecf7","message":"Refactor ydk.cli.sh script, update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
+# Release Date: 2024-04-15T21:35:17+00:00
+# Commit: {"id":"c61263f","hash":"c61263f98e365865def7d11cedd3e00078def45f","branch":"main","tag":"0.0.0-alpha-0-4-gc61263f","message":"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
