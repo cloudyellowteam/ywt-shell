@@ -11,17 +11,25 @@ ydk:nnf() {
     exec 3>&1
     trap 'exec 3>&-' EXIT
     local IOC_STATUS
-    $IOC_TARGET "${IOC_ARGS[@]}" 1>&3 2>&3
-    IOC_STATUS=$? && [ -z "$IOC_STATUS" ] && IOC_STATUS=1
+    # echo "{\"target\":\"$IOC_TARGET\",\"args\":[\"${IOC_ARGS[*]}\"]}"
+    $IOC_TARGET "${IOC_ARGS[@]}" 1>&3 2>&3 ||
+    IOC_STATUS=$? && IOC_STATUS=${IOC_STATUS:-0}
     # set -- "${IOC_ARGS[@]}"
     local END_TIME=$(date +%s)
     local ELAPSED_TIME=$((END_TIME - START_TIME))
     if [ -n "$IOC_STATUS" ] && [ "$IOC_STATUS" -eq 0 ]; then
-        local IOC_RESULT="SUCCESS"        
+        local IOC_RESULT="SUCCESS"
     else
         local IOC_RESULT="FAILED"
     fi
-    # echo "(${IOC_STATUS}) ydk:nnf/ $IOC_TARGET $IOC_RESULT in $ELAPSED_TIME seconds"
     exec 3>&-
-    return $IOC_STATUS
+    # echo -n "{"
+    # echo -n "\"target\": \"$IOC_TARGET\","
+    # echo -n "\"args\": [\"${IOC_ARGS[*]}\"],"
+    # echo -n "\"status\": $IOC_STATUS,"
+    # echo -n "\"result\": \"$IOC_RESULT\","
+    # echo -n "\"time\": $ELAPSED_TIME"
+    # echo -n "}"
+    # echo
+    return "${IOC_STATUS}"
 }

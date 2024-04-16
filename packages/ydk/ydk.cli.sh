@@ -4,6 +4,124 @@ YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
 ydk() {
     set -e -o pipefail
+    set -e -o errtrace
+    local YDK_CLI_NAME=$(basename "${YDK_CLI_ENTRYPOINT}") && readonly YDK_CLI_FILE_NAME
+    local YDK_CLI_DIR=$(cd "$(dirname "${YDK_CLI_ENTRYPOINT}")" && pwd) && readonly YDK_CLI_DIR
+    local YDK_INITIALIZED=false
+    ydk:boostrap() {
+        [ "$YDK_INITIALIZED" == true ] && return 0
+        YDK_INITIALIZED=true && readonly YDK_INITIALIZED
+        # echo "YDK_CLI_ENTRYPOINT: ${YDK_CLI_ENTRYPOINT}" 1>&2
+        # echo "YDK_CLI_NAME: ${YDK_CLI_NAME}" 1>&2
+        # echo "YDK_CLI_DIR: ${YDK_CLI_DIR}" 1>&2
+        while read -r ENTRYPOINT_FILE; do
+            local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
+            local ENTRYPOINT=${ENTRYPOINT_NAME//.ydk.sh/}
+            # ENTRYPOINT="${ENTRYPOINT//^[0-9]*\./}"
+            ENTRYPOINT=$(echo "$ENTRYPOINT" | sed 's/^[0-9]*\.//')
+            ENTRYPOINT=${ENTRYPOINT,,}
+            ENTRYPOINT="ydk:$ENTRYPOINT"
+            local ENTRYPOINT_TYPE=$(type -t "$ENTRYPOINT") && [ -n "$ENTRYPOINT_TYPE" ] && continue
+            # local ENTRYPOINT_DIR=$(cd "$(dirname "${ENTRYPOINT}")" && pwd)
+            if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+                # echo "Loading entrypoint: ${ENTRYPOINT}" 1>&2
+                # shellcheck source=/dev/null # echo "source $FILE" 1>&2 &&
+                source "${ENTRYPOINT_FILE}" 1>&2
+                # export -f "$ENTRYPOINT"
+                local ENTRYPOINT_TYPE=$(type -t "$ENTRYPOINT")
+            fi
+            if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+                echo "Failed to load entrypoint: ${ENTRYPOINT}" 1>&2
+                return 1
+            fi
+            # echo "Loaded entrypoint: ${ENTRYPOINT} as ${ENTRYPOINT_TYPE}" 1>&2
+        done < <(
+            find "${YDK_CLI_DIR}" \
+                -type f -name "*.ydk.sh" \
+                -not -name "${YDK_CLI_FILE_NAME}" | sort
+        )
+    }
+    ydk:teardown() {
+        local YDK_EXIT_CODE="${1:-$?}"
+        local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
+        # local YDK_BUGS_REPORT=$(ydk:version | jq -r '.bugs.url') && [ "$YDK_BUGS_REPORT" == "null" ] && YDK_BUGS_REPORT="https://bugs.yellowteam.cloud"
+        if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
+            echo -n "{"
+            echo -n "\"error\": true,"
+            echo -n "\"status\": ${YDK_EXIT_CODE},"
+            echo -n "\"message\": \"An error occurred, see you later\","
+            echo -n "\"report\": \"Please report this issue at: ${YDK_BUGS_REPORT}\""
+            echo -n "}"
+        else
+            echo -n "{"
+            echo -n "\"error\": false,"
+            echo -n "\"status\": ${YDK_EXIT_CODE},"
+            echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
+            echo -n "}"
+        fi
+        exit "${YDK_EXIT_CODE}"
+    }
+    ydk:try() {
+        ydk:nnf "$@" || {
+            YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+            [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
+            # [ "$YDK_STATUS" -ne 0 ] && ydk:usage "$YDK_STATUS" "$1" "${@:2}" && ydk:throw "$YDK_STATUS" "Usage: ydk $*" &&
+            return "${YDK_STATUS}"
+        }
+    }
+    ydk:catch() {
+        local YDK_CATH_STATUS="${1:-$?}"
+        local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
+        #>&2
+        echo -n "{\"error\": true, \"status\": ${YDK_CATH_STATUS}, \"message\": \"${YDK_CATH_MESSAGE}\"}"
+        echo
+        return "${YDK_CATH_STATUS}"
+    }
+    ydk:throw() {
+        local YDK_THROW_STATUS="${1:-$?}"
+        local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
+        local YDK_TERM="${3:-"ERR"}"
+        ydk:catch "$YDK_THROW_STATUS" "$2"
+        ydk:usage "$YDK_THROW_STATUS" "$2" "${@:3}"
+        ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
+        exit "$1"
+    }
+    trap 'ydk:catch $? "An unexpected error occurred"' ERR INT TERM
+    trap 'ydk:teardown $? "Script exited"' EXIT
+    if ! ydk:boostrap 2>&1; then
+        # echo "Failed to boostrap ydk" 1>&2
+        ydk:throw 255 "Failed to boostrap ydk"
+    fi
+    ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+    # echo "{\"return\": ${YDK_STATUS}}"
+    ydk:teardown "${YDK_STATUS}" "Script exited"
+    return "${YDK_STATUS}"
+    # [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
+    # return "${YDK_STATUS:-0}"
+    # return $?
+    # local YDK_COMMAND="${1:-"runtime"}"
+    # echo "YDK_COMMAND: ${YDK_COMMAND}" 1>&2
+    # local YDK_COMMAND_TYPE=$(type -t "ydk:$YDK_COMMAND") && [ -z "$YDK_COMMAND_TYPE" ] && YDK_COMMAND_TYPE="function"
+    # if [ "$YDK_COMMAND_TYPE" = function ]; then
+    #     shift
+    #     "ydk:$YDK_COMMAND" "$@"
+    # else
+    #     echo "Command not found: ${YDK_COMMAND}" 1>&2
+    #     exit 255
+    # fi
+}
+ydk "$@" 
+exit $?
+# || {
+#     YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+#     echo "{\"exit\": ${YDK_STATUS}}"
+#     exit "${YDK_STATUS}"
+# }
+# echo "{\"success\": true}"
+# exit 0
+
+ydk2() {
+    set -e -o pipefail
     local YDK_INITIALIZED=false
     local YDK_POSITIONAL=()
     local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
@@ -344,7 +462,10 @@ ydk() {
     trap 'ydk:teardown $? "Exit with: $?"' EXIT
     [[ "$1" != "install" ]] && ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 255 "ERR" "Failed to install required packages"
     ydk:entrypoint "$@" || unset -f "ydk:entrypoint"
-    ydk:boostrap >/dev/null 2>&1 || unset -f "ydk:boostrap"
+    if ! ydk:boostrap >/dev/null 2>&1; then
+        ydk:throw 255 "ERR" "Failed to boostrap ydk"
+    fi
+    unset -f "ydk:boostrap"
     ydk:argv flags "$@" || set -- "${YDK_POSITIONAL[@]}"
     jq -c '.' <<<"$YDK_FLAGS"
     ydk:nnf "$@"
@@ -352,4 +473,6 @@ ydk() {
     [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
     return "${YDK_STATUS:-0}"
 }
-ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"
+ydk2 "$@" || {
+    YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"
+}

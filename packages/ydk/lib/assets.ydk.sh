@@ -6,7 +6,9 @@ ydk:assets() {
     local YDK_REPO_BRANCH="main"
     local YDK_REPO_URL="https://github.com/${YDK_USERNAME}/${YDK_REPO_NAME}"
     local YDK_REPO_RAW_URL="https://raw.githubusercontent.com/${YDK_USERNAME}/${YDK_REPO_NAME}/${YDK_REPO_BRANCH}"
-
+    activate(){
+        echo "assets package"
+    }
     download(){
         local YDK_ASSET_PATH="${1}"
         local YDK_ASSET_URL="${YDK_REPO_RAW_URL}/${YDK_ASSET_PATH}"
