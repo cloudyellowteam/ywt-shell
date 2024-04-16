@@ -146,8 +146,8 @@ ydk:bundle() {
                 echo "ydk:${BUNDLE_NAME} \"\$@\""
                 echo "exit \$?"
             else 
-                # https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
                 curl -sSL https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
+                echo "# Added YDK CLI"
                 # cat /workspace/rapd-shell/packages/ydk/ydk.sh
             fi 
             # ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
