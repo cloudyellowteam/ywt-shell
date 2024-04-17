@@ -42,6 +42,6 @@ ydk:process() {
                 package: $package
             }'
     }
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }

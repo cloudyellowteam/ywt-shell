@@ -1,165 +1,460 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:logger() {
-    validate() {
-        level() {
-            local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error|success)$ ]] && LEVEL=info
-            local LOG_LEVEL=${YWT_LOG_LEVEL:-debug}
-            [[ $LOG_LEVEL == "debug" ]] && [[ $LEVEL == "debug" ]] && return 0
-            [[ $LOG_LEVEL == "info" ]] && [[ $LEVEL == "info" ]] && return 0
-            [[ $LOG_LEVEL == "warn" ]] && [[ $LEVEL == "warn" ]] && return 0
-            [[ $LOG_LEVEL == "error" ]] && [[ $LEVEL == "error" ]] && return 0
-            [[ $LOG_LEVEL == "success" ]] && [[ $LEVEL == "success" ]] && return 0
-            return 1
-        }
-        ydk:try "$@"
-        return $?
+    enabled() {
+        local LOG_LEVEL=${1:-info}
+        local LOG_LEVEL_IDX=-1
+        local LOG_CONFIG_LEVEL=${YDK_DEFAULTS_LOGGER[0]:-output}
+        local LOG_CONFIG_LEVEL_IDX=-1
+        for YDK_LOGGER_LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
+            local LEVEL=${YDK_LOGGER_LEVELS[$YDK_LOGGER_LEVEL_IDX]}
+            [[ $LOG_LEVEL == "$LEVEL" ]] && LOG_LEVEL_IDX=$YDK_LOGGER_LEVEL_IDX
+            [[ $LOG_CONFIG_LEVEL == "$LEVEL" ]] && LOG_CONFIG_LEVEL_IDX=$YDK_LOGGER_LEVEL_IDX
+        done
+        [[ $LOG_LEVEL_IDX -lt 0 ]] && return 1
+        [[ $LOG_CONFIG_LEVEL_IDX -lt 0 ]] && return 1
+        [[ $LOG_LEVEL_IDX -ge $LOG_CONFIG_LEVEL_IDX ]] && return 0
+        return 1
     }
-    build() {
-        level() {
-            local LEVEL=${1:-debug} && LEVEL=${LEVEL,,}
-            case $LEVEL in
+    levels() {
+        echo -n "["
+        for YDK_LOGGER_LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
+            local LOG_LEVEL=${YDK_LOGGER_LEVELS[$YDK_LOGGER_LEVEL_IDX]}
+            echo -n "{"
+            echo -n "\"level\": ${YDK_LOGGER_LEVEL_IDX},"
+            echo -n "\"name\": \"${LOG_LEVEL}\","
+            case $LOG_LEVEL in
+            trace)
+                echo -n "\"color\": \"cyan\","
+                echo -n "\"icon\": \"🔍\""
+                ;;
             debug)
-                echo "{\"level\":\"debug\", \"color\":\"cyan\", \"icon\":\"🐞\"}"
+                echo -n "\"color\": \"cyan\","
+                echo -n "\"icon\": \"🐞\""
                 ;;
             info)
-                echo "{\"level\":\"info\", \"color\":\"green\", \"icon\":\"📗\"}"
+                echo -n "\"color\": \"green\","
+                echo -n "\"icon\": \"📗\""
                 ;;
             warn)
-                echo "{\"level\":\"warn\", \"color\":\"yellow\", \"icon\":\"🔔\"}"
+                echo -n "\"color\": \"yellow\","
+                echo -n "\"icon\": \"🔔\""
                 ;;
             error)
-                echo "{\"level\":\"error\", \"color\":\"red\", \"icon\":\"🚨\"}"
+                echo -n "\"color\": \"red\","
+                echo -n "\"icon\": \"🚨\""
                 ;;
             success)
-                echo "{\"level\":\"success\", \"color\":\"green\", \"icon\":\"✅\"}"
+                echo -n "\"color\": \"green\","
+                echo -n "\"icon\": \"✅\""
                 ;;
-            *)
-                echo "{\"level\":\"info\", \"color\":\"green\", \"icon\":\"📗\"}"
+            output)
+                echo -n "\"color\": \"green\","
+                echo -n "\"icon\": \"📝\""
+                ;;
+            fatal)
+                echo -n "\"color\": \"red\","
+                echo -n "\"icon\": \"💀\""
+                ;;
+            panic)
+                echo -n "\"color\": \"red\","
+                echo -n "\"icon\": \"🔥\""
                 ;;
             esac
-            return 0
-        }
-        message() {
-            local MESSAGE=${1:-}
-            local LINES=()
-            [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
-            [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
-            MESSAGE="${LINES[*]//$'\n'/\\n}"
-            MESSAGE=$(echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g")
-            echo -n "$MESSAGE"
-        }
-        json() {
-            local LOG_LEVEL="$(level "$1")"
-            local LOG_MESSAGE="$(message "$2")" && LOG_MESSAGE=${LOG_MESSAGE//\"/\\\"}
-            local LOG_CONTEXT="${YWT_LOG_CONTEXT:-ywt}" && [[ -n "$3" ]] && LOG_CONTEXT="$3" && LOG_CONTEXT=${LOG_CONTEXT,,}
-            # '$level + {message: $message}'
-            jq -cn \
-                --argjson level "${LOG_LEVEL:-}" \
-                --argjson config "${YWT_CONFIG:-{}}" \
-                --arg message "${LOG_MESSAGE:-}" \
-                '{
-                    "signal": $level.icon,
-                    "context": "'"${LOG_CONTEXT}"'",
-                    "level": $level.level,
-                    "message": $message,
-                    "timestamp": (now | todate),
-                    "version": $config.yellowteam.version,                
-                    "tags": ["'"${LOG_CONTEXT}:context"'"],
-                    "path": "",
-                    "host": "'"$(hostname)"'",
-                    "type": "'"${LOG_CONTEXT}-log"'",
-                    "package": "\($config.yellowteam.name):\($config.yellowteam.version):\($config.yellowteam.license)",
-                    "color": $level.color,
-                    "icon": $level.icon,
-                    "pid": "'$$'",
-                    "ppid": "'"$PPID"'",
-                    "cmd": "'"$YWT_CMD_NAME"'",
-                    "name": "'"$YWT_CMD_NAME"'"
-                }'
+            echo -n ",\"enabled\":"
+            enabled "$LOG_LEVEL" && echo -n "true" || echo -n "false"
+            echo -n "},"
+        done | sed -e 's/,$//'
+        echo -n "]"
+    }
+    message() {
+        local MESSAGE=${1:-}
+        local LINES=()
+        [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
+        [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
+        MESSAGE="${LINES[*]//$'\n'/\\n}"
+        MESSAGE=${MESSAGE//\"/\\\"}
+        echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g"
+    }
+    defaults() {
+        local OPTS=${1:-"{}"}
+        local YDK_LOGGER_DEFAULTS=$({
+            echo -n "{"
+            echo -n "\"level\": \"${YDK_DEFAULTS_LOGGER[0]}\","
+            echo -n "\"template\": \"${YDK_DEFAULTS_LOGGER[1]}\","
+            echo -n "\"format\": \"${YDK_DEFAULTS_LOGGER[2]}\","
+            echo -n "\"context\": \"${YDK_DEFAULTS_LOGGER[3]}\","
+            echo -n "\"file\": \"${YDK_DEFAULTS_LOGGER[4]}\","
+            echo -n "\"maxsize\": \"${YDK_DEFAULTS_LOGGER[5]}\""
+            echo -n "}"
+        } | jq -c .)
+        jq -cn \
+            --argjson opts "${OPTS}" \
+            --argjson defautls "${YDK_LOGGER_DEFAULTS}" \
+            '
+        {
+            "opts": $opts,
+            "defaults": $defautls,
+            "args_length": $opts | .__args | length,
+            "args": $opts | .__args,
+            "values": {
+                "level": ($opts.level // $opts.l // $defautls.level),
+                "template": ($opts.template // $opts.t //$defautls.template),
+                "format": ($opts.format // $opts.f //$defautls.format),
+                "context": ($opts.context // $opts.c //$defautls.context),
+                "file": ($opts.file // $opts.fl //$defautls.file),
+                "maxsize": ($opts.maxsize // $opts.s //$defautls.maxsize),
+                "message": ($opts.message // $opts.m //$defautls.message)
+            }
+        } | del(.opts.__args)'
 
-        }
-        ydk:try "$@"
-        return $?
     }
-    format() {
-        json() {
-            build json "$@"
-        }
-        text() {
-            local LOG_JSON=$1
-            local LOG_FORMAT="${YELLOW}[${YWT_CMD_NAME^^}]${NC}" &&
-                LOG_FORMAT+=" ${BRIGHT_BLACK}[\(.pid)]${NC}" &&
-                LOG_TEMPLATE+=" ${BLUE}[\(.timestamp)]${NC}" &&
-                LOG_FORMAT+=" \(.signal)" &&
-                LOG_FORMAT+=" \(.level | ascii_upcase)" &&
-                LOG_FORMAT+=" ${YELLOW}\(.context | ascii_upcase)${NC}" &&
-                LOG_FORMAT+=" \(.message)" &&
-                # LOG_TEMPLATE+=" \(.package)" &&
-                LOG_FORMAT+=" [${BRIGHT_BLACK}\(.etime)${NC}]"
-            # local LOG_FORMAT="${YELLOW}[\(.pid)]${NC} \(.signal) \(.level | ascii_upcase) \(.message) \(.package) \(.etime)"
-            echo "$LOG_JSON" | jq --arg format "$LOG_FORMAT" -rc '
-            . | "'"$LOG_FORMAT"'" | gsub("\\n"; "\n")'
-        }
-        loki() {
-            echo "loki"
-        }
-        upstash() {
-            echo "upstash"
-        }
-        ydk:try "$@"
-        return $?
+    __is_log_level() {
+        local LEVEL=${1:-info}
+        for LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do            
+            [[ $LEVEL == "${YDK_LOGGER_LEVELS[$LEVEL_IDX]}" ]] && return 0
+        done
+        return 1
     }
-    log() {
-        local LOG_FORMAT="${YWT_LOG_FORMAT:-json}"
-        local LOG_ARGS=()
-        while [[ "$#" -gt 0 ]]; do
-            case $1 in
-            -l | --level)
-                local YWT_LOG_LEVEL=${2:-info}
-                shift 2
+    __json() {
+        local LOG_OPTS=$1 && shift
+        local LOG_LEVEL="$1" && shift
+        local LOG_MESSAGE=$(message "$1") && shift
+        # echo "LOG_OPTS = ${LOG_OPTS:-"{}"}"
+        # echo "LOG_LEVEL = ${LOG_LEVEL:-"{}"}"
+        # echo "LOG_MESSAGE = ${LOG_MESSAGE:-"{}"}"
+        if jq -e . >/dev/null 2>&1 <<<"$LOG_MESSAGE"; then
+            LOG_MESSAGE="{\"data\": $(jq -c . <<<"$LOG_MESSAGE")}"
+        else
+            LOG_MESSAGE="{\"data\":\"$LOG_MESSAGE\"}"
+        fi
+        LOG_LEVEL=$(levels | jq -cr ".[] | select(.name == \"$LOG_LEVEL\") | . // {}")
+        
+        jq -cn \
+            --argjson config "$(jq '.' <<<"${YDK_CONFIG:-"{}"}")" \
+            --argjson options "$(jq '.' <<<"${LOG_OPTS:-"{}"}" 2>/dev/null)" \
+            --argjson priority "$(jq '.' <<<"${LOG_LEVEL:-"{}"}" 2>/dev/null)" \
+            --argjson data "$(jq '.' <<<"${LOG_MESSAGE:-"{}"}" 2>/dev/null)" \
+            '{
+                "config": $config,
+                "timestamp": (now | todate),
+                "host": "'"$(hostname)"'",
+                "color": $priority.color,
+                "icon": $priority.icon,               
+                "priority": $priority.level,
+                "level": $priority.name,
+                "enabled": $priority.enabled,
+                "context": $options.context,
+                "template": $options.template,
+                "file": $options.file,
+                "format": $options.format,
+                "message": $data.data,
+                "tags": [
+                    "context:\($options.context)"
+                ],
+                "path": "",                    
+                "type": "\($options.context)-log",                    
+                "pid": '$$',
+                "ppid": '$PPID',
+                "etime": "'"$(ydk:process etime)"'",
+                "cli": "'"${YDK_CLI_NAME:-}"'",
+                "name": "'"${YDK_CLI_NAME:-}"'"
+            }'
+    }
+    __text() {
+        local LOG_JSON=$1
+        local LOG_FORMAT=$(jq -r '.template' <<<"$LOG_JSON")
+        LOG_FORMAT=$({
+            echo "$LOG_FORMAT" |
+                sed 's/{{/\\(/g' |
+                sed 's/}}/)/g' |
+                sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' |
+                sed -E 's/\| ascii_upcase/| ascii_upcase/g'
+        })
+        echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC}"
+        jq -r '
+            . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
+        ' <<<"$LOG_JSON" >/dev/stderr
+        return 0
+
+    }
+    __write() {
+        local LOG_JSON=$(__json "$@")        
+        local LOG_FILE=$(jq -r '.file' <<<"$LOG_JSON")
+        jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
+        if jq -r '.enabled' <<<"$LOG_JSON" | grep -q "true"; then
+            case $(jq -r '.format' <<<"$LOG_JSON") in
+            json)
+                jq -c . <<<"$LOG_JSON"
                 ;;
-            -c | --context)
-                local YWT_LOG_CONTEXT=${2:-ywt}
-                shift 2
+            text)
+                __text "$LOG_JSON"
                 ;;
-            -f | --format)
-                local YWT_LOG_FORMAT=${2:-json}
-                shift 2
+            loki)
+                jq -c '
+                    . | {
+                        "streams": [
+                            {
+                                "stream": {
+                                    "level": .level,
+                                    "context": .context,
+                                    "host": .host,
+                                    "type": .type,
+                                    "package": .package,
+                                    "color": .color,
+                                    "icon": .icon,
+                                    "pid": .pid,
+                                    "ppid": .ppid,
+                                    "cmd": .cmd,
+                                    "name": .name
+                                },
+                                "values": {
+                                    "message": .message,
+                                    "timestamp": .timestamp
+                                }
+                            }
+                        ]
+                    }                
+                ' <<<"$LOG_JSON"
                 ;;
-            -t | --template)
-                local YWT_LOG_TEMPLATE=${2:-}
-                shift 2
+            upstash)
+                jq -c '
+                    . | {
+                        "streams": [
+                            {
+                                "stream": {
+                                    "level": .level,
+                                    "context": .context,
+                                    "host": .host,
+                                    "type": .type,
+                                    "package": .package,
+                                    "color": .color,
+                                    "icon": .icon,
+                                    "pid": .pid,
+                                    "ppid": .ppid,
+                                    "cmd": .cmd,
+                                    "name": .name
+                                },
+                                "values": {
+                                    "message": .message,
+                                    "timestamp": .timestamp
+                                }
+                            }
+                        ]
+                    }
+                ' <<<"$LOG_JSON"
                 ;;
             *)
-                LOG_ARGS+=("$1")
-                shift
+                jq -c . <<<"$LOG_JSON"
                 ;;
             esac
-        done
-        if ! validate level "${LOG_ARGS[0]}"; then
-            return 0
         fi
-        local LOG_JSON=$(format json "${LOG_ARGS[@]}")
-        case $LOG_FORMAT in
-        json)
-            echo "$LOG_JSON"
-            ;;
-        text)
-            format text "$LOG_JSON" "$YWT_LOG_TEMPLATE"
-            ;;
-        loki)
-            format loki "$LOG_JSON"
-            ;;
-        upstash)
-            format upstash "$LOG_JSON"
-            ;;
-        *)
-            echo "$LOG_JSON"
-            ;;
-        esac
         return 0
     }
-    ydk:try "$@"
-    return $?
+    activate11() {
+        echo "logger activated"
+        # return 233
+    }
+    local LOGGER_OPTS=$(ydk:argv walk "$@" | jq -cr .)
+    local LOG_ARGS=($(jq '.__args[]' <<<"$LOGGER_OPTS"))
+    IFS=$'\n' read -r -d '' -a LOG_ARGS <<<"$(jq -r '.__args[]' <<<"$LOGGER_OPTS")"
+    set -- "${LOG_ARGS[@]}"
+    local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")    
+    if __is_log_level "$1"; then 
+        __write "$LOGGER_OPTS" "${LOG_ARGS[@]}"
+        return $?
+    else
+        ydk:try "$@"
+        return $?
+    fi    
+}
+# ydk:logger() {
+#     validate() {
+#         level() {
+#             local LEVEL=${1:-info} && [[ ! $LEVEL =~ ^(debug|info|warn|error|success)$ ]] && LEVEL=info
+#             local LOG_LEVEL=${YWT_LOG_LEVEL:-debug}
+#             [[ $LOG_LEVEL == "debug" ]] && [[ $LEVEL == "debug" ]] && return 0
+#             [[ $LOG_LEVEL == "info" ]] && [[ $LEVEL == "info" ]] && return 0
+#             [[ $LOG_LEVEL == "warn" ]] && [[ $LEVEL == "warn" ]] && return 0
+#             [[ $LOG_LEVEL == "error" ]] && [[ $LEVEL == "error" ]] && return 0
+#             [[ $LOG_LEVEL == "success" ]] && [[ $LEVEL == "success" ]] && return 0
+#             return 1
+#         }
+#         ydk:try "$@"
+#         return $?
+#     }
+#     build() {
+#         level() {
+#             local LEVEL=${1:-debug} && LEVEL=${LEVEL,,}
+#             case $LEVEL in
+#             debug)
+#                 echo "{\"level\":\"debug\", \"color\":\"cyan\", \"icon\":\"🐞\"}"
+#                 ;;
+#             info)
+#                 echo "{\"level\":\"info\", \"color\":\"green\", \"icon\":\"📗\"}"
+#                 ;;
+#             warn)
+#                 echo "{\"level\":\"warn\", \"color\":\"yellow\", \"icon\":\"🔔\"}"
+#                 ;;
+#             error)
+#                 echo "{\"level\":\"error\", \"color\":\"red\", \"icon\":\"🚨\"}"
+#                 ;;
+#             success)
+#                 echo "{\"level\":\"success\", \"color\":\"green\", \"icon\":\"✅\"}"
+#                 ;;
+#             *)
+#                 echo "{\"level\":\"info\", \"color\":\"green\", \"icon\":\"📗\"}"
+#                 ;;
+#             esac
+#             return 0
+#         }
+#         message() {
+#             local MESSAGE=${1:-}
+#             local LINES=()
+#             [[ -n "$MESSAGE" ]] && LINES+=("$MESSAGE")
+#             [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
+#             MESSAGE="${LINES[*]//$'\n'/\\n}"
+#             MESSAGE=$(echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g")
+#             echo -n "$MESSAGE"
+#         }
+#         json() {
+#             local LOG_LEVEL="$(level "$1")"
+#             local LOG_MESSAGE="$(message "$2")" && LOG_MESSAGE=${LOG_MESSAGE//\"/\\\"}
+#             local LOG_CONTEXT="${YWT_LOG_CONTEXT:-ywt}" && [[ -n "$3" ]] && LOG_CONTEXT="$3" && LOG_CONTEXT=${LOG_CONTEXT,,}
+#             # '$level + {message: $message}'
+#             jq -cn \
+#                 --argjson level "${LOG_LEVEL:-}" \
+#                 --argjson config "${YWT_CONFIG:-{}}" \
+#                 --arg message "${LOG_MESSAGE:-}" \
+#                 '{
+#                     "signal": $level.icon,
+#                     "context": "'"${LOG_CONTEXT}"'",
+#                     "level": $level.level,
+#                     "message": $message,
+#                     "timestamp": (now | todate),
+#                     "version": $config.yellowteam.version,
+#                     "tags": ["'"${LOG_CONTEXT}:context"'"],
+#                     "path": "",
+#                     "host": "'"$(hostname)"'",
+#                     "type": "'"${LOG_CONTEXT}-log"'",
+#                     "package": "\($config.yellowteam.name):\($config.yellowteam.version):\($config.yellowteam.license)",
+#                     "color": $level.color,
+#                     "icon": $level.icon,
+#                     "pid": "'$$'",
+#                     "ppid": "'"$PPID"'",
+#                     "cmd": "'"$YWT_CMD_NAME"'",
+#                     "name": "'"$YWT_CMD_NAME"'"
+#                 }'
+
+#         }
+#         ydk:try "$@"
+#         return $?
+#     }
+#     format() {
+#         json() {
+#             build json "$@"
+#         }
+#         text() {
+#             local LOG_JSON=$1
+#             local LOG_FORMAT="${YELLOW}[${YWT_CMD_NAME^^}]${NC}" &&
+#                 LOG_FORMAT+=" ${BRIGHT_BLACK}[\(.pid)]${NC}" &&
+#                 LOG_TEMPLATE+=" ${BLUE}[\(.timestamp)]${NC}" &&
+#                 LOG_FORMAT+=" \(.signal)" &&
+#                 LOG_FORMAT+=" \(.level | ascii_upcase)" &&
+#                 LOG_FORMAT+=" ${YELLOW}\(.context | ascii_upcase)${NC}" &&
+#                 LOG_FORMAT+=" \(.message)" &&
+#                 # LOG_TEMPLATE+=" \(.package)" &&
+#                 LOG_FORMAT+=" [${BRIGHT_BLACK}\(.etime)${NC}]"
+#             # local LOG_FORMAT="${YELLOW}[\(.pid)]${NC} \(.signal) \(.level | ascii_upcase) \(.message) \(.package) \(.etime)"
+#             echo "$LOG_JSON" | jq --arg format "$LOG_FORMAT" -rc '
+#             . | "'"$LOG_FORMAT"'" | gsub("\\n"; "\n")'
+#         }
+#         loki() {
+#             echo "loki"
+#         }
+#         upstash() {
+#             echo "upstash"
+#         }
+#         ydk:try "$@"
+#         return $?
+#     }
+#     log() {
+#         local LOG_FORMAT="${YWT_LOG_FORMAT:-json}"
+#         local LOG_ARGS=()
+#         while [[ "$#" -gt 0 ]]; do
+#             case $1 in
+#             -l | --level)
+#                 local YWT_LOG_LEVEL=${2:-info}
+#                 shift 2
+#                 ;;
+#             -c | --context)
+#                 local YWT_LOG_CONTEXT=${2:-ywt}
+#                 shift 2
+#                 ;;
+#             -f | --format)
+#                 local YWT_LOG_FORMAT=${2:-json}
+#                 shift 2
+#                 ;;
+#             -t | --template)
+#                 local YWT_LOG_TEMPLATE=${2:-}
+#                 shift 2
+#                 ;;
+#             *)
+#                 LOG_ARGS+=("$1")
+#                 shift
+#                 ;;
+#             esac
+#         done
+#         if ! validate level "${LOG_ARGS[0]}"; then
+#             return 0
+#         fi
+#         local LOG_JSON=$(format json "${LOG_ARGS[@]}")
+#         case $LOG_FORMAT in
+#         json)
+#             echo "$LOG_JSON"
+#             ;;
+#         text)
+#             format text "$LOG_JSON" "$YWT_LOG_TEMPLATE"
+#             ;;
+#         loki)
+#             format loki "$LOG_JSON"
+#             ;;
+#         upstash)
+#             format upstash "$LOG_JSON"
+#             ;;
+#         *)
+#             echo "$LOG_JSON"
+#             ;;
+#         esac
+#         return 0
+#     }
+#     ydk:try "$@"
+#     return $?
+# }
+{
+    [[ -z "$YDK_DEFAULTS_LOGGER" ]] && declare -g -a YDK_DEFAULTS_LOGGER=(
+        # Log Level
+        [0]="info"
+        # Log Template
+        [1]="[{{.pid}}] [{{.timestamp}}] {{.icon}} {{.level | ascii_upcase}} {{.context | ascii_upcase}} {{.message}} [{{.etime}}]"
+        # Log Format
+        [2]="text"
+        # Log Context
+        [3]="ydk"
+        # Log file
+        [4]="/var/log/ydk.log"
+        # Log max size
+        [5]="1M"
+    ) && readonly YDK_DEFAULTS_LOGGER
+    [[ -z "$YDK_LOGGER_LEVELS" ]] && declare -g -a YDK_LOGGER_LEVELS=(
+        [0]="trace"
+        [1]="debug"
+        [2]="info"
+        [3]="warn"
+        [4]="error"
+        [5]="success"
+        [6]="output"
+        [7]="fatal"
+        [8]="panic"
+    ) && readonly YDK_LOGGER_LEVELS
 }

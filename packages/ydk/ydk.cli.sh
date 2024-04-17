@@ -8,38 +8,68 @@ ydk() {
     local YDK_CLI_NAME=$(basename "${YDK_CLI_ENTRYPOINT}") && readonly YDK_CLI_FILE_NAME
     local YDK_CLI_DIR=$(cd "$(dirname "${YDK_CLI_ENTRYPOINT}")" && pwd) && readonly YDK_CLI_DIR
     local YDK_INITIALIZED=false
+    ydk:inject() {
+        local ENTRYPOINT_FILE="${1}" && [[ ! -f "${ENTRYPOINT_FILE}" ]] && return 0
+        local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
+        local ENTRYPOINT=${ENTRYPOINT_NAME//.ydk.sh/}
+        ENTRYPOINT=$(echo "$ENTRYPOINT" | sed 's/^[0-9]*\.//')
+        local ENTRYPOINT_TYPE="$(type -t "ydk:$ENTRYPOINT")" && [ -n "$ENTRYPOINT_TYPE" ] && return 0
+        if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+            # echo "Loading entrypoint: ${ENTRYPOINT}" 1>&2
+            # shellcheck source=/dev/null # echo "source $FILE" 1>&2 &&
+            source "${ENTRYPOINT_FILE}" activate
+            # echo "Loaded entrypoint ($?): ${ENTRYPOINT}" 1>&2
+            # export -f "$ENTRYPOINT"
+            local ENTRYPOINT_TYPE=$(type -t "ydk:$ENTRYPOINT")
+        fi
+        if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+            # ydk:throw 255 "Failed to load entrypoint: ${ENTRYPOINT_TYPE}"
+            return 1
+        fi
+        return 0
+    }
     ydk:boostrap() {
         [ "$YDK_INITIALIZED" == true ] && return 0
         YDK_INITIALIZED=true && readonly YDK_INITIALIZED
-        # echo "YDK_CLI_ENTRYPOINT: ${YDK_CLI_ENTRYPOINT}" 1>&2
-        # echo "YDK_CLI_NAME: ${YDK_CLI_NAME}" 1>&2
-        # echo "YDK_CLI_DIR: ${YDK_CLI_DIR}" 1>&2
         while read -r ENTRYPOINT_FILE; do
-            local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
-            local ENTRYPOINT=${ENTRYPOINT_NAME//.ydk.sh/}
-            # ENTRYPOINT="${ENTRYPOINT//^[0-9]*\./}"
-            ENTRYPOINT=$(echo "$ENTRYPOINT" | sed 's/^[0-9]*\.//')
-            ENTRYPOINT=${ENTRYPOINT,,}
-            ENTRYPOINT="ydk:$ENTRYPOINT"
-            local ENTRYPOINT_TYPE=$(type -t "$ENTRYPOINT") && [ -n "$ENTRYPOINT_TYPE" ] && continue
-            # local ENTRYPOINT_DIR=$(cd "$(dirname "${ENTRYPOINT}")" && pwd)
-            if ! [ "$ENTRYPOINT_TYPE" = function ]; then
-                # echo "Loading entrypoint: ${ENTRYPOINT}" 1>&2
-                # shellcheck source=/dev/null # echo "source $FILE" 1>&2 &&
-                source "${ENTRYPOINT_FILE}" 1>&2
-                # export -f "$ENTRYPOINT"
-                local ENTRYPOINT_TYPE=$(type -t "$ENTRYPOINT")
-            fi
-            if ! [ "$ENTRYPOINT_TYPE" = function ]; then
-                echo "Failed to load entrypoint: ${ENTRYPOINT}" 1>&2
+            if ! ydk:inject "${ENTRYPOINT_FILE}"; then
+                ydk:throw 255 "Failed to load entrypoint: ${ENTRYPOINT}"
                 return 1
             fi
-            # echo "Loaded entrypoint: ${ENTRYPOINT} as ${ENTRYPOINT_TYPE}" 1>&2
         done < <(
             find "${YDK_CLI_DIR}" \
                 -type f -name "*.ydk.sh" \
                 -not -name "${YDK_CLI_FILE_NAME}" | sort
         )
+        ydk:logger info "Activating entrypoints"
+        while read -r FUNC_NAME; do
+            {
+                # FUNC_NAME="${FUNC_NAME#ydk:}"
+                # [[ "$FUNC_NAME" == "ydk:boostrap" ]] && continue
+                # [[ "$FUNC_NAME" == "ydk:inject" ]] && continue
+                # [[ "$FUNC_NAME" == "ydk:teardown" ]] && continue
+                [[ "$FUNC_NAME" =~ (activate|boostrap|inject|teardown|try|catch|throw|opts) ]] && continue
+                [[ ! "$FUNC_NAME" == "ydk:logger" ]] && continue
+                "$FUNC_NAME" activate >/dev/null 2>&1
+                # local STATUS_CODE=$?
+                # if [[ $STATUS_CODE -gt 0 ]]; then
+                #     echo "($STATUS_CODE)Failed to activate: ${FUNC_NAME}" 1>&2
+                #     continue
+                # fi
+
+                # echo -n "FUNC_NAME: ${FUNC_NAME}" 1>&2
+                # if "$FUNC_NAME" activate >/dev/null 2>&1; then
+                #     echo -en ". ${GREEN}($?)Activated${NC}: ${FUNC_NAME}" 1>&2
+                # else
+                #     echo -en ". ${RED}($?)Failed${NC} to activate: ${FUNC_NAME}" 1>&2
+                # fi
+                # echo -n ". Done" 1>&2
+                # echo
+            }
+
+        done < <(ydk:functions | jq -r '.functions[]')
+        ydk:logger success "Activated. Application Boostraped"
+        return 0
     }
     ydk:teardown() {
         local YDK_EXIT_CODE="${1:-$?}"
@@ -59,12 +89,13 @@ ydk() {
             echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
             echo -n "}"
         fi
+        echo
         exit "${YDK_EXIT_CODE}"
     }
     ydk:try() {
         ydk:nnf "$@" || {
             YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
-            [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
+            [ "$YDK_STATUS" -ne 0 ] && [[ ! "$1" == "activate" ]] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
             # [ "$YDK_STATUS" -ne 0 ] && ydk:usage "$YDK_STATUS" "$1" "${@:2}" && ydk:throw "$YDK_STATUS" "Usage: ydk $*" &&
             return "${YDK_STATUS}"
         }
@@ -86,12 +117,19 @@ ydk() {
         ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
         exit "$1"
     }
+    ydk:opts() {
+        local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)
+        IFS=$'\n' read -r -d '' -a YDK_OPTS_ARGS <<<"$(jq -r '.__args[]' <<<"$YDK_OPTS")"
+        set -- "${YDK_OPTS_ARGS[@]}"
+        return 0
+    }
     trap 'ydk:catch $? "An unexpected error occurred"' ERR INT TERM
     trap 'ydk:teardown $? "Script exited"' EXIT
     if ! ydk:boostrap 2>&1; then
         # echo "Failed to boostrap ydk" 1>&2
         ydk:throw 255 "Failed to boostrap ydk"
     fi
+
     ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
     # echo "{\"return\": ${YDK_STATUS}}"
     ydk:teardown "${YDK_STATUS}" "Script exited"
@@ -110,7 +148,7 @@ ydk() {
     #     exit 255
     # fi
 }
-ydk "$@" 
+ydk "$@"
 exit $?
 # || {
 #     YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}

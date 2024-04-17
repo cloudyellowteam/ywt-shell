@@ -1,6 +1,49 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:argv() {
+    kv() {
+        local KEY=${1#--} && KEY=${KEY#-}
+        if [[ "$KEY" == *kv=* ]]; then
+            local KEY=${KEY#kv=}
+            local VALUE=${KEY#*:} && VALUE=${VALUE#*:} && VALUE=${VALUE#=}
+            local KEY=${KEY%%:*}
+        else
+            local KEY=${KEY%%=*} && KEY=${KEY%%:*}
+            local VALUE=${1#*=} && VALUE=${VALUE#*:} && VALUE=${VALUE#*=} && VALUE=${VALUE#--} && VALUE=${VALUE#-}
+        fi
+        [[ "$KEY" == "$VALUE" ]] && VALUE=true
+        [[ -z "$VALUE" ]] && VALUE=true
+        ! [[ "$VALUE" =~ ^[0-9]+$ ]] && ! [[ "$VALUE" =~ (true|false) ]] && VALUE="\"$VALUE\""
+        if jq -e . >/dev/null 2>&1 <<<"$VALUE"; then
+            VALUE=$(jq -c . <<<"$VALUE")
+        fi
+        echo -n "\"$KEY\": $VALUE"
+    }
+    walk() {
+        local WALK_POSITIONAL=()
+        local WALK_FIRST=true
+        echo -n "{"
+        while [[ $# -gt 0 ]]; do
+            local FLAG="$1"
+            [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && WALK_POSITIONAL+=("$1") && shift && continue
+            kv "$FLAG"
+            shift
+            echo -n ","
+            # [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
+            # echo -n ","
+        done #| sed -e 's/,$//'
+        echo -n "\"__args\": ["
+        WALK_FIRST=true
+        for WALK_POSITIONAL in "${WALK_POSITIONAL[@]}"; do
+            echo -n "\"$WALK_POSITIONAL\""
+            [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
+        done
+        echo -n "]"
+        echo -n "}"
+        export WALK_POSITIONAL
+        set -- "${WALK_POSITIONAL[@]}"
+        return 0
+    }
     values() {
         [ -n "$YDK_ARGV" ] && echo "$YDK_ARGV" | jq -c . && return 0
         YDK_POSITIONAL=()
@@ -116,10 +159,10 @@ ydk:argv() {
                 ;;
             esac
         done
-        export YDK_FLAGS      # && readonly YDK_FLAGS
+        export YDK_FLAGS # && readonly YDK_FLAGS
         set -- "${YDK_POSITIONAL[@]}"
         return 0
     }
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }

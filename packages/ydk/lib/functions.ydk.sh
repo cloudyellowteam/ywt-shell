@@ -17,10 +17,12 @@ ydk:functions() {
         [[ "$FUNC_NAME" == bats_* ]] && continue
         [[ "$FUNC_NAME" == batslib_* ]] && continue
         [[ "$FUNC_NAME" == assert_* ]] && continue
-        local FUNC_ENTRYPOINT=${FUNC_NAME#ydk:}
-        [[ "$FUNC_ENTRYPOINT" == ydk* ]] && continue
+        # local FUNC_ENTRYPOINT=${FUNC_NAME#ydk:}
+        [[ ! "$FUNC_NAME" == ydk* ]] && continue
+        [[  "$FUNC_NAME" == ydk ]] && continue
+        [[ "$FUNC_NAME" == *:*:* ]] && continue 
         # local FUNC_BODY=$(declare -f "${FUNC_NAME}" | grep -v "declare -f")        
-        echo -n "\"${FUNC_ENTRYPOINT}\","
+        echo -n "\"${FUNC_NAME}\","
     done | sed -e 's/,$//'
     echo -n "]"
     echo -n "}"

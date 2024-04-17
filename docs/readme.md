@@ -3,8 +3,21 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+
+
+
+
+> **2024.04.17**
+```shell
+./packages/ydk/ydk.cli.sh logger --c=testing info test
+clear; ./packages/ydk/ydk.cli.sh logger --c=test levels | jq -s '. | flatten' 
+clear; ./packages/ydk/ydk.cli.sh upm detect | jq -s .
+clear; ./packages/ydk/ydk.cli.sh upm cli | jq -s .
+```
+
 > **2024.04.16**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh logger --c=test levels | jq -s '. | flatten' 
 ```
 
 > **2024.04.15**
