@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:upm() {
+    local YDK_LOGGER_CONTEXT="upm"
     detect() {
         local OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
         local OS_VENDOR=$({
@@ -34,7 +35,12 @@ ydk:upm() {
             echo -n "}"
             echo -n "}"
         } | jq -c .)
-        ydk:logger -c upm output "${OS_VENDOR//\"/\'}"
+        ydk:logger info "detected $({
+            jq -rc '"\(.os) \(.vendor)"' <<<"${OS_VENDOR}"
+        } | tr -d '\n')"
+        # ydk:logger -c "$YDK_LOGGER_CONTEXT" output ''"${OS_VENDOR}"'' #"${OS_VENDOR//\"/\'}"
+        jq -c . <<<"${OS_VENDOR}" >&4
+        return 1
     }
     vendor() {
         local MANAMGER_NAME=$1
@@ -44,22 +50,26 @@ ydk:upm() {
             first(.)
         " "/workspace/rapd-shell/assets/upm.vendors.json"
     }
-    cli() {
-        local DETECT=$(detect)
-        [[ "$(jq -r '.os' <<<"$DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
+    cli() {        
+        detect && read -r -u 4 YDK_UPM_DETECT || YDK_UPM_DETECT="{}" # && ydk:logger error "No UPM detected" && return 1       
+        [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
         local UPM_MANAGER=$(
             jq -r '
-                .managers | 
-                to_entries[] |
-                select(.value.installed == true) | 
-                first(.key)
-            ' <<<"$DETECT"
-        )
+                if .managers != null then
+                    .managers | 
+                    to_entries[] |
+                    select(.value.installed == true) | 
+                    first(.key)
+                else
+                    empty
+                end
+            ' <<<"$YDK_UPM_DETECT"
+        )        
         [[ -z "$UPM_MANAGER" ]] && ydk:throw 255 "No package manager found"
         local UPM_MANAGER_VENDOR=$(vendor "$UPM_MANAGER")
         [[ -z "$UPM_MANAGER_VENDOR" ]] && ydk:throw 255 "No package manager vendor found"
-        jq -cn \
-            --argjson DETECT "$DETECT" \
+        jq -n \
+            --argjson DETECT "$YDK_UPM_DETECT" \
             --arg UPM_MANAGER "$UPM_MANAGER" \
             --argjson UPM_VENDOR "$UPM_MANAGER_VENDOR" \
             '{

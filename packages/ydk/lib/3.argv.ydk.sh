@@ -20,12 +20,11 @@ ydk:argv() {
         echo -n "\"$KEY\": $VALUE"
     }
     walk() {
-        local WALK_POSITIONAL=()
         local WALK_FIRST=true
         echo -n "{"
         while [[ $# -gt 0 ]]; do
             local FLAG="$1"
-            [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && WALK_POSITIONAL+=("$1") && shift && continue
+            [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
             kv "$FLAG"
             shift
             echo -n ","
@@ -34,25 +33,24 @@ ydk:argv() {
         done #| sed -e 's/,$//'
         echo -n "\"__args\": ["
         WALK_FIRST=true
-        for WALK_POSITIONAL in "${WALK_POSITIONAL[@]}"; do
-            echo -n "\"$WALK_POSITIONAL\""
+        for YDK_POSITIONAL_ARGS in "${YDK_POSITIONAL_ARGS[@]}"; do
+            echo -n "\"$YDK_POSITIONAL_ARGS\""
             [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
         done
         echo -n "]"
         echo -n "}"
-        export WALK_POSITIONAL
-        set -- "${WALK_POSITIONAL[@]}"
+        export YDK_POSITIONAL_ARGS
+        set -- "${YDK_POSITIONAL_ARGS[@]}"
         return 0
     }
     values() {
         [ -n "$YDK_ARGV" ] && echo "$YDK_ARGV" | jq -c . && return 0
-        YDK_POSITIONAL=()
         export YDK_ARGV=$(
             {
                 local JSON="{" && local FIRST=true
                 while [[ $# -gt 0 ]]; do
                     local FLAG="$1"
-                    [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL+=("$1") && shift && continue
+                    [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
                     local KEY=${FLAG#--} && KEY=${KEY#-} && KEY=${KEY%%=*} && KEY=${KEY%%:*}
                     local VALUE=${FLAG#*=} && VALUE=${VALUE#*:} && VALUE=${VALUE#*=} && VALUE=${VALUE#--} && VALUE=${VALUE#-}
                     [[ "$KEY" == "$VALUE" ]] && VALUE=true
@@ -70,12 +68,11 @@ ydk:argv() {
     }
     form() {
         [ -n "$YDK_FORM" ] && echo "$YDK_FORM" | jq -c . && return 0
-        YDK_POSITIONAL=()
         export YDK_FORM=$({
             local JSON="{" && local FIRST=true
             while [[ $# -gt 0 ]]; do
                 local PARAM="$1"
-                [[ "$PARAM" != kv=* ]] && YDK_POSITIONAL+=("$1") && shift && continue
+                [[ "$PARAM" != kv=* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
                 local KEY=${PARAM#kv=}
                 local VALUE=${KEY#*:} && VALUE=${VALUE#*:} && VALUE=${VALUE#=}
                 KEY=${KEY%%:*}
@@ -90,7 +87,6 @@ ydk:argv() {
         echo "$YDK_FORM" | jq -c .
     }
     flags() {
-        YDK_POSITIONAL=()
         # [[ -n "$YDK_FLAGS" ]] && echo "$YDK_FLAGS" | jq -c . && return 0
         YDK_FLAGS=$(jq -n '{ "quiet": false, "trace": null, "logger": null, "debug": null, "output": null }')
         while [[ $# -gt 0 ]]; do
@@ -149,20 +145,24 @@ ydk:argv() {
                 shift
                 ;;
             -p* | --param*)
-                YDK_POSITIONAL+=("$1")
+                YDK_POSITIONAL_ARGS+=("$1")
                 # params already parsed using __params
                 shift
                 ;;
             *)
-                YDK_POSITIONAL+=("$1")
+                YDK_POSITIONAL_ARGS+=("$1")
                 shift
                 ;;
             esac
         done
         export YDK_FLAGS # && readonly YDK_FLAGS
-        set -- "${YDK_POSITIONAL[@]}"
+        set -- "${YDK_POSITIONAL_ARGS[@]}"
         return 0
     }
+    YDK_POSITIONAL_ARGS=()
     ydk:try "$@"
-    return $?
+    local ARGV_STATUS=$?
+    export YDK_POSITIONAL_ARGS
+    set -- "${YDK_POSITIONAL_ARGS[@]}"
+    return $ARGV_STATUS
 }

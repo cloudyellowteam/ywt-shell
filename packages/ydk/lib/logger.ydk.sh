@@ -198,91 +198,29 @@ ydk:logger() {
         local LOG_FILE=$(jq -r '.file' <<<"$LOG_JSON")
         jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
         if [[ "$(jq -r '.level' <<<"$LOG_JSON" 2>/dev/null)" == "output" ]]; then
+            local LOG_CONTENT=$(jq -r '.message' <<<"$LOG_JSON")
+            echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
+            echo -e "$LOG_CONTENT"
+            # if jq -e . >/dev/null 2>&1 <<<"$LOG_CONTENT"; then
+            #     jq -c . <<<"$LOG_CONTENT"
+            # else
+            #     echo -e "$LOG_CONTENT"
+            # fi
             # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
-            jq -rc '. + {
-                "message": .message | gsub("\\n"; "\n")
-            } |
-            select(.message | length > 0) |
-            "\(.message) \(.pid)"
-            ' <<<"$LOG_JSON"
+            # jq -rc '. + {
+            #     "message": .message | gsub("\\n"; "\n")
+            # } |
+            # select(.message | length > 0) |
+            # "\(.message) \(.pid)"
+            # ' <<<"$LOG_JSON"
         fi
-
-        # echo "$LOG_JSON" | jq -r '.message' | sed -r "s/\x1B\[[0-9;]*[mK]//g" | sed -r "s/\\n/\n/g" >/dev/stderr
-
-        # if jq -r '.enabled' <<<"$LOG_JSON" | grep -q "true"; then
-        #     case $(jq -r '.format' <<<"$LOG_JSON") in
-        #     json)
-        #         jq -c . <<<"$LOG_JSON"
-        #         ;;
-        #     text)
-        #         __text "$LOG_JSON"
-        #         ;;
-        #     loki)
-        #         jq -c '
-        #             . | {
-        #                 "streams": [
-        #                     {
-        #                         "stream": {
-        #                             "level": .level,
-        #                             "context": .context,
-        #                             "host": .host,
-        #                             "type": .type,
-        #                             "package": .package,
-        #                             "color": .color,
-        #                             "icon": .icon,
-        #                             "pid": .pid,
-        #                             "ppid": .ppid,
-        #                             "cmd": .cmd,
-        #                             "name": .name
-        #                         },
-        #                         "values": {
-        #                             "message": .message,
-        #                             "timestamp": .timestamp
-        #                         }
-        #                     }
-        #                 ]
-        #             }
-        #         ' <<<"$LOG_JSON"
-        #         ;;
-        #     upstash)
-        #         jq -c '
-        #             . | {
-        #                 "streams": [
-        #                     {
-        #                         "stream": {
-        #                             "level": .level,
-        #                             "context": .context,
-        #                             "host": .host,
-        #                             "type": .type,
-        #                             "package": .package,
-        #                             "color": .color,
-        #                             "icon": .icon,
-        #                             "pid": .pid,
-        #                             "ppid": .ppid,
-        #                             "cmd": .cmd,
-        #                             "name": .name
-        #                         },
-        #                         "values": {
-        #                             "message": .message,
-        #                             "timestamp": .timestamp
-        #                         }
-        #                     }
-        #                 ]
-        #             }
-        #         ' <<<"$LOG_JSON"
-        #         ;;
-        #     *)
-        #         jq -c . <<<"$LOG_JSON"
-        #         ;;
-        #     esac
-        # fi
         return 0
     }
     activate() {
-        echo "logger activated"
+        echo "logger activated" # >&1
         # return 233
     }
-    local LOGGER_OPTS="{\"context\":\"ydk\"}"
+    local LOGGER_OPTS="{\"context\":\"${YDK_LOGGER_CONTEXT:-ydk}\"}"
     local LOGGER_ARGS=()
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -314,13 +252,10 @@ ydk:logger() {
     done
     set -- "${LOGGER_ARGS[@]}"
     local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")
-    # echo "__try ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
     if __is_log_level "$1" 2>/dev/null; then
-        # echo "__write ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
         __write "$LOGGER_OPTS" "${LOGGER_ARGS[@]}" # 2>/dev/null
         return $?
     else
-        # echo "__try ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
         ydk:try "$@"
         return $?
     fi
@@ -506,7 +441,7 @@ ydk:logger() {
     [[ -z "$YDK_DEFAULTS_LOGGER" ]] && declare -g -a YDK_DEFAULTS_LOGGER=(
         # Log Level
         [0]="info"
-        # Log Template 
+        # Log Template
         [1]="[{{.pid}}] [{{.timestamp}}] {{.icon}} {{.level | ascii_upcase}} {{.context | ascii_upcase }} {{.message}} [{{.etime}}]"
         # Log Format
         [2]="text"

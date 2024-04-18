@@ -13,7 +13,7 @@ ydk:nnf() {
     local IOC_STATUS
     # echo "{\"target\":\"$IOC_TARGET\",\"args\":[\"${IOC_ARGS[*]}\"]}"
     $IOC_TARGET "${IOC_ARGS[@]}" 1>&3 2>&3 ||
-    IOC_STATUS=$? && IOC_STATUS=${IOC_STATUS:-0}
+    IOC_STATUS=$? && IOC_STATUS=${IOC_STATUS:-0}    
     # set -- "${IOC_ARGS[@]}"
     local END_TIME=$(date +%s)
     local ELAPSED_TIME=$((END_TIME - START_TIME))

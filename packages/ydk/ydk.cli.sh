@@ -2,12 +2,17 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
+set -e -o pipefail
+set -e -o errtrace
 ydk() {
-    set -e -o pipefail
-    set -e -o errtrace
     local YDK_CLI_NAME=$(basename "${YDK_CLI_ENTRYPOINT}") && readonly YDK_CLI_FILE_NAME
     local YDK_CLI_DIR=$(cd "$(dirname "${YDK_CLI_ENTRYPOINT}")" && pwd) && readonly YDK_CLI_DIR
     local YDK_INITIALIZED=false
+    local YDK_BOOTSTRAPED=false
+    export YDK_POSITIONAL_ARGS=()
+    mkfifo /tmp/ydk.fifo
+    exec 4<>/tmp/ydk.fifo
+    trap 'exec 4>&-; rm -f /tmp/ydk.fifo' EXIT
     ydk:inject() {
         local ENTRYPOINT_FILE="${1}" && [[ ! -f "${ENTRYPOINT_FILE}" ]] && return 0
         local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
@@ -69,6 +74,7 @@ ydk() {
 
         done < <(ydk:functions | jq -r '.functions[]')
         ydk:logger success "Activated. Application Boostraped"
+        YDK_BOOTSTRAPED=true && readonly YDK_BOOTSTRAPED
         return 0
     }
     ydk:teardown() {
@@ -89,6 +95,7 @@ ydk() {
             echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
             echo -n "}"
         fi
+        rm -f /tmp/ydk.fifo
         echo
         exit "${YDK_EXIT_CODE}"
     }
@@ -100,12 +107,31 @@ ydk() {
             return "${YDK_STATUS}"
         }
     }
+    ydk:log() {
+        local YDK_LOG_LEVEL="${1:-"INFO"}"
+        local YDK_LOG_MESSAGE="${2:-""}"
+        if [[ "$YDK_BOOTSTRAPED" == true ]]; then
+            ydk:logger "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
+        else
+            local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+            {
+                echo "[YDK][$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^}:" 
+                echo -n "{"
+                echo -n "\"level\": \"${YDK_LOG_LEVEL}\","
+                echo -n "\"message\": \"${YDK_LOG_MESSAGE}\""
+                echo -n "}"
+            } 1>&2
+        fi
+    }
     ydk:catch() {
         local YDK_CATH_STATUS="${1:-$?}"
         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
-        #>&2
-        echo -n "{\"error\": true, \"status\": ${YDK_CATH_STATUS}, \"message\": \"${YDK_CATH_MESSAGE}\"}"
-        echo
+        ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
+        # if [[ "$YDK_BOOTSTRAPED" == true ]]; then
+        #     ydk:logger error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
+        # else
+        #     echo >&2 "{\"error\": true, \"status\": ${YDK_CATH_STATUS}, \"message\": \"${YDK_CATH_MESSAGE}\"}"
+        # fi
         return "${YDK_CATH_STATUS}"
     }
     ydk:throw() {
@@ -129,10 +155,11 @@ ydk() {
         # echo "Failed to boostrap ydk" 1>&2
         ydk:throw 255 "Failed to boostrap ydk"
     fi
-
     ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
     # echo "{\"return\": ${YDK_STATUS}}"
-    ydk:teardown "${YDK_STATUS}" "Script exited"
+    # ydk:teardown "${YDK_STATUS}" "Script exited"
+    exec 4>&-
+    rm -f /tmp/ydk.fifo
     return "${YDK_STATUS}"
     # [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
     # return "${YDK_STATUS:-0}"
