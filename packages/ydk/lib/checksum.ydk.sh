@@ -40,6 +40,6 @@ ydk:checksum() {
         echo "Hash mismatch: $FILE_HASH != $HASH"
         return 1        
     }
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }

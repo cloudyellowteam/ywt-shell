@@ -40,7 +40,7 @@ ydk:upm() {
         } | tr -d '\n')"
         # ydk:logger -c "$YDK_LOGGER_CONTEXT" output ''"${OS_VENDOR}"'' #"${OS_VENDOR//\"/\'}"
         jq -c . <<<"${OS_VENDOR}" >&4
-        return 1
+        return 0
     }
     vendor() {
         local MANAMGER_NAME=$1
@@ -51,7 +51,8 @@ ydk:upm() {
         " "/workspace/rapd-shell/assets/upm.vendors.json"
     }
     cli() {        
-        detect && read -r -u 4 YDK_UPM_DETECT || YDK_UPM_DETECT="{}" # && ydk:logger error "No UPM detected" && return 1       
+        YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
+        [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
         local UPM_MANAGER=$(
             jq -r '

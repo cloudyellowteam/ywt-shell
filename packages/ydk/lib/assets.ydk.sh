@@ -28,6 +28,6 @@ ydk:assets() {
         return $?
     }    
 
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }

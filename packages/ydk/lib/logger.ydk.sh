@@ -186,7 +186,7 @@ ydk:logger() {
                 sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' |
                 sed -E 's/\| ascii_upcase/| ascii_upcase/g'
         })
-        echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC}"
+        echo -ne "${YELLOW}[${YDK_BRAND^^}]${NC}"
         jq -r '
             . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
         ' <<<"$LOG_JSON" >/dev/stderr
@@ -197,23 +197,26 @@ ydk:logger() {
         local LOG_JSON=$(__json "$@")
         local LOG_FILE=$(jq -r '.file' <<<"$LOG_JSON")
         jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
-        if [[ "$(jq -r '.level' <<<"$LOG_JSON" 2>/dev/null)" == "output" ]]; then
-            local LOG_CONTENT=$(jq -r '.message' <<<"$LOG_JSON")
-            echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
-            echo -e "$LOG_CONTENT"
-            # if jq -e . >/dev/null 2>&1 <<<"$LOG_CONTENT"; then
-            #     jq -c . <<<"$LOG_CONTENT"
-            # else
-            #     echo -e "$LOG_CONTENT"
-            # fi
-            # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
-            # jq -rc '. + {
-            #     "message": .message | gsub("\\n"; "\n")
-            # } |
-            # select(.message | length > 0) |
-            # "\(.message) \(.pid)"
-            # ' <<<"$LOG_JSON"
-        fi
+        __text "$LOG_JSON"
+        # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
+        # echo -e "$LOG_CONTENT"
+        # # if [[ "$(jq -r '.level' <<<"$LOG_JSON" 2>/dev/null)" == "output" ]]; then
+        # local LOG_CONTENT=$(jq -r '.message' <<<"$LOG_JSON")
+        # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ " 1>&2
+        # echo -e "$LOG_CONTENT" 1>&2
+        # if jq -e . >/dev/null 2>&1 <<<"$LOG_CONTENT"; then
+        #     jq -c . <<<"$LOG_CONTENT"
+        # else
+        #     echo -e "$LOG_CONTENT"
+        # fi
+        # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
+        # jq -rc '. + {
+        #     "message": .message | gsub("\\n"; "\n")
+        # } |
+        # select(.message | length > 0) |
+        # "\(.message) \(.pid)"
+        # ' <<<"$LOG_JSON"
+        # fi
         return 0
     }
     activate() {

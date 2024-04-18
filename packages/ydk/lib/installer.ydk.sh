@@ -191,6 +191,6 @@ ydk:installer() {
         rm -f "${YDK_TMP}"
         ydk welcome
     }
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }

@@ -2,6 +2,7 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
+export YDK_BRAND="YDK" && readonly YDK_BRAND
 set -e -o pipefail
 set -e -o errtrace
 ydk() {
@@ -10,9 +11,26 @@ ydk() {
     local YDK_INITIALIZED=false
     local YDK_BOOTSTRAPED=false
     export YDK_POSITIONAL_ARGS=()
-    mkfifo /tmp/ydk.fifo
+    [[ ! -p "/tmp/ydk.fifo" ]] &&  mkfifo /tmp/ydk.fifo
     exec 4<>/tmp/ydk.fifo
     trap 'exec 4>&-; rm -f /tmp/ydk.fifo' EXIT
+    ydk:usage(){
+        local YDK_USAGE_STATUS=$1
+        local YDK_USAGE_COMMAND="${2:-"<command>"}"
+        local YDK_USAGE_MESSAGE="${3:-"command not found"}"
+        local YDK_USAGE_COMMANDS=("$@")
+        {
+            echo "($YDK_USAGE_STATUS) ${YDK_USAGE_MESSAGE}"
+            echo "* Usage: ydk $YDK_USAGE_COMMAND ($_)"
+            [ "${#YDK_USAGE_COMMANDS[@]}" -gt 0 ] && {
+                echo " [commands]"
+                for YDK_USAGE_COMMAND in "${YDK_USAGE_COMMANDS[@]}"; do
+                    echo " ${YDK_USAGE_COMMAND}"
+                done
+            }
+        } 1>&2
+        return "$YDK_USAGE_STATUS"    
+    }
     ydk:inject() {
         local ENTRYPOINT_FILE="${1}" && [[ ! -f "${ENTRYPOINT_FILE}" ]] && return 0
         local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
@@ -81,21 +99,27 @@ ydk() {
         local YDK_EXIT_CODE="${1:-$?}"
         local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
         # local YDK_BUGS_REPORT=$(ydk:version | jq -r '.bugs.url') && [ "$YDK_BUGS_REPORT" == "null" ] && YDK_BUGS_REPORT="https://bugs.yellowteam.cloud"
-        if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
-            echo -n "{"
-            echo -n "\"error\": true,"
-            echo -n "\"status\": ${YDK_EXIT_CODE},"
-            echo -n "\"message\": \"An error occurred, see you later\","
-            echo -n "\"report\": \"Please report this issue at: ${YDK_BUGS_REPORT}\""
-            echo -n "}"
-        else
-            echo -n "{"
-            echo -n "\"error\": false,"
-            echo -n "\"status\": ${YDK_EXIT_CODE},"
-            echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
-            echo -n "}"
-        fi
+        local YDK_EXIT_JSON=$({
+            if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
+                echo -n "{"
+                echo -n "\"level\": \"error\","
+                echo -n "\"error\": true,"
+                echo -n "\"status\": ${YDK_EXIT_CODE},"
+                echo -n "\"message\": \"An error occurred, see you later\","
+                echo -n "\"report\": \"Please report this issue at: ${YDK_BUGS_REPORT}\""
+                echo -n "}"
+            else
+                echo -n "{"
+                echo -n "\"level\": \"success\","
+                echo -n "\"error\": false,"
+                echo -n "\"status\": ${YDK_EXIT_CODE},"
+                echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
+                echo -n "}"
+            fi
+        })
+        local YDK_EXIT_LEVEL=$(jq -r '.level' <<<"${YDK_EXIT_JSON}")
         rm -f /tmp/ydk.fifo
+        ydk:log "$YDK_EXIT_LEVEL" "($YDK_EXIT_CODE) ${YDK_EXIT_MESSAGE}"
         echo
         exit "${YDK_EXIT_CODE}"
     }
@@ -115,30 +139,26 @@ ydk() {
         else
             local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
             {
-                echo "[YDK][$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^}:" 
+                echo "[YDK][$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^}:"
                 echo -n "{"
                 echo -n "\"level\": \"${YDK_LOG_LEVEL}\","
                 echo -n "\"message\": \"${YDK_LOG_MESSAGE}\""
                 echo -n "}"
             } 1>&2
         fi
+        return 0
     }
     ydk:catch() {
         local YDK_CATH_STATUS="${1:-$?}"
         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
-        ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
-        # if [[ "$YDK_BOOTSTRAPED" == true ]]; then
-        #     ydk:logger error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
-        # else
-        #     echo >&2 "{\"error\": true, \"status\": ${YDK_CATH_STATUS}, \"message\": \"${YDK_CATH_MESSAGE}\"}"
-        # fi
+        ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE} ($_)"
         return "${YDK_CATH_STATUS}"
     }
     ydk:throw() {
         local YDK_THROW_STATUS="${1:-$?}"
         local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
         local YDK_TERM="${3:-"ERR"}"
-        ydk:catch "$YDK_THROW_STATUS" "$2"
+        # ydk:catch "$YDK_THROW_STATUS" "$2"
         ydk:usage "$YDK_THROW_STATUS" "$2" "${@:3}"
         ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
         exit "$1"

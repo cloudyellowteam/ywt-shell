@@ -2,6 +2,33 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:is() {
     case "$1" in
+    fifo-exists)
+        [ -p "$2" ] && return 0
+        ;;
+    fifo-readable)
+        [ -p "$2" ] && [ -r "$2" ] && return 0
+        ;;
+    fifo-writable)
+        [ -p "$2" ] && [ -w "$2" ] && return 0
+        ;;
+    fifo-opened)
+        [ -p "$2" ] && lsof "$2" && return 0
+        ;;
+    descriptor-exists)
+        [ -e /proc/$$/fd/"$2" ] && return 0
+        ;;
+    descriptor-readable)
+        [ -r /proc/$$/fd/"$2" ] && return 0
+        ;;
+    descriptor-writable)
+        [ -w /proc/$$/fd/"$2" ] && return 0
+        ;;
+    descriptor-opened)
+        lsof -p $$ | grep " $2" && return 0
+        ;;
+    exists)
+        [ -e "$2" ] && return 0
+        ;;        
     not-defined)
         [ -z "$2" ] && return 0
         [ "$2" == "null" ] && return 0

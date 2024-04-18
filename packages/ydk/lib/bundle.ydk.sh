@@ -260,6 +260,6 @@ ydk:bundle() {
         compile "$BUNDLE_FILE" "$EXPIRES_AT"
         return $?
     }
-    ydk:try:nnf "$@"
+    ydk:try "$@"
     return $?
 }
