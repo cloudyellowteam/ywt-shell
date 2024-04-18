@@ -3,37 +3,40 @@
 ydk:upm() {
     detect() {
         local OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
-        case $OS_NAME in
-        linux)
-            local OS_VENDOR=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"')
-            ;;
-        darwin)
-            local OS_VENDOR="macos"
-            ;;
-        cygwin* | mingw* | msys*)
-            local OS_VENDOR="windows"
-            ;;
-        *)
-            local OS_VENDOR="unknown"
-            ;;
-        esac
-        OS_VENDOR=${OS_VENDOR,,}
-        echo -n "{"
-        echo -n "\"os\":\"$OS_NAME\","
-        echo -n "\"vendor\":\"$OS_VENDOR\","
-        echo -n "\"managers\":{"
-        local IFS=" "
-        for PM in ${YDK_UPM_OS_MAP[$OS_VENDOR]}; do
-            echo -n "\"$PM\":{ "
-            echo -n "\"installed\":$(command -v "$PM" &>/dev/null && echo -n "true" || echo -n "false"),"
-            echo -n "\"path\":\"$(command -v "$PM" 2>/dev/null)\","
-            echo -n "\"version\":\"$($PM --version 2>/dev/null)\""
-            echo -n "},"
-        done | sed 's/,$//'
-        echo -n "}"
-        echo -n "}"
+        local OS_VENDOR=$({
+            case $OS_NAME in
+            linux)
+                local OS_VENDOR=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"')
+                ;;
+            darwin)
+                local OS_VENDOR="macos"
+                ;;
+            cygwin* | mingw* | msys*)
+                local OS_VENDOR="windows"
+                ;;
+            *)
+                local OS_VENDOR="unknown"
+                ;;
+            esac
+            OS_VENDOR=${OS_VENDOR,,}
+            echo -n "{"
+            echo -n "\"os\":\"$OS_NAME\","
+            echo -n "\"vendor\":\"$OS_VENDOR\","
+            echo -n "\"managers\":{"
+            local IFS=" "
+            for PM in ${YDK_UPM_OS_MAP[$OS_VENDOR]}; do
+                echo -n "\"$PM\":{ "
+                echo -n "\"installed\":$(command -v "$PM" &>/dev/null && echo -n "true" || echo -n "false"),"
+                echo -n "\"path\":\"$(command -v "$PM" 2>/dev/null)\","
+                echo -n "\"version\":\"$($PM --version 2>/dev/null)\""
+                echo -n "},"
+            done | sed 's/,$//'
+            echo -n "}"
+            echo -n "}"
+        } | jq -c .)
+        ydk:logger -c upm output "${OS_VENDOR//\"/\'}"
     }
-    vendor(){
+    vendor() {
         local MANAMGER_NAME=$1
         jq -r "
             .[] | 
@@ -68,8 +71,8 @@ ydk:upm() {
                 }),                
                 managers: $DETECT.managers                
             }'
-    }    
-    ydk:try "$@" 
+    }
+    ydk:try "$@"
     return $?
     # {
     #     local CMD=$1
@@ -78,7 +81,7 @@ ydk:upm() {
     #     local UPM=$(cli)
     #     echo "UPM: $UPM"
     # }
-    
+
 }
 {
     declare -g -A YDK_UPM_OS_MAP=(

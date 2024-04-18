@@ -41,7 +41,7 @@ ydk() {
                 -type f -name "*.ydk.sh" \
                 -not -name "${YDK_CLI_FILE_NAME}" | sort
         )
-        ydk:logger info "Activating entrypoints"
+        # ydk:logger info "Activating entrypoints"
         while read -r FUNC_NAME; do
             {
                 # FUNC_NAME="${FUNC_NAME#ydk:}"

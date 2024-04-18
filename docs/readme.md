@@ -9,7 +9,8 @@
 
 > **2024.04.17**
 ```shell
-./packages/ydk/ydk.cli.sh logger --c=testing info test
+clear; ./packages/ydk/ydk.cli.sh logger watch
+clear; ./packages/ydk/ydk.cli.sh logger --c=testing info test
 clear; ./packages/ydk/ydk.cli.sh logger --c=test levels | jq -s '. | flatten' 
 clear; ./packages/ydk/ydk.cli.sh upm detect | jq -s .
 clear; ./packages/ydk/ydk.cli.sh upm cli | jq -s .

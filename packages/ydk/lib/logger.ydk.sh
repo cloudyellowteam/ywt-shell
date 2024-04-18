@@ -109,9 +109,25 @@ ydk:logger() {
         } | del(.opts.__args)'
 
     }
+    watch() {
+        # echo "$LOGGER_OPTS"
+        local LOG_FORMAT=$(jq -r '.template' <<<"$LOGGER_OPTS")
+        local LOG_FILE=$(jq -r '.file' <<<"$LOGGER_OPTS")
+        LOG_FORMAT=$({
+            echo "$LOG_FORMAT" |
+                sed 's/{{/\\(/g' |
+                sed 's/}}/)/g' |
+                sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' |
+                sed -E 's/\| ascii_upcase/| ascii_upcase/g'
+        })
+        # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC}"
+        tail -f "${LOG_FILE}" | jq -r '
+                . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
+            ' >/dev/stderr
+    }
     __is_log_level() {
         local LEVEL=${1:-info}
-        for LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do            
+        for LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
             [[ $LEVEL == "${YDK_LOGGER_LEVELS[$LEVEL_IDX]}" ]] && return 0
         done
         return 1
@@ -120,16 +136,15 @@ ydk:logger() {
         local LOG_OPTS=$1 && shift
         local LOG_LEVEL="$1" && shift
         local LOG_MESSAGE=$(message "$1") && shift
-        # echo "LOG_OPTS = ${LOG_OPTS:-"{}"}"
-        # echo "LOG_LEVEL = ${LOG_LEVEL:-"{}"}"
-        # echo "LOG_MESSAGE = ${LOG_MESSAGE:-"{}"}"
-        if jq -e . >/dev/null 2>&1 <<<"$LOG_MESSAGE"; then
+        if [[ -n "$LOG_MESSAGE" ]] && jq -e . >/dev/null 2>&1 <<<"$LOG_MESSAGE"; then
             LOG_MESSAGE="{\"data\": $(jq -c . <<<"$LOG_MESSAGE")}"
         else
             LOG_MESSAGE="{\"data\":\"$LOG_MESSAGE\"}"
         fi
         LOG_LEVEL=$(levels | jq -cr ".[] | select(.name == \"$LOG_LEVEL\") | . // {}")
-        
+        # echo "LOG_OPTS = ${LOG_OPTS:-"{}"}"
+        # echo "LOG_LEVEL = ${LOG_LEVEL:-"{}"}"
+        # echo "LOG_MESSAGE = ${LOG_MESSAGE:-"{}"}"
         jq -cn \
             --argjson config "$(jq '.' <<<"${YDK_CONFIG:-"{}"}")" \
             --argjson options "$(jq '.' <<<"${LOG_OPTS:-"{}"}" 2>/dev/null)" \
@@ -179,94 +194,150 @@ ydk:logger() {
 
     }
     __write() {
-        local LOG_JSON=$(__json "$@")        
+        local LOG_JSON=$(__json "$@")
         local LOG_FILE=$(jq -r '.file' <<<"$LOG_JSON")
         jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
-        if jq -r '.enabled' <<<"$LOG_JSON" | grep -q "true"; then
-            case $(jq -r '.format' <<<"$LOG_JSON") in
-            json)
-                jq -c . <<<"$LOG_JSON"
-                ;;
-            text)
-                __text "$LOG_JSON"
-                ;;
-            loki)
-                jq -c '
-                    . | {
-                        "streams": [
-                            {
-                                "stream": {
-                                    "level": .level,
-                                    "context": .context,
-                                    "host": .host,
-                                    "type": .type,
-                                    "package": .package,
-                                    "color": .color,
-                                    "icon": .icon,
-                                    "pid": .pid,
-                                    "ppid": .ppid,
-                                    "cmd": .cmd,
-                                    "name": .name
-                                },
-                                "values": {
-                                    "message": .message,
-                                    "timestamp": .timestamp
-                                }
-                            }
-                        ]
-                    }                
-                ' <<<"$LOG_JSON"
-                ;;
-            upstash)
-                jq -c '
-                    . | {
-                        "streams": [
-                            {
-                                "stream": {
-                                    "level": .level,
-                                    "context": .context,
-                                    "host": .host,
-                                    "type": .type,
-                                    "package": .package,
-                                    "color": .color,
-                                    "icon": .icon,
-                                    "pid": .pid,
-                                    "ppid": .ppid,
-                                    "cmd": .cmd,
-                                    "name": .name
-                                },
-                                "values": {
-                                    "message": .message,
-                                    "timestamp": .timestamp
-                                }
-                            }
-                        ]
-                    }
-                ' <<<"$LOG_JSON"
-                ;;
-            *)
-                jq -c . <<<"$LOG_JSON"
-                ;;
-            esac
+        if [[ "$(jq -r '.level' <<<"$LOG_JSON" 2>/dev/null)" == "output" ]]; then
+            # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ "
+            jq -rc '. + {
+                "message": .message | gsub("\\n"; "\n")
+            } |
+            select(.message | length > 0) |
+            "\(.message) \(.pid)"
+            ' <<<"$LOG_JSON"
         fi
+
+        # echo "$LOG_JSON" | jq -r '.message' | sed -r "s/\x1B\[[0-9;]*[mK]//g" | sed -r "s/\\n/\n/g" >/dev/stderr
+
+        # if jq -r '.enabled' <<<"$LOG_JSON" | grep -q "true"; then
+        #     case $(jq -r '.format' <<<"$LOG_JSON") in
+        #     json)
+        #         jq -c . <<<"$LOG_JSON"
+        #         ;;
+        #     text)
+        #         __text "$LOG_JSON"
+        #         ;;
+        #     loki)
+        #         jq -c '
+        #             . | {
+        #                 "streams": [
+        #                     {
+        #                         "stream": {
+        #                             "level": .level,
+        #                             "context": .context,
+        #                             "host": .host,
+        #                             "type": .type,
+        #                             "package": .package,
+        #                             "color": .color,
+        #                             "icon": .icon,
+        #                             "pid": .pid,
+        #                             "ppid": .ppid,
+        #                             "cmd": .cmd,
+        #                             "name": .name
+        #                         },
+        #                         "values": {
+        #                             "message": .message,
+        #                             "timestamp": .timestamp
+        #                         }
+        #                     }
+        #                 ]
+        #             }
+        #         ' <<<"$LOG_JSON"
+        #         ;;
+        #     upstash)
+        #         jq -c '
+        #             . | {
+        #                 "streams": [
+        #                     {
+        #                         "stream": {
+        #                             "level": .level,
+        #                             "context": .context,
+        #                             "host": .host,
+        #                             "type": .type,
+        #                             "package": .package,
+        #                             "color": .color,
+        #                             "icon": .icon,
+        #                             "pid": .pid,
+        #                             "ppid": .ppid,
+        #                             "cmd": .cmd,
+        #                             "name": .name
+        #                         },
+        #                         "values": {
+        #                             "message": .message,
+        #                             "timestamp": .timestamp
+        #                         }
+        #                     }
+        #                 ]
+        #             }
+        #         ' <<<"$LOG_JSON"
+        #         ;;
+        #     *)
+        #         jq -c . <<<"$LOG_JSON"
+        #         ;;
+        #     esac
+        # fi
         return 0
     }
-    activate11() {
+    activate() {
         echo "logger activated"
         # return 233
     }
-    local LOGGER_OPTS=$(ydk:argv walk "$@" | jq -cr .)
-    local LOG_ARGS=($(jq '.__args[]' <<<"$LOGGER_OPTS"))
-    IFS=$'\n' read -r -d '' -a LOG_ARGS <<<"$(jq -r '.__args[]' <<<"$LOGGER_OPTS")"
-    set -- "${LOG_ARGS[@]}"
-    local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")    
-    if __is_log_level "$1"; then 
-        __write "$LOGGER_OPTS" "${LOG_ARGS[@]}"
+    local LOGGER_OPTS="{\"context\":\"ydk\"}"
+    local LOGGER_ARGS=()
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        -l | --level)
+            local LOGGER_OPTS=$(jq '. + {"level": "'"$2"'"}' <<<"$LOGGER_OPTS")
+            shift 2
+            ;;
+        -c | --context)
+            local LOGGER_OPTS=$(jq '. + {"context": "'"$2"'"}' <<<"$LOGGER_OPTS")
+            shift 2
+            ;;
+        -f | --format)
+            local LOGGER_OPTS=$(jq '. + {"format": "'"$2"'"}' <<<"$LOGGER_OPTS")
+            shift 2
+            ;;
+        -t | --template)
+            local LOGGER_OPTS=$(jq '. + {"template": "'"$2"'"}' <<<"$LOGGER_OPTS")
+            shift 2
+            ;;
+        -m | --message)
+            local LOGGER_OPTS=$(jq '. + {"message": "'"$2"'"}' <<<"$LOGGER_OPTS")
+            shift 2
+            ;;
+        *)
+            LOGGER_ARGS+=("$1")
+            shift
+            ;;
+        esac
+    done
+    set -- "${LOGGER_ARGS[@]}"
+    local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")
+    # echo "__try ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
+    if __is_log_level "$1" 2>/dev/null; then
+        # echo "__write ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
+        __write "$LOGGER_OPTS" "${LOGGER_ARGS[@]}" # 2>/dev/null
         return $?
     else
+        # echo "__try ${#LOGGER_ARGS} ${LOGGER_ARGS[*]}"
         ydk:try "$@"
         return $?
-    fi    
+    fi
+
+    # local LOGGER_OPTS=$(ydk:argv walk "$@" | jq -cr .)
+    # local LOG_ARGS=($(jq '.__args[]' <<<"$LOGGER_OPTS"))
+    # IFS=$'\n' read -r -d '' -a LOG_ARGS <<<"$(jq -r '.__args[]' <<<"$LOGGER_OPTS")"
+    # set -- "${LOG_ARGS[@]}"
+    # local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")
+    # __is_log_level "$1" && echo "$1 is log level" || echo "$1 is not log level"
+    # if __is_log_level "$1"; then
+    #     __write "$LOGGER_OPTS" "${LOG_ARGS[@]}"
+    #     return $?
+    # else
+    #     ydk:try "$@"
+    #     return $?
+    # fi
 }
 # ydk:logger() {
 #     validate() {
@@ -435,8 +506,8 @@ ydk:logger() {
     [[ -z "$YDK_DEFAULTS_LOGGER" ]] && declare -g -a YDK_DEFAULTS_LOGGER=(
         # Log Level
         [0]="info"
-        # Log Template
-        [1]="[{{.pid}}] [{{.timestamp}}] {{.icon}} {{.level | ascii_upcase}} {{.context | ascii_upcase}} {{.message}} [{{.etime}}]"
+        # Log Template 
+        [1]="[{{.pid}}] [{{.timestamp}}] {{.icon}} {{.level | ascii_upcase}} {{.context | ascii_upcase }} {{.message}} [{{.etime}}]"
         # Log Format
         [2]="text"
         # Log Context
