@@ -177,10 +177,10 @@ ydk:errors() {
         [155]="Profiling timer expired"
         [157]="Pollable event"
         [159]="Bad syscall"
-        [255]="An error occurred"
-        [254]="Failed to install ydk"
-        [253]="Failed to install libraries"
         [252]="Failed to download"
+        [253]="Failed to install"
+        [254]="Missing required packages"
+        [255]="An error occurred"
     )
     export YDK_ERRORS_MESSAGES
 }

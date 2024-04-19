@@ -1,8 +1,24 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:installer() {
+    # install|setup|upgrade|uninstall|remove|purge
+    check(){
+        for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
+            local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+            local YDK_PATH="${YDK_PATH//\/\//\/}"
+            echo "Checking path: $YDK_PATH_NAME -> $YDK_PATH"
+            if [[ ! -d "$YDK_PATH" ]]; then
+                echo "Path not found: $YDK_PATH"
+                exit 254
+            fi
+        done
+    }
     install() {
-        local YDK_BINARY_PATH=/usr/local/bin
+        echo "INFO Installing YDK"
+        check
+        echo "INFO Done"
+        return 0
+        local YDK_BINARY_PATH="/usr/local/bin"
         local YDK_INSTALL_PATH="/ywteam/ydk-shell"
         local YDK_LOGS_PATH="/var/log/ywteam/ydk-shell"
         local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
@@ -67,7 +83,7 @@ ydk:installer() {
         ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
             echo "Failed to install required packages"
             ydk:throw 255 "ERR" "Failed to install required packages"
-        }        
+        }
         ydk:log "INFO" "Packages installed, verifying dependencies"
         ydk:require "${YDK_DEPENDENCIES[@]}"
         ydk:log "INFO" "Done, Getting version info"
@@ -193,4 +209,21 @@ ydk:installer() {
     }
     ydk:try "$@"
     return $?
+}
+{
+    [[ -z "$YDK_PATHS" ]] && declare -g -A YDK_PATHS=(
+        ["bin"]="usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"
+        ["lib"]="usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"
+        ["etc"]="etc/ywteam/${YDK_PACKAGE_NAME}"
+        ["var"]="var/lib/ywteam/${YDK_PACKAGE_NAME}"
+        ["cache"]="var/cache/ywteam/${YDK_PACKAGE_NAME}"
+        ["logs"]="var/log/ywteam/${YDK_PACKAGE_NAME}"
+        ["runtime"]="opt/ywteam/${YDK_PACKAGE_NAME}"
+        ["data"]="var/lib/ywteam/${YDK_PACKAGE_NAME}"
+        ["config"]="etc/ywteam/${YDK_PACKAGE_NAME}"
+        ["tmp"]="tmp/ywteam/${YDK_PACKAGE_NAME}"
+        ["home"]="home/ywteam/${YDK_PACKAGE_NAME}"
+        ["share"]="usr/share/ywteam/${YDK_PACKAGE_NAME}"
+        ["doc"]="usr/share/doc/ywteam/${YDK_PACKAGE_NAME}"        
+    ) && readonly YDK_PATHS && export YDK_PATHS && mkdir -p "${YDK_PATHS[@]}"    
 }

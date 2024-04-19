@@ -5,7 +5,11 @@
 ```
 
 
+> **2024.04.18**
+```shell
+clear; ./packages/ydk/ydk.cli.sh upm detect | jq -s .
 
+```
 
 > **2024.04.17**
 ```shell

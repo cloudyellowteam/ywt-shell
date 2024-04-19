@@ -74,7 +74,9 @@ ydk:logger() {
         [[ -p /dev/stdin ]] && while read -r LINE; do LINES+=("$LINE"); done <&0
         MESSAGE="${LINES[*]//$'\n'/\\n}"
         MESSAGE=${MESSAGE//\"/\\\"}
-        echo "$MESSAGE" | sed -r "s/\x1B\[[0-9;]*[mK]//g"
+        echo "$MESSAGE" |
+            sed -r "s/\x1B\[[0-9;]*[mK]//g" |
+            sed 's/\x1b\[[0-9;]*m//g'
     }
     defaults() {
         local OPTS=${1:-"{}"}

@@ -85,14 +85,6 @@ ydk:upm() {
     }
     ydk:try "$@"
     return $?
-    # {
-    #     local CMD=$1
-    #     shift
-    #     local ARGS=("$@")
-    #     local UPM=$(cli)
-    #     echo "UPM: $UPM"
-    # }
-
 }
 {
     declare -g -A YDK_UPM_OS_MAP=(
