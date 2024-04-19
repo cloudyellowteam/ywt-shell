@@ -4,12 +4,20 @@
 src_dir="/workspace/rapd-shell/packages/ydk/common"
 dest_dir="/workspace/rapd-shell/packages/ydk/lib"
 for src_file in "$src_dir"/*.ywt.sh; do
-    dest_file="$dest_dir/$(basename "$src_file" .txt).ydk.sh"
+    src_name=$(basename "$src_file") && src_name="${src_name//.ywt.sh/}"
+    dest_file="$dest_dir/${src_name}.ydk.sh"    
     [[ -f "$dest_file" ]] && {
-        cat "$src_file" >> "$dest_file"
+        echo "File exists: $dest_file"
+        while IFS= read -r src_line; do
+            echo "# $src_line" >> "$dest_file"
+        done < "$src_file"
         continue
     }
+    echo "Copying: $src_file -> $dest_file"
     cp "$src_file" "$dest_file"
+    # append a comment # to the beginning of each line on dest file
+    sed -i 's/^/# /' "$dest_file"
+    rm -f "$src_file"
 done
 exit 255
 
