@@ -188,10 +188,13 @@ ydk:logger() {
                 sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' |
                 sed -E 's/\| ascii_upcase/| ascii_upcase/g'
         })
-        echo -ne "${YELLOW}[${YDK_BRAND^^}]${NC}"
-        jq -r '
-            . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
-        ' <<<"$LOG_JSON" >/dev/stderr
+        echo -ne "${YELLOW}[${YDK_BRAND^^}]${NC}" 1>&2
+        local LOG_FORMATTED=$(
+            jq -r '
+                . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
+            ' <<<"$LOG_JSON"
+        )
+        echo -e "$LOG_FORMATTED" 1>&2
         return 0
 
     }
@@ -225,6 +228,24 @@ ydk:logger() {
         echo "logger activated" # >&1
         # return 233
     }
+    __logger:opts() {
+        local YDK_LOGGER_OPTS=()
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+            *)
+                YDK_LOGGER_OPTS+=("$1")
+                shift
+                ;;
+            esac
+        done
+        set -- "${YDK_LOGGER_OPTS[@]}"
+        [[ "${#YDK_LOGGER_OPTS[@]}" -eq 0 ]] && {
+            ydk:throw 252 "Failed to parse logger options"
+            return 1
+        }
+        echo "${YDK_LOGGER_OPTS[@]}" >&4
+        return 0
+    }
     local LOGGER_OPTS="{\"context\":\"${YDK_LOGGER_CONTEXT:-ydk}\"}"
     local LOGGER_ARGS=()
     while [[ $# -gt 0 ]]; do
@@ -256,6 +277,7 @@ ydk:logger() {
         esac
     done
     set -- "${LOGGER_ARGS[@]}"
+    # set -- "$(__logger:opts "$@" 4>&1)"
     local LOGGER_OPTS=$(defaults "$LOGGER_OPTS") && LOGGER_OPTS=$(jq -c '.values' <<<"$LOGGER_OPTS")
     if __is_log_level "$1" 2>/dev/null; then
         __write "$LOGGER_OPTS" "${LOGGER_ARGS[@]}" # 2>/dev/null

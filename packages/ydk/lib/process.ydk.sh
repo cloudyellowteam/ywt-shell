@@ -11,14 +11,14 @@ ydk:process() {
     stdin() {
         [ ! -p /dev/stdin ] && [ ! -t 0 ] && return "$1"
         while IFS= read -r INPUT; do
-            echo "$INPUT"
+            echo "$INPUT" >&0
         done
         unset INPUT
     }
     stdout() {
         [ ! -p /dev/stdout ] && [ ! -t 1 ] && return "$1"
         while IFS= read -r OUTPUT; do
-            echo "$OUTPUT"
+            echo "$OUTPUT" >&1
         done
         unset OUTPUT
     }
@@ -29,12 +29,21 @@ ydk:process() {
         done
         unset ERROR
     }
+    stdvalue(){
+        local STD="${1:-4}"        
+        [ -e /proc/$$/fd/"$STD" ] && echo "$@" >&"$STD" && return 0
+        return 1
+    }
+    stdio() {
+        stdin "$1" && stdout "$1" && stderr "$1"
+    }
+    
     inspect(){
         jq -cn \
             --arg pid "$$" \
             --arg etime "$(etime)" \
             --argjson cli "$(ydk:cli)" \
-            --argjson package "$(ydk:version)" \
+            --argjson package "{}" \
             '{ 
                 pid: $pid,
                 etime: $etime,

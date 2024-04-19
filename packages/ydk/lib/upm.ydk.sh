@@ -35,10 +35,11 @@ ydk:upm() {
             echo -n "}"
             echo -n "}"
         } | jq -c .)
-        ydk:logger info "detected $({
-            jq -rc '"\(.os) \(.vendor)"' <<<"${OS_VENDOR}"
-        } | tr -d '\n')"
-        # ydk:logger -c "$YDK_LOGGER_CONTEXT" output ''"${OS_VENDOR}"'' #"${OS_VENDOR//\"/\'}"
+        ydk:logger output < <(
+            jq -rc '
+                "\(.os)/\(.vendor). \(.managers | length) package managers detected. \(.managers | keys | join(" "))"
+            ' <<<"${OS_VENDOR}"
+        )
         jq -c . <<<"${OS_VENDOR}" >&4
         return 0
     }
@@ -50,10 +51,12 @@ ydk:upm() {
             first(.)
         " "/workspace/rapd-shell/assets/upm.vendors.json"
     }
-    cli() {        
-        YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
-        [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
+    cli() {
+        local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
+        # YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
+        # [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
+        # [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
         local UPM_MANAGER=$(
             jq -r '
                 if .managers != null then
@@ -65,7 +68,7 @@ ydk:upm() {
                     empty
                 end
             ' <<<"$YDK_UPM_DETECT"
-        )        
+        )
         [[ -z "$UPM_MANAGER" ]] && ydk:throw 255 "No package manager found"
         local UPM_MANAGER_VENDOR=$(vendor "$UPM_MANAGER")
         [[ -z "$UPM_MANAGER_VENDOR" ]] && ydk:throw 255 "No package manager vendor found"
@@ -81,7 +84,7 @@ ydk:upm() {
                     version: $DETECT.managers[$UPM_MANAGER].version
                 }),                
                 managers: $DETECT.managers                
-            }'
+            }' 4>&1
     }
     ydk:try "$@"
     return $?

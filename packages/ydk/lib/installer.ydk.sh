@@ -2,22 +2,158 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:installer() {
     # install|setup|upgrade|uninstall|remove|purge
-    check(){
+    YDK_LOGGER_CONTEXT="installer"
+    path() {
+        # ydk:log "INFO" "Getting path: $1"
+        {
+            local YDK_PATH_NAME="$1" && [[ -z "$YDK_PATH_NAME" ]] && pwd && return 1
+            local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+            [[ -z "$YDK_PATH" ]] && pwd && return 1
+            [[ "${YDK_PATH:0:1}" == "!" ]] && YDK_PATH="${YDK_PATH:1}"
+            [[ ! -d "$YDK_PATH" ]] && echo "$YDK_PATH" && return 1
+            echo "$YDK_PATH"
+            return 0
+        } >&4
+    }
+    paths() {
+        # ydk:log "INFO" "Getting paths"
+        {
+            echo -n "{"
+            for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
+                local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+                local YDK_PATH="${YDK_PATH//\/\//\/}"
+                echo -n "\"$YDK_PATH_NAME\":\"$YDK_PATH\","
+            done | sed 's/,$//'
+            echo -n "}"
+        } >&4
+
+        return 0
+    }
+    check:path() {
+        local YDK_PATH="$1"
+        local YDK_PATH="${YDK_PATH//\/\//\/}"
+        [[ "${YDK_PATH:0:1}" == "!" ]] && {
+            YDK_PATH="${YDK_PATH:1}"
+            # ydk:log "INFO" " - Removing path: $YDK_PATH"
+            rm -rf "${YDK_PATH:1}"
+        }
+        [[ ! -d "$YDK_PATH" ]] && {
+            # ydk:log "INFO" " - Create path: $YDK_PATH"
+            mkdir -p "$YDK_PATH"
+        }
+        # ydk:log "INFO" " - Path exists: $YDK_PATH"
+        return 0
+    }
+    check:paths() {
+        # ydk:log "INFO" "Checking paths"
         for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
             local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
-            local YDK_PATH="${YDK_PATH//\/\//\/}"
-            echo "Checking path: $YDK_PATH_NAME -> $YDK_PATH"
-            if [[ ! -d "$YDK_PATH" ]]; then
-                echo "Path not found: $YDK_PATH"
-                exit 254
-            fi
+            check:path "$YDK_PATH"
         done
+        return 0
+    }
+    state() {
+        local YDK_STATE_FILE="${YDK_PATHS["var"]}/state.json"
+        local YDK_STATE=$(jq -c . <"$YDK_STATE_FILE" 2>/dev/null)
+        [[ -z "$YDK_STATE" ]] && echo -n "{}" && return 1
+        echo -n "$YDK_STATE"
+        return 0
     }
     install() {
-        echo "INFO Installing YDK"
-        check
-        echo "INFO Done"
+        check:paths
+        local YDK_PATH_MAP=$(paths 4>&1) && echo "MAP: $YDK_PATH_MAP"
+        local YDK_PATH_BIN=$(path "bin" 4>&1) && echo "BIN1: $YDK_PATH_BIN"
         return 0
+    }
+    __installer:opts() {
+        local YDK_INSTALLER_OPTS=()
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+            -h | --help)
+                shift
+                ydk:usage 0 "ydk" "install" "usage"
+                exit 0
+                ;;
+            -b | --bin)
+                YDK_PATHS["bin"]="${2}"
+                shift 2
+                ;;
+            -l | --lib)
+                YDK_PATHS["lib"]="${2}"
+                shift 2
+                ;;
+            -e | --etc)
+                YDK_PATHS["etc"]="${2}"
+                shift 2
+                ;;
+            -v | --var)
+                YDK_PATHS["var"]="${2}"
+                shift 2
+                ;;
+            -c | --cache)
+                YDK_PATHS["cache"]="${2}"
+                shift 2
+                ;;
+            -L | --logs)
+                YDK_PATHS["logs"]="${2}"
+                shift 2
+                ;;
+            -r | --runtime)
+                YDK_PATHS["runtime"]="${2}"
+                shift 2
+                ;;
+            -d | --data)
+                YDK_PATHS["data"]="${2}"
+                shift 2
+                ;;
+            -C | --config)
+                YDK_PATHS["config"]="${2}"
+                shift 2
+                ;;
+            -t | --tmp)
+                YDK_PATHS["tmp"]="${2}"
+                shift 2
+                ;;
+            -H | --home)
+                YDK_PATHS["home"]="${2}"
+                shift 2
+                ;;
+            -s | --share)
+                YDK_PATHS["share"]="${2}"
+                shift 2
+                ;;
+            -D | --doc)
+                YDK_PATHS["doc"]="${2}"
+                shift 2
+                ;;
+            *)
+                if [[ "$1" =~ ^- ]]; then
+                    ydk:log "WARN" "Unknown option: $1 $2"
+                    shift 2
+                else 
+                    YDK_INSTALLER_OPTS+=("$1")
+                    shift
+                fi
+                # [[ "$1" =~ ^- ]] && ydk:log "WARN" "Unknown option: $1"
+                # YDK_INSTALLER_OPTS+=("$1")
+                # shift
+                ;;
+            esac
+        done
+        set -- "${YDK_INSTALLER_OPTS[@]}"
+        # ydk:log "INFO" "Installer options: ${#YDK_INSTALLER_OPTS[@]} ${YDK_INSTALLER_OPTS[*]}"
+        # for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
+        #     local YDK_PATH=$(path "$YDK_PATH_NAME" 4>&1)
+        #     ydk:log "INFO" "Path: $YDK_PATH_NAME: $YDK_PATH"
+        # done
+        [[ "${#YDK_INSTALLER_OPTS[@]}" -eq 0 ]] && {
+            ydk:throw 252 "Failed to parse installer options"
+            return 1
+        }
+        echo "${YDK_INSTALLER_OPTS[@]}" >&4
+        return 0
+    }
+    install:v1() {
         local YDK_BINARY_PATH="/usr/local/bin"
         local YDK_INSTALL_PATH="/ywteam/ydk-shell"
         local YDK_LOGS_PATH="/var/log/ywteam/ydk-shell"
@@ -207,23 +343,37 @@ ydk:installer() {
         rm -f "${YDK_TMP}"
         ydk welcome
     }
-    ydk:try "$@"
+    set -- "$(__installer:opts "$@" 4>&1)" && ydk:try "$@"
     return $?
 }
 {
-    [[ -z "$YDK_PATHS" ]] && declare -g -A YDK_PATHS=(
-        ["bin"]="usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"
-        ["lib"]="usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"
-        ["etc"]="etc/ywteam/${YDK_PACKAGE_NAME}"
-        ["var"]="var/lib/ywteam/${YDK_PACKAGE_NAME}"
-        ["cache"]="var/cache/ywteam/${YDK_PACKAGE_NAME}"
-        ["logs"]="var/log/ywteam/${YDK_PACKAGE_NAME}"
-        ["runtime"]="opt/ywteam/${YDK_PACKAGE_NAME}"
-        ["data"]="var/lib/ywteam/${YDK_PACKAGE_NAME}"
-        ["config"]="etc/ywteam/${YDK_PACKAGE_NAME}"
-        ["tmp"]="tmp/ywteam/${YDK_PACKAGE_NAME}"
-        ["home"]="home/ywteam/${YDK_PACKAGE_NAME}"
-        ["share"]="usr/share/ywteam/${YDK_PACKAGE_NAME}"
-        ["doc"]="usr/share/doc/ywteam/${YDK_PACKAGE_NAME}"        
-    ) && readonly YDK_PATHS && export YDK_PATHS && mkdir -p "${YDK_PATHS[@]}"    
+    [[ -z "${YDK_PATHS[*]}" ]] && declare -g -A YDK_PATHS=(
+        ["bin"]="${YDK_CONFIG_PATH_BIN:-"/usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["lib"]="${YDK_CONFIG_PATH_LIB:-"/usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["etc"]="${YDK_CONFIG_PATH_ETC:-"/etc/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["var"]="${YDK_CONFIG_PATH_VAR:-"/var/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["cache"]="${YDK_CONFIG_PATH_CACHE:-"!/var/cache/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["logs"]="${YDK_CONFIG_PATH_LOGS:-"/var/log/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["runtime"]="${YDK_CONFIG_PATH_RUNTIME:-"/opt/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["data"]="${YDK_CONFIG_PATH_DATA:-"/var/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["config"]="${YDK_CONFIG_PATH_CONFIG:-"/etc/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["tmp"]="${YDK_CONFIG_PATH_TMP:-"/tmp/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["home"]="${YDK_CONFIG_PATH_HOME:-"$HOME/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["share"]="${YDK_CONFIG_PATH_SHARE:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}"}"
+        ["doc"]="${YDK_CONFIG_PATH_DOC:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}/doc"}"
+        # ["bin"]="/usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"
+        # ["lib"]="/usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"
+        # ["etc"]="/etc/ywteam/${YDK_PACKAGE_NAME}"
+        # ["var"]="/var/lib/ywteam/${YDK_PACKAGE_NAME}"
+        # ["cache"]="!/var/cache/ywteam/${YDK_PACKAGE_NAME}"
+        # ["logs"]="/var/log/ywteam/${YDK_PACKAGE_NAME}"
+        # ["runtime"]="/opt/ywteam/${YDK_PACKAGE_NAME}"
+        # ["data"]="/var/lib/ywteam/${YDK_PACKAGE_NAME}"
+        # ["config"]="/etc/ywteam/${YDK_PACKAGE_NAME}"
+        # ["tmp"]="/tmp/ywteam/${YDK_PACKAGE_NAME}"
+        # ["home"]="$HOME/ywteam/${YDK_PACKAGE_NAME}"
+        # ["share"]="/usr/share/ywteam/${YDK_PACKAGE_NAME}"
+        # ["doc"]="/usr/share/ywteam/${YDK_PACKAGE_NAME}/doc"
+    ) && export YDK_PATHS
+    # && mkdir -p "${YDK_PATHS[@]}"
 }

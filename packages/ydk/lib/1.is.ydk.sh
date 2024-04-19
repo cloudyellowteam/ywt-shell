@@ -15,7 +15,7 @@ ydk:is() {
         [ -p "$2" ] && lsof "$2" && return 0
         ;;
     descriptor-exists)
-        [ -e /proc/$$/fd/"$2" ] && return 0
+            "$2" ] && return 0
         ;;
     descriptor-readable)
         [ -r /proc/$$/fd/"$2" ] && return 0

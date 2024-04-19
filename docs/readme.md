@@ -7,6 +7,8 @@
 
 > **2024.04.18**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh installer install
+clear; ./packages/ydk/ydk.cli.sh install
 clear; ./packages/ydk/ydk.cli.sh upm detect | jq -s .
 
 ```
