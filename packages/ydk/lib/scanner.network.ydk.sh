@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2317,SC2120,SC2155,SC2044
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:scanner:network:hsts() {
+    ydk:try "$@"
+    return $?
+}
+
 # __scanner:network:hsts() {
 #     local TARGET="$1" && shift
 #     local SCANNER="$({

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2317,SC2155
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:timezones() {
+    ydk:try "$@"
+    return $?
+}
+
 # timezones() {
 #     current() {
 #         date +"%Z"

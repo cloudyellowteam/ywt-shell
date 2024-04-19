@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:dotenv() {
+    ydk:try "$@"
+    return $?
+}
 # dotenv() {
 #     YWT_LOG_CONTEXT="DOTENV"
 #     load() {

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2317,SC2155
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:dates() {
+    ydk:try "$@"
+    return $?
+}
 # dates() {
 #     add() {
 #         local ARGS=()

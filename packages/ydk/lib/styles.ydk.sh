@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:styles() {
+    ydk:try "$@"
+    return $?
+}
+
 # styles() {
 #     YWT_LOG_CONTEXT="styles"
 #     apply() {

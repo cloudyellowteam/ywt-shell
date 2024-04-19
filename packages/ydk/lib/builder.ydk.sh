@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317,SC2120
+# shellcheck disable=SC2044,SC2155,SC2317,SC2120
+ydk:builder() {
+    ydk:try "$@"
+    return $?
+}
 # builder() {
 #     YWT_LOG_CONTEXT="BUILDER"
 #     config() {
@@ -50,7 +54,7 @@
 #         local CONFIG=$(config "$@")
 #         local SRC_FILE=${1:?} && [ ! -f "$SRC_FILE" ] && echo "{ \"error\": \"Invalid source file\" }" && return 1
 #         local FILE_EXT="${SRC_FILE##*.}" && [[ "$FILE_EXT" != "sh" ]] && echo "{ \"error\": \"Invalid file extension\" }" && return 1
-# 
+#
 #         if ! grep -q "^#!/usr/bin/env bash$" "$SRC_FILE"; then
 #             echo "{ \"error\": \"Invalid shebang\" }" && return 1
 #             return 1
@@ -80,7 +84,7 @@
 #             echo -n "\"output\": \"$TARGET_FILE\""
 #             echo -n "}"
 #         } | jq -sc '
-#             .[0] as $config | 
+#             .[0] as $config |
 #             .[1] as $validation |
 #             {
 #                 config: $config,
@@ -143,7 +147,7 @@
 #                     echo -n "}"
 #                 } >>"$BUNDLE_OUTPUT_TMP"
 #             done < <(find "$BUNDLE_LIB_PATH" -type f -name "*.ywt.sh" | sort)
-# 
+#
 #             local SRC_FILE=$(jq -r '.validation.file' <<<"$VALIDATION")
 #             echo "# <$SRC_FILE>"
 #             _bundle:inject "$SRC_FILE"
@@ -153,7 +157,7 @@
 #         cat "$BUNDLE_FILE"
 #         # jq -s '.' "$BUNDLE_OUTPUT_TMP"
 #     }
-# 
+#
 #     __nnf "$@" || usage "$?" "builder" "$@" && return 1
 #     return 0
 # }
@@ -290,7 +294,7 @@
 #             --argjson c "$(_stats "$DIST/$FILENAME.c" "$EXPIRES_AT")" \
 #             --argjson bin "$(_stats "${BIN}/$FILENAME" "$EXPIRES_AT")" \
 #             '{sh: $sh, c: $c, bin: $bin}' | logger info
-# 
+#
 #     }
 #     _build_sdk() {
 #         _prepare

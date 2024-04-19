@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317,SC2120,SC2207
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:spinner() {
+    ydk:try "$@"
+    return $?
+}
+
 # spinner() {
 #     local SPINNERS_TMP_FILE=/tmp/ywt-spinners.json
 #     # local SPINNERS_LIST=

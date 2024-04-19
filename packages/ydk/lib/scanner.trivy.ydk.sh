@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2317,SC2120,SC2155,SC2044
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:scanner:trivy() {
+    ydk:try "$@"
+    return $?
+}
+
 # __scanner:trivy() {
 #     local DEFAULT_ARGS=(
 #         "--quiet"

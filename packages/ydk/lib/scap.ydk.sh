@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:scap() {
+    ydk:try "$@"
+    return $?
+}
+
 # scrap() {
 #     js() {
 #         __require curl

@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
-
-
-
-
-
-
 YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
 export YDK_BRAND="YDK" && readonly YDK_BRAND
@@ -146,7 +140,7 @@ ydk() {
         YDK_INITIALIZED=true && readonly YDK_INITIALIZED
         while read -r ENTRYPOINT_FILE; do
             if ! ydk:inject "${ENTRYPOINT_FILE}"; then
-                ydk:throw 255 "Failed to load entrypoint: ${ENTRYPOINT}"
+                ydk:throw 255 "Failed to load entrypoint: ${ENTRYPOINT_FILE}"
                 return 1
             fi
         done < <(
@@ -237,7 +231,7 @@ ydk() {
     }
     ydk:temp() {
         local FILE_PREFIX="${1:}" && [[ -n "$FILE_PREFIX" ]] && FILE_PREFIX="${FILE_PREFIX}_"
-        mktemp -u -t "$FILE_PREFIX-XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME}" --suffix=".${YDK_BRAND,,}"
+        mktemp -u -t XXXXXXXX -p "/tmp/ywteam/${YDK_PACKAGE_NAME}" --suffix=".${YDK_BRAND,,}"
     }
     ydk:opts() {
         local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)

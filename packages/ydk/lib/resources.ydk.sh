@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:resources() {
+    ydk:try "$@"
+    return $?
+}
+
 # resources() {
 #     __find() {
 #         local TYPE=${1:-} && [ -z "$TYPE" ] && echo "Resource type not defined" && return 1

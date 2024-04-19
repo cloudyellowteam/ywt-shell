@@ -1,6 +1,35 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:fifo() {
+    stdin() {
+        [ ! -p /dev/stdin ] && [ ! -t 0 ] && return "$1"
+        while IFS= read -r INPUT; do
+            echo "$INPUT" >&0
+        done
+        unset INPUT
+    }
+    stdout() {
+        [ ! -p /dev/stdout ] && [ ! -t 1 ] && return "$1"
+        while IFS= read -r OUTPUT; do
+            echo "$OUTPUT" >&1
+        done
+        unset OUTPUT
+    }
+    stderr() {
+        [ ! -p /dev/stderr ] && [ ! -t 2 ] && return "$1"
+        while IFS= read -r ERROR; do
+            echo "$ERROR" >&2
+        done
+        unset ERROR
+    }
+    stdvalue() {
+        local STD="${1:-4}"
+        [ -e /proc/$$/fd/"$STD" ] && echo "$@" >&"$STD" && return 0
+        return 1
+    }
+    stdio() {
+        stdin "$1" && stdout "$1" && stderr "$1"
+    }
     descriptor() {
         exists() {
             [ -z "$1" ] && return 1
@@ -10,12 +39,12 @@ ydk:fifo() {
         writable() {
             [ -z "$1" ] && return 1
             [ -w /proc/$$/fd/"$1" ] && return 0 || return 1
-            { true >&"$1"; } 2> /dev/null && return 0 || return 1
+            { true >&"$1"; } 2>/dev/null && return 0 || return 1
         }
         readable() {
             [ -z "$1" ] && return 1
             [ -r /proc/$$/fd/"$1" ] && return 0 || return 1
-            { true <&"$1"; } 2> /dev/null && return 0 || return 1
+            { true <&"$1"; } 2>/dev/null && return 0 || return 1
             read -t 0 <&"$1" && return 0 || return 1
         }
         opened() {

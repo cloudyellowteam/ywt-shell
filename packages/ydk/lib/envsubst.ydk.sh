@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:envsubst() {
+    ydk:try "$@"
+    return $?
+}
 # 
 # # if ! __is command envsubst; then
 # #     __debug "envsubst not found, injecting polyfill..."

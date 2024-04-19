@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:parse() {
+    ydk:try "$@"
+    return $?
+}
+
 # parse() {
 #     querystring() {
 #         __require awk sed

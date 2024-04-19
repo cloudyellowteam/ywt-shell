@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:spwan() {
+    ydk:try "$@"
+    return $?
+}
+
 # spwan() {
 #     [ -z "$YWT_PIDS" ] && declare -a YWT_PIDS && readonly YWT_PIDS
 #     run() {

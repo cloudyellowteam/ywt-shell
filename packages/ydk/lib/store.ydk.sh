@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:store() {
+    ydk:try "$@"
+    return $?
+}
+
 # store() {
 #     __key() {
 #         [ -z "$1" ] && echo "" && return 1

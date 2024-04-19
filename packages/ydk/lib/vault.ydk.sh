@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2044,SC2155,SC2317
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:vault() {
+    ydk:try "$@"
+    return $?
+}
+
 # vault() {
 #     check() {
 #         # Check if URL was provided

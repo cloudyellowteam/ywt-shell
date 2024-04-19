@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# # shellcheck disable=SC2317,SC2120,SC2155,SC2044
+# shellcheck disable=SC2044,SC2155,SC2317
+ydk:scan() {
+    ydk:try "$@"
+    return $?
+}
+
 # 
 # # Scan list
 # # [{"name":"cloc","info":{"id":"bGlzdA==YvzUyUwcjrlduM","output":"/tmp/scanner-YvzUyUwcjrlduM.ywt"},"state":{"activated":true,"api":{"activate":true,"metadata":true,"version":true,"implemented":true}}},{"name":"trivy","info":{"id":"bGlzdA==YvzUyUwcjrlduM","output":"/tmp/scanner-YvzUyUwcjrlduM.ywt"},"state":{"activated":true,"api":{"activate":true,"metadata":true,"version":true,"implemented":true}}},{"name":"trufflehog","info":{"id":"bGlzdA==YvzUyUwcjrlduM","output":"/tmp/scanner-YvzUyUwcjrlduM.ywt"},"state":{"activated":true,"api":{"activate":true,"metadata":true,"version":true,"implemented":true}}}]
