@@ -167,7 +167,7 @@ async:v1() {
     rm -f "$ASYNC_OUTPUT"
     return 0
 }
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317,SC2120
 # async() {
 #     YWT_LOG_CONTEXT="ASYNC"

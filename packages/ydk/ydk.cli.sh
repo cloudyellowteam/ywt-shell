@@ -1,25 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 
-src_dir="/workspace/rapd-shell/packages/ydk/common"
-dest_dir="/workspace/rapd-shell/packages/ydk/lib"
-for src_file in "$src_dir"/*.ywt.sh; do
-    src_name=$(basename "$src_file") && src_name="${src_name//.ywt.sh/}"
-    dest_file="$dest_dir/${src_name}.ydk.sh"    
-    [[ -f "$dest_file" ]] && {
-        echo "File exists: $dest_file"
-        while IFS= read -r src_line; do
-            echo "# $src_line" >> "$dest_file"
-        done < "$src_file"
-        continue
-    }
-    echo "Copying: $src_file -> $dest_file"
-    cp "$src_file" "$dest_file"
-    # append a comment # to the beginning of each line on dest file
-    sed -i 's/^/# /' "$dest_file"
-    rm -f "$src_file"
-done
-exit 255
+
+
 
 
 
@@ -307,6 +290,32 @@ ydk() {
 }
 ydk "$@"
 exit $?
+
+
+
+# ydk:helper:copy(){
+#     src_dir="/workspace/rapd-shell/packages/ydk/common"
+#     dest_dir="/workspace/rapd-shell/packages/ydk/lib"
+#     for src_file in "$src_dir"/*.ywt.sh; do
+#         src_name=$(basename "$src_file") && src_name="${src_name//.ywt.sh/}"
+#         dest_file="$dest_dir/${src_name}.ydk.sh"    
+#         [[ -f "$dest_file" ]] && {
+#             echo "File exists: $dest_file"
+#             while IFS= read -r src_line; do
+#                 echo "# $src_line" >> "$dest_file"
+#             done < "$src_file"
+#             continue
+#         }
+#         echo "Copying: $src_file -> $dest_file"
+#         cp "$src_file" "$dest_file"
+#         # append a comment # to the beginning of each line on dest file
+#         sed -i 's/^/# /' "$dest_file"
+#         rm -f "$src_file"
+#     done
+#     exit 255
+# }
+
+
 # || {
 #     YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
 #     echo "{\"exit\": ${YDK_STATUS}}"
@@ -349,51 +358,51 @@ exit $?
 #         } | jq -c .
 #         return 1
 #     }
-    ydk:cli() {
-        YDK_RUNTIME_ENTRYPOINT="$YDK_CLI_ENTRYPOINT"
-        YDK_RUNTIME_ENTRYPOINT_NAME=$(basename "${YDK_RUNTIME_ENTRYPOINT}")
-        YDK_RUNTIME_IS_CLI=false
-        [[ "${YDK_RUNTIME_ENTRYPOINT_NAME}" == *".cli.sh" ]] && YDK_RUNTIME_IS_CLI=true
-        YDK_RUNTIME_NAME="${YDK_RUNTIME_ENTRYPOINT_NAME//.cli.sh/}"
-        YDK_RUNTIME_DIR=$(cd "$(dirname "${YDK_RUNTIME_ENTRYPOINT}")" && pwd)
-        YDK_RUNTIME_VERSION="0.0.0-dev-0"
-        [ -f "${YDK_RUNTIME_DIR}/package.json" ] && {
-            YDK_RUNTIME_VERSION=$(jq -r '.version' "${YDK_RUNTIME_DIR}/package.json")
-        } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
-            YDK_RUNTIME_VERSION=$(cat "./VERSION")
-        }
-        YDK_RUNTIME_IS_BINARY=false
-        if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
-            if command -v file >/dev/null 2>&1; then
-                file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
-            elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
-                YDK_RUNTIME_IS_BINARY=true
-            else
-                YDK_RUNTIME_IS_BINARY=false
-            fi
-        fi
-        echo -n "{"
-        echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
-        echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
-        echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
-        echo -n "\"sources\": ["
-        for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
-            YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
-            echo -n "\"${YDK_BASH_SOURCE}\","
-        done | sed 's/,$//'
-        echo -n "],"
-        echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
-        echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
-        echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
-        echo -n "\"args\": ["
-        for YDK_CLI_ARG in "${YDK_CLI_ARGS[@]}"; do
-            YDK_CLI_ARG=${YDK_CLI_ARG//\"/\\\"}
-            echo -n "\"${YDK_CLI_ARG}\","
-        done | sed 's/,$//'
-        echo -n "],"
-        echo -n "\"version\": \"${YDK_RUNTIME_VERSION:-"0.0.0-local-0"}\""
-        echo -n "}"
-    }
+    # ydk:cli() {
+    #     YDK_RUNTIME_ENTRYPOINT="$YDK_CLI_ENTRYPOINT"
+    #     YDK_RUNTIME_ENTRYPOINT_NAME=$(basename "${YDK_RUNTIME_ENTRYPOINT}")
+    #     YDK_RUNTIME_IS_CLI=false
+    #     [[ "${YDK_RUNTIME_ENTRYPOINT_NAME}" == *".cli.sh" ]] && YDK_RUNTIME_IS_CLI=true
+    #     YDK_RUNTIME_NAME="${YDK_RUNTIME_ENTRYPOINT_NAME//.cli.sh/}"
+    #     YDK_RUNTIME_DIR=$(cd "$(dirname "${YDK_RUNTIME_ENTRYPOINT}")" && pwd)
+    #     YDK_RUNTIME_VERSION="0.0.0-dev-0"
+    #     [ -f "${YDK_RUNTIME_DIR}/package.json" ] && {
+    #         YDK_RUNTIME_VERSION=$(jq -r '.version' "${YDK_RUNTIME_DIR}/package.json")
+    #     } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
+    #         YDK_RUNTIME_VERSION=$(cat "./VERSION")
+    #     }
+    #     YDK_RUNTIME_IS_BINARY=false
+    #     if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
+    #         if command -v file >/dev/null 2>&1; then
+    #             file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
+    #         elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
+    #             YDK_RUNTIME_IS_BINARY=true
+    #         else
+    #             YDK_RUNTIME_IS_BINARY=false
+    #         fi
+    #     fi
+    #     echo -n "{"
+    #     echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
+    #     echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
+    #     echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
+    #     echo -n "\"sources\": ["
+    #     for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
+    #         YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
+    #         echo -n "\"${YDK_BASH_SOURCE}\","
+    #     done | sed 's/,$//'
+    #     echo -n "],"
+    #     echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
+    #     echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
+    #     echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
+    #     echo -n "\"args\": ["
+    #     for YDK_CLI_ARG in "${YDK_CLI_ARGS[@]}"; do
+    #         YDK_CLI_ARG=${YDK_CLI_ARG//\"/\\\"}
+    #         echo -n "\"${YDK_CLI_ARG}\","
+    #     done | sed 's/,$//'
+    #     echo -n "],"
+    #     echo -n "\"version\": \"${YDK_RUNTIME_VERSION:-"0.0.0-local-0"}\""
+    #     echo -n "}"
+    # }
 #     ydk:version() {
 #         ydk:require "jq"
 #         local YDK_REPO_OWNER="ywteam"

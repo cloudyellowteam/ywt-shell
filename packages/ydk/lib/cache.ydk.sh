@@ -43,7 +43,7 @@ cache:v1() {
     *) __nnf "$@" || usage "$?" "tests" "$@" && return 1 ;;
     esac
 }
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317
 # cache() {
 #     [ -z "$YWT_PATH_CACHE" ] && YWT_PATH_CACHE="$(jq -r '.cache' <<<"$YWT_PATHS")"

@@ -491,7 +491,7 @@ ydk:logger() {
         [8]="panic"
     ) && readonly YDK_LOGGER_LEVELS
 }
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317
 # logger() {
 #     # __debug "logger" "$@"

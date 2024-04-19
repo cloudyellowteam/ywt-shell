@@ -1,4 +1,4 @@
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2317,SC2120,SC2155,SC2044,SC2001
 # # HRML - Http Request Markup Language
 # # Parse HRML files into a request parameters in any language, and vice versa

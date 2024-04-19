@@ -52,7 +52,7 @@ capabilities:v1() {
     } | jq .
     return 0
     # __nnf "$@" || usage "tests" "$?" "$@" && return 1
-}# #!/usr/bin/env bash
+}#!/usr/bin/env bash
 # # shellcheck disable=SC2317,SC2120,SC2155,SC2044
 # capabilities() {
 #     __capability() {

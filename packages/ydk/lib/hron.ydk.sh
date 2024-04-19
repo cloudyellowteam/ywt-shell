@@ -1,4 +1,4 @@
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2317,SC2120,SC2155,SC2044
 # # HRON HTTP Request Object Notation
 # # JSON files for HTTP requests to any language, and vice versa

@@ -1,4 +1,4 @@
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317,SC2120
 # builder() {
 #     YWT_LOG_CONTEXT="BUILDER"

@@ -1,4 +1,4 @@
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317
 # spwan() {
 #     [ -z "$YWT_PIDS" ] && declare -a YWT_PIDS && readonly YWT_PIDS

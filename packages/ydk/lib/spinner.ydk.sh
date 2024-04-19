@@ -1,4 +1,4 @@
-# #!/usr/bin/env bash
+#!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317,SC2120,SC2207
 # spinner() {
 #     local SPINNERS_TMP_FILE=/tmp/ywt-spinners.json
