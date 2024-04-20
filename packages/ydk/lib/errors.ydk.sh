@@ -16,12 +16,12 @@ ydk:errors() {
     message() {
         local YDK_ERROR_CODE="${1:-255}"
         local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_ERROR_CODE]:-"An error occurred"}"
-        echo -n "{"
-        echo -n "\"error\": true,"
-        echo -n "\"status\": $YDK_ERROR_CODE,"
-        echo -n "\"message\": \"$YDK_ERROR_MESSAGE\""
-        echo -n "}"
-        echo
+        echo "$YDK_ERROR_MESSAGE" >&4
+        # echo -n "{"
+        # echo -n "\"error\": true,"
+        # echo -n "\"status\": $YDK_ERROR_CODE,"
+        # echo -n "\"message\": \"$YDK_ERROR_MESSAGE\""
+        # echo -n "}"; echo
         return "$YDK_ERROR_CODE"
     }
     ydk:try "$@"

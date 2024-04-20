@@ -3,10 +3,14 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
-
+> **2024.04.19**
+```shell
+clear; ./packages/ydk/ydk.cli.sh css scanner:cli cloc
+```
 
 > **2024.04.18**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh css scanners
 clear; ./packages/ydk/ydk.cli.sh installer install
 clear; ./packages/ydk/ydk.cli.sh install
 clear; ./packages/ydk/ydk.cli.sh upm detect | jq -s .

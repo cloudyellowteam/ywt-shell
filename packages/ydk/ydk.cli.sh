@@ -162,7 +162,11 @@ ydk() {
     }
     ydk:teardown() {
         local YDK_EXIT_CODE="${1:-$?}"
-        local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
+        local YDK_EXIT_MESSAGES=(
+            "${2:-"exit with: ${YDK_EXIT_CODE}"}"
+        )
+        [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_EXIT_MESSAGES+=("${YDK_ERRORS_MESSAGES[$YDK_EXIT_CODE]}. ${YDK_CATH_MESSAGE}")
+        # local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"             
         # local YDK_BUGS_REPORT=$(ydk:version | jq -r '.bugs.url') && [ "$YDK_BUGS_REPORT" == "null" ] && YDK_BUGS_REPORT="https://bugs.yellowteam.cloud"
         local YDK_EXIT_LEVEL="" && [[ "${YDK_EXIT_CODE}" -ne 0 ]] && YDK_EXIT_LEVEL="error" || YDK_EXIT_LEVEL="success"
         local YDK_EXIT_JSON=$({
@@ -179,14 +183,15 @@ ydk() {
                 echo -n "\"level\": \"success\","
                 echo -n "\"error\": false,"
                 echo -n "\"status\": ${YDK_EXIT_CODE},"
-                echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGE}, see you later\""
+                echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGES[*]}, see you later\""
                 echo -n "}"
             fi
         })
         # local YDK_EXIT_LEVEL=$(jq -r '.level' <<<"${YDK_EXIT_JSON}")
         rm -f ${YDK_FIFO}
         # ydk:log "info" "$YDK_EXIT_JSON"
-        ydk:log "$YDK_EXIT_LEVEL" "($YDK_EXIT_CODE) ${YDK_EXIT_MESSAGE}"
+        [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_THROW_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_THROW_STATUS]}. ${YDK_THROW_MESSAGE}"
+        ydk:log "$YDK_EXIT_LEVEL" "($YDK_EXIT_CODE) ${YDK_EXIT_MESSAGES[*]}"
         exit "${YDK_EXIT_CODE}"
     }
     ydk:try() {
@@ -213,6 +218,7 @@ ydk() {
     ydk:catch() {
         local YDK_CATH_STATUS="${1:-$?}"
         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
+        # [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_CATH_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_CATH_STATUS]}. ${YDK_CATH_MESSAGE}"
         ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE} ($_)"
         return "${YDK_CATH_STATUS}"
     }
@@ -220,6 +226,12 @@ ydk() {
         local YDK_THROW_STATUS="${1:-$?}"
         local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
         local YDK_TERM="${3:-"ERR"}"
+        # [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_THROW_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_THROW_STATUS]}. ${YDK_THROW_MESSAGE}"
+        # if [[ "$(type -f "ydk:errors" 2>/dev/null)" == function ]]; then
+        #     YDK_EXIT_MESSAGES+=("$(ydk:errors message "${YDK_EXIT_CODE}" 4>&1)")
+        # else 
+        #     echo "{\"error\": \"$(type -f "ydk" 2>/dev/null)\"}" 
+        # fi   
         # ydk:catch "$YDK_THROW_STATUS" "$2"
         # if [[ "$(type -f "ydk:usage" 2>/dev/null)" == function ]]; then
         #     ydk:usage "$YDK_THROW_STATUS" "$2" "${@:3}"
