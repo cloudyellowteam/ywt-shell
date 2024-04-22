@@ -23,7 +23,7 @@ ydk() {
     [[ ! -p "${YDK_FIFO}" ]] && mkfifo ${YDK_FIFO}
     exec 4<>${YDK_FIFO}
     trap 'exec 4>&-; rm -f '"${YDK_FIFO}"'' EXIT
-    ydk:cli(){
+    ydk:prgma(){
         local YDK_VERSION="0.0.0-dev-0"
         [ -f "${YDK_CLI_DIR}/VERSION" ] && YDK_VERSION=$(cat "./VERSION")
         local YDK_CLI_BINARY=false
@@ -53,7 +53,7 @@ ydk() {
                 YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
                 echo -n "\"${YDK_BASH_SOURCE}\","
             done | sed 's/,$//'
-            echo -n "],"
+            echo -n "]"
             echo -n "}"
         })
         echo "$YDK_CLI" >&4
@@ -243,7 +243,7 @@ ydk() {
     }
     ydk:temp() {
         local FILE_PREFIX="${1:}" && [[ -n "$FILE_PREFIX" ]] && FILE_PREFIX="${FILE_PREFIX}_"
-        mktemp -u -t XXXXXXXX -p "/tmp/ywteam/${YDK_PACKAGE_NAME}" --suffix=".${YDK_BRAND,,}"
+        mktemp -u -t XXXXXXXX -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".${YDK_BRAND,,}"
     }
     ydk:opts() {
         local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)
@@ -272,8 +272,9 @@ ydk() {
     fi
     ydk:configure "$@"
     ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 254 "Failed to load dependencies"  
-    ydk:cli 
+    ydk:prgma 
     ydk:team welcome
+    ydk:analytics ga collect > /dev/null 2>&1
     ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
     # echo "{\"return\": ${YDK_STATUS}}"
     # ydk:teardown "${YDK_STATUS}" "Script exited"

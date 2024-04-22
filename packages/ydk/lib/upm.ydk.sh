@@ -49,11 +49,12 @@ ydk:upm() {
             .[] | 
             select(.name == \"$MANAMGER_NAME\") |
             first(.)
-        " "/workspace/rapd-shell/assets/upm.vendors.json"
+        " "/workspace/rapd-shell/assets/upm.vendors.json" >&4
     }
     cli() {
         local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
+        
         # YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
         # [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         # [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
@@ -70,13 +71,14 @@ ydk:upm() {
             ' <<<"$YDK_UPM_DETECT"
         )
         [[ -z "$UPM_MANAGER" ]] && ydk:throw 255 "No package manager found"
-        local UPM_MANAGER_VENDOR=$(vendor "$UPM_MANAGER")
+        local UPM_MANAGER_VENDOR=$(vendor "$UPM_MANAGER" 4>&1)
         [[ -z "$UPM_MANAGER_VENDOR" ]] && ydk:throw 255 "No package manager vendor found"
-        jq -n \
-            --argjson DETECT "$YDK_UPM_DETECT" \
-            --arg UPM_MANAGER "$UPM_MANAGER" \
-            --argjson UPM_VENDOR "$UPM_MANAGER_VENDOR" \
-            '{
+        local UPM_MANAGER=$({
+            jq -n \
+                --argjson DETECT "$YDK_UPM_DETECT" \
+                --arg UPM_MANAGER "$UPM_MANAGER" \
+                --argjson UPM_VENDOR "$UPM_MANAGER_VENDOR" \
+                '{
                 os: $DETECT.os,
                 vendor: $DETECT.vendor,
                 manager: ($UPM_VENDOR + {
@@ -84,7 +86,10 @@ ydk:upm() {
                     version: $DETECT.managers[$UPM_MANAGER].version
                 }),                
                 managers: $DETECT.managers                
-            }' 4>&1
+            }'
+        })
+        ydk:log info "Detected package manager $(jq -r '.manager.name' <<<"$UPM_MANAGER")"
+        jq . <<<"$UPM_MANAGER" >&4
     }
     ydk:try "$@"
     return $?

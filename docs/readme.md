@@ -3,9 +3,25 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+
+> **2024.04.21**
+```shell
+clear; ./packages/ydk/ydk.cli.sh secops scanners manager install cloc trivy trufflehog 
+clear; ./packages/ydk/ydk.cli.sh secops scanners manager uninstall cloc trivy trufflehog
+clear; ./packages/ydk/ydk.cli.sh secops scanners install cloc trivy trufflehog 
+clear; ./packages/ydk/ydk.cli.sh secops scanners uninstall cloc trivy trufflehog
+clear; ./packages/ydk/ydk.cli.sh secops scanners unavailable
+clear; ./packages/ydk/ydk.cli.sh secops scanners available
+clear; ./packages/ydk/ydk.cli.sh secops scanners get cloc
+clear; ./packages/ydk/ydk.cli.sh secops scanners list
+
+clear; ./packages/ydk/ydk.cli.sh css scanner cloc
+clear; ./packages/ydk/ydk.cli.sh analytics ga collect
+```
+
 > **2024.04.19**
 ```shell
-clear; ./packages/ydk/ydk.cli.sh css scanner:cli cloc
+clear; ./packages/ydk/ydk.cli.sh css scanner cloc
 ```
 
 > **2024.04.18**
