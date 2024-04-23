@@ -2,6 +2,7 @@
 # shellcheck disable=SC2044,SC2155,SC2317,SC2120
 # Continuous Secutiry Scanner
 ydk:secops() {
+    YDK_LOGGER_CONTEXT="secops"
     [[ -z "$YDK_SECOPS_SPECS" ]] && declare -A YDK_SECOPS_SPECS=(
         ["all"]="."
         ["count"]=". | length"
@@ -12,10 +13,10 @@ ydk:secops() {
                 .installed = \$SCANNER_INSTALLED
             else 
                 .installed = false
-            end
-        "
+            end"
         ["available"]=".[] | select(.installed == true or .installed == \"true\")"
         ["unavailable"]=".[] | select(.installed == false or .installed == \"false\")"
+        ["packages"]=".packages[]"
     ) && readonly YDK_SECOPS_SPECS
     ydk:log info "Continuous Security Operations"
     scanners() {
@@ -28,14 +29,15 @@ ydk:secops() {
                     [ -z "$SCANNER" ] && continue
                     local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER") && [ -z "$SCANNER_ID" ] && continue
                     local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER") && [ -z "$SCANNER_NAME" ] && continue
-                    local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null && SCANNER_INSTALLED=true
-                    ydk:log info "Scanner $SCANNER_NAME is installed: $SCANNER_INSTALLED"
+                    local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
+                    # ydk:log info "Scanner $SCANNER_NAME is installed: $SCANNER_INSTALLED"
                     jq -rc \
                         --arg SCANNER_ID "$SCANNER_ID" \
                         --arg SCANNER_INSTALLED "$SCANNER_INSTALLED" \
                         "${YDK_SECOPS_SPECS[installed]}" "$SCANNERS_FILE"
                 done < <(jq -c "${YDK_SECOPS_SPECS[all]} | .[]" "$SCANNERS_FILE")
             } | jq -rsc '.' >&4
+            ydk:log success "Use 'scanners available' to list available scanners"
             return 0
         }
         get() {
@@ -55,8 +57,8 @@ ydk:secops() {
             echo "$SCANNERS_INSTALLED" >&4
             local SCANNERS_INSTALLED_COUNT=$(jq -cr "${YDK_SECOPS_SPECS[count]}" <<<"$SCANNERS_INSTALLED") &&
                 SCANNERS_INSTALLED_COUNT="${SCANNERS_INSTALLED_COUNT:-0}"
-            ydk:log success "${SCANNERS_INSTALLED_COUNT} scanners available"
-            return 0
+            [[ "$SCANNERS_INSTALLED_COUNT" -eq 0 ]] && ydk:log warn "No scanners available" && return 251
+            [[ "$SCANNERS_INSTALLED_COUNT" -gt 0 ]] && ydk:log success "${SCANNERS_INSTALLED_COUNT} scanners available" && return 0
         }
         unavailable() {
             local SCANNERS=$(list 4>&1)
@@ -70,20 +72,23 @@ ydk:secops() {
         manager() {
             local YDK_SECOPS_MANAGER_ACTION=$1 && [ -z "$YDK_SECOPS_MANAGER_ACTION" ] && return 22
             shift
-            for SCANNER in "$@"; do
+            ydk:log info "SecOps Manager $YDK_SECOPS_MANAGER_ACTION"
+            for SCANNER_NAME in "$@"; do
+                local SCANNER=$(jq -c --arg SCANNER_ID "$SCANNER_NAME" "${YDK_SECOPS_SPECS[query]}" <<<"$(list 4>&1)")
+                [ -z "$SCANNER" ] && echo "{}" >&4 && ydk:log error "Scanner ${SCANNER_NAME} not found" && return 22
                 local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER") && [ -z "$SCANNER_ID" ] && continue
-                local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER") && [ -z "$SCANNER_NAME" ] && continue
-                local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null && SCANNER_INSTALLED=true
+                read -r -a SCANNER_PACKAGES <<<"$(jq -r '.packages[]' <<<"$SCANNER")" && [ -z "${SCANNER_PACKAGES[*]}" ] && continue
+                local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
+                ydk:log info "Scanner $SCANNER_NAME is installed: $SCANNER_INSTALLED, packages: ${SCANNER_PACKAGES[*]}"
                 case "$YDK_SECOPS_MANAGER_ACTION" in
                 install)
                     if [ "$SCANNER_INSTALLED" = false ]; then
-                        echo "Trying install $SCANNER_NAME"
-                        ydk:upm cli 4>&1
+                        # ydk:upm cli "$SCANNER_NAME" 4>&1
+                        ydk:upm install "$SCANNER_NAME" 4>&1
                     fi
                     ;;
                 uninstall)
                     if [ "$SCANNER_INSTALLED" = true ]; then
-                        echo "Trying uninstall $SCANNER_NAME"
                         ydk:upm cli 4>&1
                     fi
                     ;;

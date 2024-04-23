@@ -242,8 +242,8 @@ ydk() {
         exit "$1"
     }
     ydk:temp() {
-        local FILE_PREFIX="${1:}" && [[ -n "$FILE_PREFIX" ]] && FILE_PREFIX="${FILE_PREFIX}_"
-        mktemp -u -t XXXXXXXX -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".${YDK_BRAND,,}"
+        local FILE_SUFFIX="${1}" && [[ -n "$FILE_SUFFIX" ]] && FILE_SUFFIX="${FILE_SUFFIX}"
+        mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}"
     }
     ydk:opts() {
         local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)

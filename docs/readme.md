@@ -4,6 +4,26 @@
   git config --global user.name "Raphael C Rego"
 ```
 
+> **2024.04.22**
+```shell
+clear; ./packages/ydk/ydk.cli.sh async "sleep 60 && echo 'task 1 completed'" "sleep 60; echo 'task 65 completed'" "sleep 30; echo 'task 3 completed'"
+clear; sleep 60 & SPID=$! && ./packages/ydk/ydk.cli.sh await spin $SPID "waiting for $SPID"
+clear; ./packages/ydk/ydk.cli.sh await examples
+clear; ./packages/ydk/ydk.cli.sh await spin PID MESSAGE
+clear; ./packages/ydk/ydk.cli.sh await spinners random
+clear; ./packages/ydk/ydk.cli.sh await spinners names
+clear; ./packages/ydk/ydk.cli.sh await spinners list
+clear; ./packages/ydk/ydk.cli.sh secops scanners install cloc
+clear; ./packages/ydk/ydk.cli.sh upm install cloc
+clear; ./packages/ydk/ydk.cli.sh upm upgrade cloc
+clear; ./packages/ydk/ydk.cli.sh upm search cloc
+clear; ./packages/ydk/ydk.cli.sh upm info cloc
+clear; ./packages/ydk/ydk.cli.sh upm update
+clear; ./packages/ydk/ydk.cli.sh upm upgrade_all
+clear; ./packages/ydk/ydk.cli.sh upm installed
+clear; ./packages/ydk/ydk.cli.sh upm uninstall cloc
+```
+
 > **2024.04.21**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh secops scanners manager install cloc trivy trufflehog 

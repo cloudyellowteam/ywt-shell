@@ -177,6 +177,7 @@ ydk:errors() {
         [155]="Profiling timer expired"
         [157]="Pollable event"
         [159]="Bad syscall"
+        [251]="Not found"
         [252]="Invalid argument"
         [253]="Failed to install"
         [254]="Missing required packages"

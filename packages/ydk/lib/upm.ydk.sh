@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+# universal package manager vendor schema
+# {
+#    "name": "apt",
+#    "confirm": "-y/--yes",
+#    "install": "apt install $",
+#    "remove": "apt remove $",
+#    "upgrade": "apt install --only-upgrade $",
+#    "search": "apt search $",
+#    "info": "apt show $",
+#    "update_index": "apt update",
+#    "upgrade_all": "apt upgrade",
+#    "list_installed": "apt list -i/--installed"
+# }
 ydk:upm() {
     local YDK_LOGGER_CONTEXT="upm"
     detect() {
@@ -54,7 +67,7 @@ ydk:upm() {
     cli() {
         local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
-        
+
         # YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
         # [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         # [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
@@ -90,6 +103,67 @@ ydk:upm() {
         })
         ydk:log info "Detected package manager $(jq -r '.manager.name' <<<"$UPM_MANAGER")"
         jq . <<<"$UPM_MANAGER" >&4
+    }
+    cmd() {
+        local UPM_MANAGER_CMD=$1 && [ -z "$UPM_MANAGER_CMD" ] && return 22
+        shift
+        local YDK_UPM_CLI=$(cli 4>&1) && [[ -z "$YDK_UPM_CLI" ]] && return 255
+        local UPM_MANAGER=$(jq -r '.manager' <<<"$YDK_UPM_CLI") && [[ -z "$UPM_MANAGER" ]] && return 255
+        local UPM_MANAGER_NAME=$(jq -r '.name' <<<"$UPM_MANAGER")
+        # local UPM_MANAGER_PATH=$(jq -r '.path' <<<"$UPM_MANAGER")
+        local UPM_MANAGER_VERSION=$(jq -r '.version' <<<"$UPM_MANAGER")
+        local UPM_MANAGER_CONFIRM=$(jq -r '.confirm' <<<"$UPM_MANAGER")
+        UPM_MANAGER_CONFIRM=${UPM_MANAGER_CONFIRM%%\/*}
+        local UPM_MANAGER_COMMAND=$(jq -r '.'"${UPM_MANAGER_CMD}"'' <<<"$UPM_MANAGER")
+        UPM_MANAGER_COMMAND=${UPM_MANAGER_COMMAND//\$/}
+        [[ -z "$UPM_MANAGER_COMMAND" ]] && return 255
+        local UPM_COMMAND="$UPM_MANAGER_COMMAND"
+        case $UPM_MANAGER_CMD in
+        install | remove | upgrade)
+            UPM_COMMAND+=" $UPM_MANAGER_CONFIRM"
+            ;;
+        list_installed)
+            # UPM_COMMAND is apk list -I/--installed, keep just one flag
+            UPM_COMMAND=${UPM_COMMAND%%\/*}            
+            ;;
+        *) ;;
+        esac
+        # local UPM_COMMAND="$UPM_MANAGER_CMD $UPM_MANAGER_CONFIRM"
+        ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION"
+        $UPM_COMMAND "$@"
+        return $?
+    }
+    install() {
+        cmd install "$@"
+        return $?
+    }
+    uninstall() {
+        cmd remove "$@"
+        return $?
+    }
+    upgrade() {
+        cmd upgrade "$@"
+        return $?
+    }
+    search() {
+        cmd search "$@"
+        return $?
+    }
+    info() {
+        cmd info "$@"
+        return $?
+    }
+    update() {
+        cmd update_index
+        return $?
+    }
+    upgrade_all() {
+        cmd upgrade_all
+        return $?
+    }
+    installed() {
+        cmd list_installed
+        return $?
     }
     ydk:try "$@"
     return $?
