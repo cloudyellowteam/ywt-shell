@@ -4,16 +4,39 @@
         "name": "cloc",
         "description": "Count Lines of Code",
         "url": "https://github.com/AlDanial/cloc",
-        "features": [ "count", "count-by-lang" ],
-        "hooks": [ "pre-commit" ],
-        "engines": [ "host", "docker", "k8s", "remote" ],
+        "features": [
+            "count",
+            "count-by-lang"
+        ],
+        "hooks": [
+            "pre-commit"
+        ],
+        "workers": [
+            "host",
+            "docker",
+            "k8s",
+            "remote"
+        ],
         "cli": {
             "cmd": "cloc",
             "args": [
                 "--json",
                 "--quiet",
                 "--exclude-dir=sys,.git,.idea,node_modules"
+            ],
+            "install": [
+                "curl -o cloc https://raw.githubusercontent.com/AlDanial/cloc/master/cloc",
+                "chmod +x cloc",
+                "mv cloc /usr/local/bin/cloc"
+            ],
+            "uninstall": [
+                "rm /usr/local/bin/cloc"
             ]
+        },
+        "api": {
+            "version": [ "--version" ],
+            "asset/filesystem/count": [ "{{.target}}" ],
+            "asset/filesystem/count-by-lang": [ "--by-file", "{{.target}}" ]
         },
         "packages": {
             "npm": "cloc",

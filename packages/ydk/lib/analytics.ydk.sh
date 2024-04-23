@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:analytics() {
+    [[ -z "$YDK_ANALYTICS_USERAGENT" ]] && local YDK_ANALYTICS_USERAGENT=$({
+        echo -n "ydk-shell/0.0.0-local-0"
+        echo -n " "
+        echo -n "(curl 7.68.0; A; B)" # (Windows NT 10.0; Win64; x64)
+        echo -n " "
+        echo -n "bash/5.0.17(1)-release" # AppleWebKit/537.36
+        echo -n " "
+        echo -n "GoogleAnalytics/4.0" # (KHTML, like Gecko)
+        echo -n " "
+        echo -n "Linux/x86_64" # Chrome/123.0.0.0
+        echo -n " "
+        echo -n "AppleWebKit/537.36" # Safari/537.36
+        echo -n " "
+        echo -n "Edg/123.0.0.0" # Edg/123.0.0.0
+    })
+    [[ -z "$YDK_ANALYTICS_EVENTS" ]] && declare -a YDK_ANALYTICS_EVENTS=(
+        '{"name": "file_downloaded", "params": {"file_name": "example.zip", "user_category": "premium_user"}}'
+    ) && readonly YDK_ANALYTICS_EVENTS
     ga() {
         collect() {
             # https://developers.google.com/analytics/devguides/collection/protocol/ga4/sending-events?client_type=firebase
@@ -30,7 +48,7 @@ ydk:analytics() {
             #GA4_ENDPOINT="https://www.google-analytics.com/debug/mp/collect?measurement_id=$MEASUREMENT_ID&api_secret=$API_SECRET"
             curl -X POST "$GA4_ENDPOINT" \
                 -H "Content-Type: application/json" \
-                -H "User-Agent: YDK/1.0" \
+                -H "User-Agent: $YDK_ANALYTICS_USERAGENT" \
                 -H "Accept: application/json" \
                 -d "$BODY" &
         }

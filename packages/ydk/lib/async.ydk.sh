@@ -18,10 +18,10 @@ ydk:async() {
         START_TIMES+=("$(date -u +%s.%N)")
         # ydk:log info "Running $COMMAND"
         {
-            # source $YDK_SDK_FILE 
+            # source $YDK_SDK_FILE
             bash -c "$COMMAND" >"$CMD_OUTPUT" 2>"$CMD_ERROR"
         } &
-        PIDS+=("$!")        
+        PIDS+=("$!")
     done
     ydk:log info "Waiting for ${#PIDS[@]} commands to finish"
     local TASKS_LENGTH=${#PIDS[@]}
@@ -37,7 +37,7 @@ ydk:async() {
         local YDK_ASYNC_STARTED_AT="${START_TIMES[$PID_IDX]}"
         local YDK_ASYNC_COMMAND_NAME=$(echo "$YDK_ASYNC_COMMAND" | awk '{print $1}')
         local YDK_ASYNC_MESSAGE="($YDK_ASYNC_PID) ${YDK_ASYNC_COMMAND_NAME} ${TASKS_ID} of ${TASKS_LENGTH}, remaining ${TASKS_LEFT}, done ${TASKS_DONE}, errors ${TASKS_ERROR}"
-        ydk:log info "Waiting $YDK_ASYNC_MESSAGE"
+        # ydk:log info "Waiting $YDK_ASYNC_MESSAGE"
         ydk:await spin "$YDK_ASYNC_PID" "Waiting $YDK_ASYNC_MESSAGE" 1>&2
         local YDK_ASYNC_STATUS=$?
         local YDK_ASYNC_EXIT_CODE="${YDK_ASYNC_STATUS}"
@@ -65,10 +65,11 @@ ydk:async() {
         rm -f "$YDK_ASYNC_RESULT" "$YDK_ASYNC_ERROR"
     done
     ydk:log success "All commands executed successfully ${ASYNC_OUTPUT}"
+    # jq -sc . "$ASYNC_OUTPUT" >&4
     if jq -se . "$ASYNC_OUTPUT" >/dev/null 2>&1; then
-        jq -sc . "$ASYNC_OUTPUT" #>&4
+        jq -sc . "$ASYNC_OUTPUT" >&4
     else
-        cat "$ASYNC_OUTPUT" #>&4
+        cat "$ASYNC_OUTPUT" >&4
     fi
     rm -f "$ASYNC_OUTPUT"
     return 0

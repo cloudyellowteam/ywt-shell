@@ -134,6 +134,332 @@ ydk:secops() {
         ydk:try "$@"
         return $?
     }
+    cli:v2() {
+        [ -z "$1" ] && return 22
+        local SCANNER=$(scanners get "$1" 4>&1)
+        [ -z "$SCANNER" ] && return 22
+        shift
+        local SCANNER_CLI=$(jq -r '.scanner.cli' <<<"$SCANNER_ENDPOINT")
+        [ -z "$SCANNER_CLI" ] && return 22
+        local SCANNER_CMD=$(jq -r ".scanner.cli.cmd" <<<"$SCANNER_ENDPOINT")
+        [ -z "$SCANNER_CMD" ] && return 22
+        if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
+            ydk:log error "Scanner $SCANNER_CMD is not installed"
+            return 1
+        fi
+        read -r -a SCANNER_CMD_DEFAULT_ARGS <<<"$(jq -r '.scanner.cli.args[]' <<<"$SCANNER_ENDPOINT")"
+        [ -z "${SCANNER_CMD_DEFAULT_ARGS[*]}" ] && return 22
+        if ! {
+            echo -n "{"
+            echo -n "\"scanner\":$(jq -c '.scanner | del(.cli)' <<<"$SCANNER_ENDPOINT"),"
+            echo -n "\"cmd\":["
+            echo -n "\"$SCANNER_CMD\","
+            {
+                for i in "${!SCANNER_CMD_DEFAULT_ARGS[@]}"; do
+                    case "${SCANNER_CMD_DEFAULT_ARGS[i]}" in
+                    *\{\{.*\}\}*)
+                        SCANNER_CMD_DEFAULT_ARGS[i]=$(ydk:interpolate "${SCANNER_CMD_DEFAULT_ARGS[i]}" "$@" 4>&1)
+                        ;;
+                    *) ;;
+                    esac
+                    if ydk:is number "${SCANNER_CMD_DEFAULT_ARGS[i]}"; then
+                        echo -n "${SCANNER_CMD_DEFAULT_ARGS[i]},"
+                    elif ydk:is boolean "${SCANNER_CMD_DEFAULT_ARGS[i]}"; then
+                        echo -n "${SCANNER_CMD_DEFAULT_ARGS[i]},"
+                    elif jq -e . <<<"${SCANNER_CMD_DEFAULT_ARGS[i]}" 2>/dev/null 1>/dev/null; then
+                        echo -n "$(jq -c . <<<"${SCANNER_CMD_DEFAULT_ARGS[i]}"),"
+                    else
+                        echo -n "\"${SCANNER_CMD_DEFAULT_ARGS[i]}\","
+                    fi
+
+                done
+            } | sed 's/,$//'
+            echo -n "]"
+            echo -n "}"
+            return 0
+        } | jq -c . 2>/dev/null >&4; then
+            ydk:log error "Scanner $SCANNER_CMD cli unavailable"
+            return 1
+        fi
+        return 0
+    }
+    cli:v1() {
+        local SCANNER_ENDPOINT=$(ydk:secops:endpoint "$@" 4>&1)
+        [ -z "$SCANNER_ENDPOINT" ] && return 22
+        local API_SCANNER_PATH=$(jq -r '.path' <<<"$SCANNER_ENDPOINT")
+        [ -z "$API_SCANNER_PATH" ] && return 22
+        local SCANNER_CLI=$(jq -r '.scanner.cli' <<<"$SCANNER_ENDPOINT")
+        [ -z "$SCANNER_CLI" ] && return 22
+        local SCANNER_CMD=$(jq -r ".scanner.cli.cmd" <<<"$SCANNER_ENDPOINT")
+        [ -z "$SCANNER_CMD" ] && return 22
+        if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
+            ydk:log error "Scanner $SCANNER_CMD is not installed"
+            return 1
+        fi
+        read -r -a SCANNER_CMD_DEFAULT_ARGS <<<"$(jq -r '.scanner.cli.args[]' <<<"$SCANNER_ENDPOINT")"
+        [ -z "${SCANNER_CMD_DEFAULT_ARGS[*]}" ] && return 22
+        if ! {
+            echo -n "{"
+            echo -n "\"scanner\":$(jq -c '.scanner | del(.cli)' <<<"$SCANNER_ENDPOINT"),"
+            echo -n "\"path\":\"$API_SCANNER_PATH\","
+            echo -n "\"cmd\":["
+            echo -n "\"$SCANNER_CMD\","
+            {
+                for i in "${!SCANNER_CMD_DEFAULT_ARGS[@]}"; do
+                    case "${SCANNER_CMD_DEFAULT_ARGS[i]}" in
+                    *\{\{.*\}\}*)
+                        SCANNER_CMD_DEFAULT_ARGS[i]=$(ydk:interpolate "${SCANNER_CMD_DEFAULT_ARGS[i]}" "$@" 4>&1)
+                        ;;
+                    *) ;;
+                    esac
+                    if ydk:is number "${SCANNER_CMD_DEFAULT_ARGS[i]}"; then
+                        echo -n "${SCANNER_CMD_DEFAULT_ARGS[i]},"
+                    elif ydk:is boolean "${SCANNER_CMD_DEFAULT_ARGS[i]}"; then
+                        echo -n "${SCANNER_CMD_DEFAULT_ARGS[i]},"
+                    elif jq -e . <<<"${SCANNER_CMD_DEFAULT_ARGS[i]}" 2>/dev/null 1>/dev/null; then
+                        echo -n "$(jq -c . <<<"${SCANNER_CMD_DEFAULT_ARGS[i]}"),"
+                    else
+                        echo -n "\"${SCANNER_CMD_DEFAULT_ARGS[i]}\","
+                    fi
+
+                done
+            } | sed 's/,$//'
+            echo -n "]"
+            echo -n "}"
+            return 0
+        } | jq -c . 2>/dev/null >&4; then
+            ydk:log error "Scanner $SCANNER_CMD cli unavailable"
+            return 1
+        fi
+        return 0
+    }
+    secops:cli:arg() {
+        {
+            for ARG in "$@"; do
+                case "$ARG" in
+                *\{\{.*\}\}*)
+                    echo -n "$(ydk:interpolate "$ARG" "$@" 4>&1),"
+                    ;;
+                *) ;;
+                esac
+                if ydk:is number "$ARG"; then
+                    echo -n "$ARG,"
+                elif ydk:is boolean "$ARG"; then
+                    echo -n "$ARG,"
+                elif jq -e . <<<"$ARG" 2>/dev/null 1>/dev/null; then
+                    echo -n "$(jq -c . <<<"$ARG"),"
+                else
+                    echo -n "\"$ARG\","
+                fi
+            done
+        } | sed 's/,$//' >&4
+        return $?
+    }
+    cli() {
+        local SCANNER_ENTRYPOINT=$(ydk:secops:entrypoint "$@" 4>&1)
+        [ -z "$SCANNER_ENTRYPOINT" ] && return 22
+        shift
+        local SCANNER_CLI=$(jq -r '.scanner.cli' <<<"$SCANNER_ENTRYPOINT")
+        [ -z "$SCANNER_CLI" ] && return 22
+        local SCANNER_CMD=$(jq -r ".scanner.cli.cmd" <<<"$SCANNER_ENTRYPOINT")
+        [ -z "$SCANNER_CMD" ] && return 22
+        if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
+            ydk:log error "Scanner $SCANNER_CMD is not installed"
+            return 1
+        fi
+        read -r -a SCANNER_CMD_DEFAULT_ARGS <<<"$(jq -r '.scanner.cli.args[]' <<<"$SCANNER_ENTRYPOINT")"
+        [ -z "${SCANNER_CMD_DEFAULT_ARGS[*]}" ] && return 22
+        local SCANNER_CLI_METADATA=$({
+            {
+                echo -n "{"
+                echo -n "\"scanner\":$(jq -c '.scanner | del(.cli)' <<<"$SCANNER_ENTRYPOINT"),"
+                echo -n "\"cmd\":["
+                echo -n "\"$SCANNER_CMD\","
+                secops:cli:arg "${SCANNER_CMD_DEFAULT_ARGS[@]}" "$@" 4>&1
+                echo -n ",\"\""
+                echo -n "]"
+                echo -n "}"
+                return 0
+            } >&4
+        } 4>&1)
+        if ! jq . 2>/dev/null <<<"${SCANNER_CLI_METADATA}"; then # >&4; then
+            ydk:log error "Scanner $SCANNER_CMD cli unavailable"
+            return 1
+        fi
+        [ -z "$SCANNER_CLI_METADATA" ] && return 22
+        jq -c . <<<"$SCANNER_CLI_METADATA" # >&4
+        read -r -a SCANNER_COMMAND <<<"$(jq -cr '.cmd[]' <<<"$SCANNER_CLI_METADATA")"
+        jq -r '.cmd[]' <<<"$SCANNER_CLI_METADATA"
+        echo "${#SCANNER_COMMAND[@]} ${SCANNER_COMMAND[*]}"
+        [ -z "${SCANNER_COMMAND[*]}" ] && return 22
+        [[ "${#SCANNER_COMMAND[@]}" -eq 0 ]] && return 22
+        [[ "${SCANNER_COMMAND[0]}" == "null" ]] && return 22
+        local SCANNER_CMD=${SCANNER_COMMAND[0]}
+        local SCANNER_CMD_ARGS=("${SCANNER_COMMAND[@]:1}")
+        
+        {
+            $SCANNER_CMD "${SCANNER_CMD_ARGS[@]}"
+            # "${SCANNER_COMMAND[@]}" 2>/dev/null
+        } 2>/dev/null &
+        local SCANNER_PID=$!
+        trap 'kill '"$SCANNER_PID"' 2>/dev/null' EXIT
+        ydk:await spin "$SCANNER_PID" "Running scanner $SCANNER_CMD (${SCANNER_PID})"
+        return $?
+        # {
+        #     $SCANNER_CMD "${SCANNER_CMD_DEFAULT_ARGS[@]}" "${SCANNERS_API_ARGS[@]}" 2>/dev/null
+        # } 2>/dev/null &
+        # local SCANNER_PID=$!
+        # trap 'kill '"$SCANNER_PID"' 2>/dev/null' EXIT
+        # ydk:await spin "$SCANNER_PID" "Running scanner $SCANNER_CMD (${SCANNER_PID})"
+        # return 0
+        # return 0
+    }
+    ydk:secops:entrypoint() {
+        [ -z "$1" ] && return 22
+        local API_SCANNER_NAME=$(cut -d'/' -f1 <<<"$1")
+        local API_SCANNER_PATH=${1#"$API_SCANNER_NAME"} && API_SCANNER_PATH=${API_SCANNER_PATH#/}
+        # echo "ydk:secops:entrypoint $* API_SCANNER=$API_SCANNER API_SCANNER_PATH=$API_SCANNER_PATH"
+        [ -z "$API_SCANNER_NAME" ] && return 22
+        local API_SCANNER=$(scanners get "$API_SCANNER_NAME" 4>&1)
+        [ -z "$API_SCANNER" ] && return 22
+        # [ -z "$API_SCANNER_PATH" ] && return 22
+        if ! {
+            jq -cr \
+                --arg API_SCANNER_NAME "$API_SCANNER_NAME" \
+                --arg API_SCANNER_PATH "${API_SCANNER_PATH:-""}" \
+                --argjson SCANNER "$(jq -c . <<<"$API_SCANNER")" \
+                '
+                {
+                    "scanner":$SCANNER,
+                    "path":$API_SCANNER_PATH,
+                    "name":$API_SCANNER_NAME
+                }' <<<"{}"
+        } 2>/dev/null >&4; then
+            ydk:log error "Scanner $SCANNER_CMD endpoint unavailable"
+            return 1
+        fi
+        return 0
+    }
+    api() {
+        ydk:secops:endpoint() {
+            [ -z "$1" ] && return 22
+            local API_SCANNER=$(cut -d'/' -f1 <<<"$1")
+            local API_SCANNER_PATH=${1#"$API_SCANNER"} && API_SCANNER_PATH=${API_SCANNER_PATH#/}
+            [ -z "$API_SCANNER" ] && return 22
+            [ -z "$API_SCANNER_PATH" ] && return 22
+            shift
+            local SCANNER=$(scanners get "$API_SCANNER" 4>&1)
+            [ -z "$SCANNER" ] && return 22
+            jq -cr \
+                --arg API_SCANNER "$API_SCANNER" \
+                --arg API_SCANNER_PATH "$API_SCANNER_PATH" \
+                --argjson SCANNER "$(jq -c . <<<"$SCANNER")" \
+                '
+                {
+                    "scanner":$SCANNER,
+                    "path":$API_SCANNER_PATH
+                }' <<<"$SCANNER" 2>/dev/null >&4
+            return $?
+            # if ! ; then
+            #     ydk:log error "Scanner $SCANNER_CMD endpoint unavailable"
+            #     return 1
+            # fi
+            # jq '{}' >&4
+            # return 0
+        }
+        ydk:secops:entrypoint "$@" 4>&1
+        # local SCANNER_CLI=$(cli "$@" 4>&1)
+        # [ -z "$SCANNER_CLI" ] && return 22
+        # jq . <<<"$SCANNER_CLI" #>&4
+        return 0
+        # [ -z "$1" ] && return 22
+        # local API_SCANNER=$(cut -d'/' -f1 <<<"$1")
+        # local API_SCANNER_PATH=${1#"$API_SCANNER"} && API_SCANNER_PATH=${API_SCANNER_PATH#/}
+        # [ -z "$API_SCANNER" ] && return 22
+        # [ -z "$API_SCANNER_PATH" ] && return 22
+        # shift
+        # local SCANNER=$(scanners get "$API_SCANNER" 4>&1)
+        # [ -z "$SCANNER" ] && return 22
+        # local SCANNER_CLI=$(jq -r '.cli' <<<"$SCANNER")
+        # [ -z "$SCANNER_CLI" ] && return 22
+        # local SCANNER_CMD=$(jq -r ".cli.cmd" <<<"$SCANNER")
+        # [ -z "$SCANNER_CMD" ] && return 22
+        # if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
+        #     ydk:log error "Scanner $SCANNER_CMD is not installed"
+        #     return 1
+        # fi
+        # read -r -a SCANNER_CMD_DEFAULT_ARGS <<<"$(jq -r '.cli.args[]' <<<"$SCANNER")"
+        # [ -z "${SCANNER_CMD_DEFAULT_ARGS[*]}" ] && return 22
+        # local SCANNER_API=$(jq -r '.api' <<<"$SCANNER")
+        # [ -z "$SCANNER_API" ] && return 22
+        # read -r -a SCANNERS_API_ARGS <<<"$(jq -r '.api["'"$API_SCANNER_PATH"'"][]' <<<"$SCANNER" 2>/dev/null)"
+        # # echo "SCANNERS_API_ARGS: ${SCANNERS_API_ARGS[*]}"
+        # [ -z "${SCANNERS_API_ARGS[*]}" ] && return 22
+        # # SCANNERS_API_ARGS=$(__interpolate "${SCANNERS_API_ARGS[@]}" "$@" 4>&1)
+        # # [ -z "${SCANNERS_API_ARGS[*]}" ] && return 22
+        # for ARG in "$@"; do
+        #     if [[ $ARG == --*=* ]]; then
+        #         local KEY=${ARG%%=*}
+        #         local VALUE=${ARG#*=}
+        #         KEY=${KEY#--}
+        #         KEY=${KEY//./}
+        #         for i in "${!SCANNERS_API_ARGS[@]}"; do
+        #             # arg is {{.target}}
+        #             SCANNERS_API_ARGS[i]=${SCANNERS_API_ARGS[i]//\{\{.$KEY\}\}/$VALUE}
+        #         done
+        #         # SCANNERS_API_ARGS=( "${SCANNERS_API_ARGS[@]/$KEY/$VALUE}" )
+        #         # REPLACEMENTS[$KEY]=$VALUE
+        #     fi
+        # done
+        # # echo "SCANNERS_API_ARGS: ${SCANNERS_API_ARGS[*]}"
+        # # echo "API_SCANNER_PATH: $API_SCANNER_PATH"
+        # {
+        #     echo -n "{"
+        #     echo -n "\"scanner\":$SCANNER,"
+        #     echo -n "\"api\":$SCANNER_API,"
+        #     echo -n "\"cmd\":["
+        #     echo -n "\"$SCANNER_CMD\","
+        #     {
+        #         for i in "${!SCANNER_CMD_DEFAULT_ARGS[@]}"; do
+        #             echo -n "\"${SCANNER_CMD_DEFAULT_ARGS[i]}\","
+        #         done
+        #         for i in "${!SCANNERS_API_ARGS[@]}"; do
+        #             echo -n "\"${SCANNERS_API_ARGS[i]}\","
+        #         done
+        #     } | sed 's/,$//'
+        #     echo -n "]"
+        #     echo -n "}"
+        # } | jq -c . >&4
+
+        # # echo "$SCANNER_CMD ${SCANNER_CMD_DEFAULT_ARGS[*]} ${SCANNERS_API_ARGS[*]}"
+        # {
+        #     $SCANNER_CMD "${SCANNER_CMD_DEFAULT_ARGS[@]}" "${SCANNERS_API_ARGS[@]}" 2>/dev/null
+        # } 2>/dev/null &
+        # local SCANNER_PID=$!
+        # trap 'kill '"$SCANNER_PID"' 2>/dev/null' EXIT
+        # ydk:await spin "$SCANNER_PID" "Running scanner $SCANNER_CMD (${SCANNER_PID})"
+        # return 0
+        # jq -cr . <<<"$SCANNER_API" # >&4
+        # {"cli/version":["--version"],"asset/filesystem/count":["{{.target}}"],"asset/filesystem/count-by-lang":["--by-file","{{.target}}"]}
+        # case "$1" in
+        # "cli/version") ;;
+        # "asset/filesystem/count")
+        #     # echo "${#SCANNERS_API_ARGS[@]} ${SCANNERS_API_ARGS[*]}"
+        #     # __interpolate "${SCANNERS_API_ARGS[@]}" "$@" 4>&1
+        #     # return 0
+        #     ;;
+        # *)
+        #     ydk:log error "Unsupported API $1"
+        #     # return 22
+        #     ;;
+        # esac
+
+        # {
+        #     $SCANNER_CMD "${SCANNER_CMD_DEFAULT_ARGS[@]}" "${SCANNERS_API_ARGS[@]}"
+        # } 2>/dev/null #1>&4
+
+        # return 0
+    }
     ydk:try "$@"
     return $?
 }

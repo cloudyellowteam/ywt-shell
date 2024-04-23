@@ -3,11 +3,19 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
-
+> **2024.04.22**
+```shell
+clear; ./packages/ydk/ydk.cli.sh secops cli cloc --version
+clear; ./packages/ydk/ydk.cli.sh secops api cloc/asset/filesystem/count --target=.
+clear; ./packages/ydk/ydk.cli.sh secops api cloc/version 
+clear; sleep 10 & SPID=$! && ./packages/ydk/ydk.cli.sh await spin $SPID "waiting for $SPID"
+clear; ./packages/ydk/ydk.cli.sh await examples
+clear; ./packages/ydk/ydk.cli.sh async "sleep 6 && echo 'task 1 completed'" "sleep 10; echo 'task 2 completed'" "sleep 30; echo 'task 3 completed'"
+```
 > **2024.04.22**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh async "sleep 60 && echo 'task 1 completed'" "sleep 60; echo 'task 65 completed'" "sleep 30; echo 'task 3 completed'"
-clear; sleep 60 & SPID=$! && ./packages/ydk/ydk.cli.sh await spin $SPID "waiting for $SPID"
+clear; sleep 10 & SPID=$! && ./packages/ydk/ydk.cli.sh await spin $SPID "waiting for $SPID"
 clear; ./packages/ydk/ydk.cli.sh await examples
 clear; ./packages/ydk/ydk.cli.sh await spin PID MESSAGE
 clear; ./packages/ydk/ydk.cli.sh await spinners random
