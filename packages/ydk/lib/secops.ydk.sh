@@ -452,9 +452,8 @@ ydk:secops() {
             #     [ "$API_FETCH_STATUS" -ne 0 ] && ydk:log error "($API_FETCH_STATUS) Failed to fetch API"
             # } 4>&1)
             local API_FETCH=$(fetch "$@" 4>&1)
-            [ -z "$API_FETCH" ] && return 22
-            cat <<<"$API_FETCH" >&4
-            # jq -s "${YDK_SECOPS_SPECS["result-output"]}" <<<"$API_FETCH" >&4
+            [ -z "$API_FETCH" ] && return 22            
+            jq -cs "${YDK_SECOPS_SPECS["result-output"]}" <<<"$API_FETCH" >&4
 
             ydk:log -c "${YDK_LOGGER_CONTEXT}:fetch" \
                 "$(jq -sr "${YDK_SECOPS_SPECS["status-log"]}" <<<"$API_FETCH" 2>/dev/null)" \
