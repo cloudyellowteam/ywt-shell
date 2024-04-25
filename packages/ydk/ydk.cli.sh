@@ -202,7 +202,7 @@ ydk() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
         local YDK_LOG_MESSAGE="${2:-""}"
         if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] || [[ "$YDK_BOOTSTRAPED" == true ]]; then
-            ydk:logger "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
+            ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
         else
             local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
             {
@@ -235,7 +235,8 @@ ydk() {
         #     ydk:help "$YDK_THROW_STATUS" "$2" "${@:3}"
         # fi
         ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
-        exit "$1"
+        # kill -s "${YDK_TERM}" $$ 2>/dev/null
+        exit "$YDK_THROW_STATUS"
     }
     ydk:temp() {
         local FILE_SUFFIX="${1}" && [[ -n "$FILE_SUFFIX" ]] && FILE_SUFFIX="${FILE_SUFFIX}"

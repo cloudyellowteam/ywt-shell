@@ -3,7 +3,34 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
-> **2024.04.22**
+
+> **2024.04.25**
+```shell
+clear; ./packages/ydk/ydk.cli.sh secops scanners list
+clear; ./packages/ydk/ydk.cli.sh secops scanners get cloc
+clear; ./packages/ydk/ydk.cli.sh secops scanners available
+clear; ./packages/ydk/ydk.cli.sh secops scanners unavailable
+clear; ./packages/ydk/ydk.cli.sh secops scanners install cloc ...
+clear; ./packages/ydk/ydk.cli.sh secops scanners uninstall cloc ...
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+
+
+> **2024.04.24**
+```shell
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/asset/filesystem/count-by-lang --target=.
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/asset/filesystem/count --target=.
+clear; ./packages/ydk/ydk.cli.sh secops api endpoints cloc 
+clear; ./packages/ydk/ydk.cli.sh secops cli cloc .
+clear; ./packages/ydk/ydk.cli.sh secops cli cloc --version
+
+```
+
+
+
+
+> **2024.04.23**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh secops cli cloc --version
 clear; ./packages/ydk/ydk.cli.sh secops api cloc/asset/filesystem/count --target=.
