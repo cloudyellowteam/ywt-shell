@@ -136,7 +136,7 @@ ydk:secops() {
                 ydk:log error "Failed to uninstall scanner $SCANNER_NAME"
                 return 1
             fi
-        }        
+        }
         ydk:try "$@"
         return $?
     }
@@ -269,6 +269,8 @@ ydk:secops() {
         [ -z "$SCANNER_CLI" ] && return 22
         local SCANNER_CMD=$(jq -r ".scanner.cli.cmd" <<<"$SCANNER_ENTRYPOINT")
         [ -z "$SCANNER_CMD" ] && return 22
+        local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER_ENTRYPOINT")
+        [ -z "$SCANNER_NAME" ] && return 22
         if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
             ydk:log error "Scanner $SCANNER_CMD is not installed"
             return 1
@@ -314,9 +316,18 @@ ydk:secops() {
         local SCANNER_CLI_RESULT=$(secops:cli:result "$SCANNER_CLI_OUTPUT" "$SCANNER_STATUS" "$SCANNER_PID" "$SCANNER_CLI_START_AT" 4>&1)
         [ -z "$SCANNER_CLI_RESULT" ] && return 22
         jq -c . <<<"$SCANNER_CLI_RESULT" >"$SCANNER_CLI_OUTPUT"
+        if [[ "$(type -t ydk:secops:result:"${SCANNER_NAME}" 2>/dev/null)" == "function" ]]; then
+            ydk:log debug "Parsing result"
+            if ! ydk:secops:result:"${SCANNER_NAME}" "$SCANNER_CLI_OUTPUT"; then
+                ydk:log error "($?) Failed to parse result for scanner $SCANNER_NAME"
+                return 1
+            else
+                ydk:log success "($?) Parsed result for scanner $SCANNER_NAME"
+            fi
+        fi
         jq -c . "$SCANNER_CLI_OUTPUT" >&4
         local SCANNER_CLI_OUTPUT_LOG=$(jq -rc '.content.data' "$SCANNER_CLI_OUTPUT" 2>/dev/null)
-        SCANNER_CLI_OUTPUT_LOG=$(echo "$SCANNER_CLI_OUTPUT_LOG" | head -c 70)
+        SCANNER_CLI_OUTPUT_LOG=$(head -c 70 <<<"$SCANNER_CLI_OUTPUT_LOG" 2>/dev/null)
         ydk:log output "Result Data: $SCANNER_CLI_OUTPUT_LOG"
         return "$SCANNER_STATUS"
         # {
@@ -427,11 +438,11 @@ ydk:secops() {
             ydk:log info "Running scanner $SCANNER_NAME API"
             ydk:secops cli "$SCANNER_NAME" "${SCANNER_API_METHOD_ARGS[@]}" 4>&1
             return $?
-            local SCANNER_API_RESULT=$(ydk:secops cli "$SCANNER_NAME" "${SCANNER_API_METHOD_ARGS[@]}" 4>&1 2>/dev/null)
-            local SCANNER_API_STATUS=$?
-            ydk:log info "Scanner $SCANNER_NAME API Status: $SCANNER_API_STATUS"
-            [ -z "$SCANNER_API_RESULT" ] && return 22
-            [ "$SCANNER_API_STATUS" -ne 0 ] && return 22
+            # local SCANNER_API_RESULT=$(ydk:secops cli "$SCANNER_NAME" "${SCANNER_API_METHOD_ARGS[@]}" 4>&1 2>/dev/null)
+            # local SCANNER_API_STATUS=$?
+            # ydk:log info "Scanner $SCANNER_NAME API Status: $SCANNER_API_STATUS"
+            # [ -z "$SCANNER_API_RESULT" ] && return 22
+            # [ "$SCANNER_API_STATUS" -ne 0 ] && return 22
             # jq -c . <<<"$SCANNER_API_RESULT" >&4
             # ydk:secops cli "$SCANNER_NAME" "${SCANNER_API_METHOD_ARGS[@]}" 4>&1 2>/dev/null
             # return $?
@@ -446,15 +457,15 @@ ydk:secops() {
         case "$1" in
         fetch)
             shift
-            # local API_FETCH=$({
-            #     fetch "$@" 4>&1 >&4
-            #     local API_FETCH_STATUS=$?
-            #     [ "$API_FETCH_STATUS" -ne 0 ] && ydk:log error "($API_FETCH_STATUS) Failed to fetch API"
-            # } 4>&1)
-            local API_FETCH=$(fetch "$@" 4>&1)
-            [ -z "$API_FETCH" ] && return 22            
+            # local API_FETCH=$(fetch "$@" 4>&1)
+            local API_FETCH=$({
+                fetch "$@" 4>&1 >&4
+                local API_FETCH_STATUS=$?
+                # ydk:log debug "API Fetch Status: $API_FETCH_STATUS"
+                [ "$API_FETCH_STATUS" -ne 0 ] && ydk:log error "($API_FETCH_STATUS) Failed to fetch API"
+            } 4>&1)
+            [ -z "$API_FETCH" ] && return 22
             jq -cs "${YDK_SECOPS_SPECS["result-output"]}" <<<"$API_FETCH" >&4
-
             ydk:log -c "${YDK_LOGGER_CONTEXT}:fetch" \
                 "$(jq -sr "${YDK_SECOPS_SPECS["status-log"]}" <<<"$API_FETCH" 2>/dev/null)" \
                 "$(jq -rs "${YDK_SECOPS_SPECS["result-summary"]}" <<<"$API_FETCH" 2>/dev/null)"
@@ -620,6 +631,18 @@ ydk:secops() {
     local YDK_SECOPS_OPTS=() && secops:opts "$@" && set -- "${YDK_SECOPS_OPTS[@]}" && unset YDK_SECOPS_OPTS
     ydk:try "$@" 4>&1
     return $?
+}
+{
+    ydk:secops:result:cloc() {
+        # echo "cloc $# $*" #>&4
+        return 0
+    }
+    # ydk:secops:result(){
+    #     echo "result $# $*" >&4
+    #     return 0
+    # }
+    # ydk:try "$@" 4>&1
+    # return $?
 }
 
 # ydk:css() {
