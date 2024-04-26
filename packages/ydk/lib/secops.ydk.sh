@@ -318,11 +318,12 @@ ydk:secops() {
         jq -c . <<<"$SCANNER_CLI_RESULT" >"$SCANNER_CLI_OUTPUT"
         if [[ "$(type -t ydk:secops:result:"${SCANNER_NAME}" 2>/dev/null)" == "function" ]]; then
             ydk:log debug "Parsing result"
-            if ! ydk:secops:result:"${SCANNER_NAME}" "$SCANNER_CLI_OUTPUT"; then
-                ydk:log error "($?) Failed to parse result for scanner $SCANNER_NAME"
-                return 1
+            if ! ydk:secops:result:"${SCANNER_NAME}" "$SCANNER_CLI_OUTPUT" 2>/dev/null; then
+                local YDK_SECOPS_RESULT_STATUS=$?
+                ydk:log error "($YDK_SECOPS_RESULT_STATUS) Failed to parse result for scanner $SCANNER_NAME"
+                return "$YDK_SECOPS_RESULT_STATUS"
             else
-                ydk:log success "($?) Parsed result for scanner $SCANNER_NAME"
+                ydk:log success "($YDK_SECOPS_RESULT_STATUS) Parsed result for scanner $SCANNER_NAME"
             fi
         fi
         jq -c . "$SCANNER_CLI_OUTPUT" >&4
@@ -634,7 +635,7 @@ ydk:secops() {
 }
 {
     ydk:secops:result:cloc() {
-        echo "ydk:secops:result:cloc $# $*" 1>&2 #>&4
+        echo "ydk:secops:result:cloc $# $*" 1>&2 # >&4
         return 0
     }
     # ydk:secops:result(){

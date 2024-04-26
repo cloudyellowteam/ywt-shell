@@ -19,7 +19,6 @@ ydk:await() {
         startup() {
             tput civis
         }
-
         list() {
             # ydk:log info "$(jq -cr "${YDK_AWAIT_SPECS[count]}" "$YDK_AWAIT_SPINNERS_FILE") spinners available"
             jq -c . "$YDK_AWAIT_SPINNERS_FILE" >&4

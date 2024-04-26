@@ -6,6 +6,18 @@
 
 > **2024.04.26**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+clear; ./packages/ydk/ydk.cli.sh styles hyperlink "http://www.google.com" "text"
+clear; ./packages/ydk/ydk.cli.sh styles list
+clear; ./packages/ydk/ydk.cli.sh styles apply bold "bold text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply dim "dim text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply italic "italic text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply underline "underline text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply blink "blink text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply inverse "inverse text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply hidden "hidden text" && echo
+clear; ./packages/ydk/ydk.cli.sh styles apply strikethrough "strikethrough text" && echo
+
 echo "test" | ./packages/ydk/ydk.cli.sh logger "info"
 echo "test" | ./packages/ydk/ydk.cli.sh logger "info" <&0
 clear; ./packages/ydk/ydk.cli.sh logger "info" < <(jq -c . <<<"{\"test\": true}")
