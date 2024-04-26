@@ -280,7 +280,7 @@ ydk() {
     # echo "{\"return\": ${YDK_STATUS}}"
     # ydk:teardown "${YDK_STATUS}" "Script exited"
     exec 4>&-
-    rm -f ${YDK_FIFO}
+    rm -f "${YDK_FIFO}"
     return "${YDK_STATUS}"
     # [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
     # return "${YDK_STATUS:-0}"

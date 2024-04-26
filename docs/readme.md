@@ -4,15 +4,37 @@
   git config --global user.name "Raphael C Rego"
 ```
 
+> **2024.04.26**
+```shell
+echo "test" | ./packages/ydk/ydk.cli.sh logger "info"
+echo "test" | ./packages/ydk/ydk.cli.sh logger "info" <&0
+clear; ./packages/ydk/ydk.cli.sh logger "info" < <(jq -c . <<<"{\"test\": true}")
+clear; ./packages/ydk/ydk.cli.sh logger -c test "info" "with test context"
+clear; ./packages/ydk/ydk.cli.sh logger -f /tmp/custom.log "info" "to specific file"
+clear; ./packages/ydk/ydk.cli.sh logger "trace" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "debug" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "info" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "warn" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "error" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "success" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "output" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "panic" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "fatal" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger levels
+clear; ./packages/ydk/ydk.cli.sh logger defaults
+```
+
 > **2024.04.25**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh logger levels
+clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
 clear; ./packages/ydk/ydk.cli.sh secops scanners list
 clear; ./packages/ydk/ydk.cli.sh secops scanners get cloc
 clear; ./packages/ydk/ydk.cli.sh secops scanners available
 clear; ./packages/ydk/ydk.cli.sh secops scanners unavailable
 clear; ./packages/ydk/ydk.cli.sh secops scanners install cloc ...
 clear; ./packages/ydk/ydk.cli.sh secops scanners uninstall cloc ...
-clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+```
 
 
 > **2024.04.24**

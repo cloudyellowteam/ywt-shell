@@ -634,7 +634,7 @@ ydk:secops() {
 }
 {
     ydk:secops:result:cloc() {
-        # echo "cloc $# $*" #>&4
+        echo "ydk:secops:result:cloc $# $*" 1>&2 #>&4
         return 0
     }
     # ydk:secops:result(){
