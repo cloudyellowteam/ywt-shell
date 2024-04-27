@@ -602,6 +602,82 @@ ydk:secops() {
 
         # return 0
     }
+    secops:plan:merge() {
+        local ASSETS=$1
+        if [[ -p /dev/stdin ]]; then
+            local ASSETS=$(jq -c '.' /dev/stdin 2>/dev/null)
+        elif [[ -f "$ASSETS" ]]; then
+            local ASSETS=$(jq -c '.' "$ASSETS" 2>/dev/null)
+        else
+            local ASSETS=$(jq -c '.' <<<"$ASSETS" 2>/dev/null)
+        fi
+        if [[ -z "$ASSETS" ]]; then
+            ydk:log error "Failed to parse assets"
+            return 22
+        fi
+        local ASSETS_COUNT=$(jq -rc '. | length' <<<"${ASSETS}")
+        if [ "${ASSETS_COUNT}" -gt 10 ]; then
+            ydk:log error "Multiple assets not supported"
+            return 1
+        fi
+        jq -cn \
+            --argjson ASSETS "${ASSETS}" \
+            --argjson SCANNERS "$(scanners list 4>&1)" \
+            '
+            {
+                "assets":$ASSETS,
+                "scanners":$SCANNERS
+            }
+            ' >&4
+        return 0
+    }
+    plan() {
+        local ASSETS="$1" && [ -z "$ASSETS" ] && return 22
+        if ! jq -e . "$ASSETS" 2>/dev/null 1>/dev/null; then
+            ydk:log error "Failed to parse assets"
+            return 22
+        fi
+        local SECOPS_PLAN_SCANNERS=$(jq -c "." < <(scanners list 4>&1) 2>/dev/null)
+        local SECOPS_PLAN_FILE=$(ydk:temp "secops-plan")
+        local SECOPS_PLAN="{}"
+        ydk:log info "SecOps Plan ${SECOPS_PLAN_FILE}"
+        # jq -c '{}' >"$SECOPS_PLAN"
+        while read -r ASSET && [ -n "$ASSET" ]; do
+            if ! jq -e . <<<"$ASSET" 2>/dev/null 1>/dev/null; then
+                ydk:log error "Failed to parse asset"
+                continue
+            fi
+            local ASSET_TYPE=$(jq -r '.type' <<<"$ASSET" 2>/dev/null) && [ -z "$ASSET_TYPE" ] && continue
+            ASSET_TYPE="asset/$ASSET_TYPE"
+            local SECOPS_PLAN_SCANNER_APIS=$(
+                jq -c '
+                    .[] |
+                    select(.api != null) |
+                    .api |
+                    to_entries |
+                    .[] |
+                    select(.key == "'"${ASSET_TYPE}"'") |
+                    .
+                ' <<<"$SECOPS_PLAN_SCANNERS" 2>/dev/null
+            )
+            echo "$ASSET_TYPE / $SECOPS_PLAN_SCANNER_APIS" 1>&2
+            # jq -c '.' <<<"$ASSET" 1>&2
+            # break
+        done < <(jq -c ".[]" "$ASSETS" 2>/dev/null)
+        # while read -r SCANNER && [ -n "$SCANNER" ]; do
+        #     [ -z "$SCANNER" ] && continue
+        #     local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER" 2>/dev/null) && [ -z "$SCANNER_ID" ] && continue
+        #     local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER" 2>/dev/null) && [ -z "$SCANNER_NAME" ] && continue
+        #     local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
+        #     ydk:log debug "Scanner ${SCANNER_NAME} is installed ${SCANNER_INSTALLED}" 1>&2
+        #     [[ "$SCANNER_INSTALLED" = false ]] && continue
+        # done < <(jq -c ".[]" < <(scanners list 4>&1) 2>/dev/null)
+        jq -c . <<<"$SECOPS_PLAN" >"$SECOPS_PLAN_FILE"
+        jq -c . "$SECOPS_PLAN_FILE" >&4
+        ydk:log success "SecOps Plan ${SECOPS_PLAN_FILE}"
+        rm -f "$SECOPS_PLAN_FILE"
+        return 0
+    }
     secops:opts() {
         while [ "$#" -gt 0 ]; do
             case "$1" in
@@ -638,52 +714,4 @@ ydk:secops() {
         echo "ydk:secops:result:cloc $# $*" 1>&2 # >&4
         return 0
     }
-    # ydk:secops:result(){
-    #     echo "result $# $*" >&4
-    #     return 0
-    # }
-    # ydk:try "$@" 4>&1
-    # return $?
 }
-
-# ydk:css() {
-#     css:scanner:state() {
-#         local SCANNER=$1
-#         local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER")
-#         local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER")
-#         local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null && SCANNER_INSTALLED=true
-#         echo "Scanner $SCANNER_NAME is installed: $SCANNER_INSTALLED"
-#         if [ "$SCANNER_INSTALLED" = false ] && ! css:scanner:install "$SCANNER"; then
-#             ydk:log error "Failed to install scanner $SCANNER_NAME"
-#             return 1
-#         fi
-#         # jq -r '
-#         #     . |
-#         #     if .installed == false then
-#         #         "Scanner \(.name) is not installed"
-#         #     else
-#         #         "Scanner \(.name) is installed"
-#         #     end
-#         #     ' <<<"$SCANNER" #>&4
-#     }
-#     css:scanner() {
-#         local SCANNER=$(css:get "$1" 4>&1)
-#         [ -z "$SCANNER" ] && return 22
-#         SCANNER="$(jq -c '.' <<<"$SCANNER")"
-#         # jq . "$SCANNER"
-#         # ydk:upm detect 4>&1
-#         # ydk:upm vendor "ubuntu" 4>&1
-#         case "$2" in
-#         state)
-#             css:scanner:state "$SCANNER"
-#             return $?
-#             ;;
-#         *)
-#             ydk:trow 255 "Unsupported command $1"
-#             ;;
-#         esac
-#         return 0
-#     }
-#     ydk:try "$@"
-#     return $?
-# }

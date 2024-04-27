@@ -71,26 +71,32 @@ ydk:logger() {
         local LOG_MESSAGE=$1
         local LOGGER_OPTS=$2
         local LOG_JSON=$3
-        local LOG_ENABLED=$(jq -r '.priority.enabled' <<<"$LOG_JSON")
+        if ! jq -c . <<<"$LOG_JSON" 2>/dev/null 1>/dev/null; then
+            echo -e "$LOG_JSON" 1>&2
+            return 0
+        fi
+        if grep -qE ":[a-z_]+:" <<<"$LOG_MESSAGE"; then
+            LOG_MESSAGE=$(ydk:emojis substr "$LOG_MESSAGE" 4>&1)
+        fi
+        local LOG_ENABLED=$(jq -r '.priority.enabled // false' <<<"$LOG_JSON" 2>/dev/null)
         [[ $LOG_ENABLED != "true" ]] && return 0
-        local LOG_LEVEL=$(jq -r '.priority.name' <<<"$LOG_JSON")
-        local LOG_COLOR=$(jq -r '.priority.color' <<<"$LOG_JSON") && LOG_COLOR=${LOG_COLOR^^}
-        local LOG_ICON=$(jq -r '.priority.icon' <<<"$LOG_JSON")
-        local LOG_CONTEXT=$(jq -r '.context' <<<"$LOG_JSON")
-        local LOG_MESSAGE=$(jq -r '.message' <<<"$LOG_JSON")
-        local LOG_TIMESTAMP=$(jq -r '.timestamp' <<<"$LOG_JSON")
-        local LOG_PID=$(jq -r '.pid' <<<"$LOG_JSON")
-        local LOG_PPID=$(jq -r '.ppid' <<<"$LOG_JSON")
-        local LOG_ETIME=$(jq -r '.etime' <<<"$LOG_JSON")
-        local LOG_CLI=$(jq -r '.cli' <<<"$LOG_JSON")
-        local LOG_NAME=$(jq -r '.name' <<<"$LOG_JSON")
-        local LOG_FORMAT=$(jq -r '.format' <<<"$LOGGER_OPTS")
-        local LOG_TEMPLATE=$(jq -r '.template' <<<"$LOGGER_OPTS")
+        local LOG_LEVEL=$(jq -r '.priority.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_COLOR=$(jq -r '.priority.color' <<<"$LOG_JSON" 2>/dev/null || echo "info") && LOG_COLOR=${LOG_COLOR^^}
+        local LOG_ICON=$(jq -r '.priority.icon' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_CONTEXT=$(jq -r '.context' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        # local LOG_MESSAGE=$(jq -r '.message' <<<"$LOG_JSON")
+        local LOG_TIMESTAMP=$(jq -r '.timestamp' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_PID=$(jq -r '.pid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_PPID=$(jq -r '.ppid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_ETIME=$(jq -r '.etime' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_CLI=$(jq -r '.cli' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_NAME=$(jq -r '.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        local LOG_FORMAT=$(jq -r '.format' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
+        local LOG_TEMPLATE=$(jq -r '.template' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
         local LOG_FORMATTED=$(echo -e "$LOG_FORMAT" | sed 's/{{/\\(/g' | sed 's/}}/)/g' | sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' | sed -E 's/\| ascii_upcase/| ascii_upcase/g')
         {
             # echo -e "\$${LOG_COLOR^^}ddd"
-            echo -ne "[${YELLOW}${YDK_BRAND^^}${NC}] "
-            echo -ne "[${BLUE}$LOG_PID${NC}] "
+            echo -ne "[${YELLOW}${YDK_BRAND^^}${NC}] "            
             # eval "echo -ne \"\$${LOG_COLOR:-YELLOW}\""
             echo -ne "${LOG_ICON} "
             # echo -ne "[${LOG_LEVEL^^}] "
@@ -100,6 +106,7 @@ ydk:logger() {
             eval "echo -ne \"\$${LOG_COLOR:-YELLOW}\""
             echo -ne "[${LOG_LEVEL^^}] "
             echo -ne "${NC} "
+            echo -ne "[${BLUE}$LOG_PID${NC}] "
             echo -ne "[${BLUE}$LOG_TIMESTAMP${NC}] "
             echo -ne "[${DARK_GRAY}$LOG_ETIME${NC}]"
             echo
@@ -109,8 +116,8 @@ ydk:logger() {
     __logger:write() {
         local LOGGER_OPTS=$1 && shift
         local LOG_LEVEL_NAME=${1} && shift
-        local LOG_LEVEL=$(jq -cr ".[] | select(.name == \"$LOG_LEVEL_NAME\") | . // {}" < <(levels 4>&1))
-        local LOG_MESSAGE=${*//$'\n'/\\n}
+        local LOG_LEVEL=$(jq -cr ".[] | select(.name == \"$LOG_LEVEL_NAME\") | . // {}" < <(levels 4>&1) 2>/dev/null)
+        local LOG_MESSAGE=${*//$'\n'/\\n} && [ -z "$LOG_MESSAGE" ] && LOG_MESSAGE="$# $*"
         local LOG_JSON=$({
             echo -n "{"
             echo -n "\"config\": $(
@@ -132,17 +139,20 @@ ydk:logger() {
             echo -n "\"name\": \"${YDK_CLI_NAME:-}\","
             echo -n "\"message\": "
             if jq -e . <<<"$LOG_MESSAGE" 2>/dev/null 1>/dev/null; then
-                jq -c . <<<"$LOG_MESSAGE"
+                local LOG_WELLFORMATED_MESSAGE=$(jq -c . <<<"$LOG_MESSAGE")
+                # jq -c . <<<"$LOG_MESSAGE"
             else
-                echo -n "\"$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)\""
+                local LOG_WELLFORMATED_MESSAGE="\"$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)\""
+                # echo -n "\"$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)\""
             fi
+            echo -n "${LOG_WELLFORMATED_MESSAGE:-"\"$# $*\""}"
             echo -n "}"
             echo
         })
         {
-            __logger:write:file "${LOGGER_OPTS}" "${LOG_JSON}" & #4>&1 
+            __logger:write:file "${LOGGER_OPTS}" "${LOG_JSON}" &                   #4>&1
             __logger:write:console "${LOG_MESSAGE}" "${LOGGER_OPTS}" "${LOG_JSON}" #& #4>&1
-        } 4>&1 
+        } 4>&1
 
     }
     defaults() {
@@ -247,16 +257,15 @@ ydk:logger() {
             ;;
         esac
     done
+    # echo -n "[${#LOGGER_ARGS}]" 1>&2
     set -- "${LOGGER_ARGS[@]}" && unset LOGGER_ARGS
-    local LOG_LEVEL_OR_ACTION=${1} && shift
+    # echo -n "[${#}]" 1>&2
+    local LOG_LEVEL_OR_ACTION=${1} && shift    
     local LOG_LINES=()
-    if [[ -p /dev/stdin ]]; then
-        while read -r LINE; do LOG_LINES+=("$LINE"); done <&0
-    elif [[ -n "$1" ]]; then
-        LOG_LINES+=("$@")
-    fi
+    [[ -p /dev/stdin ]] && while read -r LINE; do LOG_LINES+=("$LINE"); done <&0
+    # echo -n "[${#}][${#LOG_LINES}]" 1>&2
     if __logger:is:level "$LOG_LEVEL_OR_ACTION"; then
-        __logger:write "${LOGGER_OPTS}" "$LOG_LEVEL_OR_ACTION" "${LOG_LINES[@]}" 4>&1
+        __logger:write "${LOGGER_OPTS}" "$LOG_LEVEL_OR_ACTION" "$@" "${LOG_LINES[@]}" 4>&1
         return $?
     else
         ydk:try "$LOG_LEVEL_OR_ACTION" "$@" 4>&1
@@ -423,7 +432,7 @@ ydk:logger() {
 #                 "timestamp": (now | todate),
 #                 "host": "'"$(hostname)"'",
 #                 "color": $priority.color,
-#                 "icon": $priority.icon,               
+#                 "icon": $priority.icon,
 #                 "priority": $priority.level,
 #                 "level": $priority.name,
 #                 "enabled": $priority.enabled,
@@ -435,8 +444,8 @@ ydk:logger() {
 #                 "tags": [
 #                     "context:\($options.context)"
 #                 ],
-#                 "path": "",                    
-#                 "type": "\($options.context)-log",                    
+#                 "path": "",
+#                 "type": "\($options.context)-log",
 #                 "pid": '$$',
 #                 "ppid": '$PPID',
 #                 "etime": "'"$(ydk:process etime)"'",

@@ -6,7 +6,19 @@
 
 > **2024.04.26**
 ```shell
+# pack and build a bundle
+clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/ydk/ydk.cli.sh 31/12/2999
+# compile a bundle 
+clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999
+# bundle a package, it's generate ydk.sh file
+clear; ./packages/ydk/ydk.cli.sh bundle pack ./packages/ydk/ydk.cli.sh
+
+
+clear; ./packages/ydk/ydk.cli.sh secops plan  /workspace/rapd-shell/assets/assests.json
 clear; ./packages/ydk/ydk.cli.sh secops api fetch cloc/version
+clear; ./packages/ydk/ydk.cli.sh emojis get "satellite" && echo 
+clear; ./packages/ydk/ydk.cli.sh emojis list
+clear; ./packages/ydk/ydk.cli.sh emojis substr "Hello from mars :satellite:" && echo 
 clear; ./packages/ydk/ydk.cli.sh styles hyperlink "http://www.google.com" "text"
 clear; ./packages/ydk/ydk.cli.sh styles list
 clear; ./packages/ydk/ydk.cli.sh styles apply bold "bold text" && echo
@@ -20,18 +32,18 @@ clear; ./packages/ydk/ydk.cli.sh styles apply strikethrough "strikethrough text"
 
 echo "test" | ./packages/ydk/ydk.cli.sh logger "info"
 echo "test" | ./packages/ydk/ydk.cli.sh logger "info" <&0
-clear; ./packages/ydk/ydk.cli.sh logger "info" < <(jq -c . <<<"{\"test\": true}")
+clear; ./packages/ydk/ydk.cli.sh logger "info" < <(jq -c . <<<"{\"test\": true, \"emoji\": \":satellite:\"}")
 clear; ./packages/ydk/ydk.cli.sh logger -c test "info" "with test context"
 clear; ./packages/ydk/ydk.cli.sh logger -f /tmp/custom.log "info" "to specific file"
-clear; ./packages/ydk/ydk.cli.sh logger "trace" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "debug" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "info" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "warn" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "error" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "success" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "output" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "panic" "Message"
-clear; ./packages/ydk/ydk.cli.sh logger "fatal" "Message"
+clear; ./packages/ydk/ydk.cli.sh logger "trace" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "debug" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "info" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "warn" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "error" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "success" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "output" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "panic" "Yellow Team :satellite:"
+clear; ./packages/ydk/ydk.cli.sh logger "fatal" "Yellow Team :satellite:"
 clear; ./packages/ydk/ydk.cli.sh logger levels
 clear; ./packages/ydk/ydk.cli.sh logger defaults
 ```

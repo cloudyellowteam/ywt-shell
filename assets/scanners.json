@@ -35,8 +35,9 @@
         },
         "api": {
             "version": [ "--version" ],
-            "asset/filesystem/count": [ "{{.target}}" ],
-            "asset/filesystem/count-by-lang": [ "--by-file", "{{.target}}" ]
+            "count": [ "{{.target}}" ],
+            "count-by-lang": [ "--by-file", "{{.target}}" ],
+            "asset/filesystem": [ "{{.target}}" ]
         },
         "packages": {
             "npm": "cloc",

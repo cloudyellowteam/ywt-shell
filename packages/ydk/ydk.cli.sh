@@ -53,7 +53,7 @@ ydk() {
             echo -n "}"
         })
         echo "$YDK_CLI" >&4
-        ydk:log "info" "${YDK_PACKAGE_NAME}@${YDK_VERSION} $([[ "${YDK_CLI_BINARY}" == true ]] && echo "app" || echo "sdk")"
+        ydk:log "info" ":shorts: ${YDK_PACKAGE_NAME}@${YDK_VERSION} $([[ "${YDK_CLI_BINARY}" == true ]] && echo "app" || echo "sdk")"
         return 0
     }
     ydk:require() {

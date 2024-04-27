@@ -18,7 +18,6 @@ ydk:team() {
         return 0
     }
     info() {
-        ydk:logger info "Need a help? Visit ${YDK_LINKS[docs]}"
         local YDK_OUTPUT=$({
             echo -n "{"
             echo -n "\"license\": \"MIT\","
@@ -52,14 +51,15 @@ ydk:team() {
             echo -n "}"
             echo -n "}"
         })
-        ydk:logger success "$(jq -rc '.info.team + " SDK " + .info.version + " | " + .info.name + " | " + .info.license' <<<"$YDK_OUTPUT" 2>/dev/null)"
+
         echo "$YDK_OUTPUT" >&4
         return 0
     }
     welcome() {
-        local YDK_TEAM_INFO={}
-        info && read -r -u 4 YDK_TEAM_INFO || return $?
-        ydk:logger success "$(jq -rc '.info.team + " SDK " + .info.version + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"
+        local YDK_TEAM_INFO=$(info 4>&1)
+        ydk:logger success "$(jq -rc '.info.team + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"
+        ydk:logger info "Need a help? Visit ${YDK_LINKS[docs]} :book:"
+        return 0
         # local YWT_PACKAGE=$(package)
         # local NAME && NAME=$(jq -r '.name' <<<"$YWT_PACKAGE") && readonly NAME
         # local VERSION && VERSION=$(jq -r '.version' <<<"$YWT_PACKAGE") && readonly VERSION
@@ -106,9 +106,9 @@ ydk:team() {
     ) && readonly YDK_LINKS
     [[ -z "$YDK_INFO" ]] && declare -g -A YDK_INFO=(
         ["team"]="@ywteam"
-        ["name"]="Yellow Team SDK"
+        ["name"]="https://yellowteam.cloud/ydk-shell"
         ["version"]="$YDK_VERSION"
-        ["description"]="Cloud Yellow Team | Shell SDK"
+        ["description"]="shell SDK"
     ) && readonly YDK_INFO
     [[ -z "$YDK_AUTHOR" ]] && declare -g -A YDK_AUTHOR=(
         ["name"]="Raphael Rego"
