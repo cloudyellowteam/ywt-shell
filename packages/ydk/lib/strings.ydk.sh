@@ -41,6 +41,19 @@ ydk:strings() {
         local COUNT_STRIPPED="${#STRIPPED}"
         echo $((COUNT - COUNT_STRIPPED))
     }
+    padleft(){
+        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+        local LENGTH="$2"
+        local CHAR="${3:- }"
+        printf "%-${LENGTH}s" "$STR" | tr ' ' "$CHAR"
+    }
+    padright(){
+        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+        local LENGTH="$2"
+        local CHAR="${3:- }"
+        printf "%${LENGTH}s" "$STR" | tr ' ' "$CHAR"
+    }
+    
     mask() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local MASK="${2:-*}"

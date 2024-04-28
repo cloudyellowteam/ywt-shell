@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+# source "/tmp/ywteam/ydk-shell/ydk.2RKuje9q.3044146.bundle" logger info test; 
+# ydk prgma 4>&1
+# # ydk logger info test
+# exit 255
 YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
 export YDK_BRAND="YDK" && readonly YDK_BRAND
@@ -296,8 +300,10 @@ ydk() {
     #     exit 255
     # fi
 }
-ydk "$@"
-exit $?
+if [[ "$#" -gt 0 ]]; then
+    ydk "$@"
+    exit $?
+fi
 
 # ydk:helper:copy(){
 #     src_dir="/workspace/rapd-shell/packages/ydk/common"

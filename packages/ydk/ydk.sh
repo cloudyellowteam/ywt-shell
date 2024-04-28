@@ -1,25 +1,41 @@
 #!/bin/bash
-# Name: @ywteam/ydk-shell
-# Version: 0.0.0-dev-0
-# Description: Cloud Yellow Team | Shell SDK
-# Homepage: https://yellowteam.cloud
-# License: MIT
-# Repository: https://github.com/ywteam/ydk-shell.git
-# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
-# Build: ydk-shell
-# Build Date: null
-# Release: ydk-shell
-# Release Date: 2024-04-15T21:36:03+00:00
-# Commit: {"id":"c61263f","hash":"c61263f98e365865def7d11cedd3e00078def45f","branch":"main","tag":"0.0.0-alpha-0-4-gc61263f","message":"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
-# Created: Mon Apr 15 21:36:03 UTC 2024
-# Version: 20240415213603
+
+# Created: Sat Apr 27 19:10:35 UTC 2024
+# Version: 20240427191035
 # Builder: 74cc1c60799e0a786ac7094b532f01b1
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:cli(){
 	set -e -o pipefail
-	export YDK_VERSION_LOCK="{\"name\":\"@ywteam/ydk-shell\",\"version\":\"0.0.0-dev-0\",\"description\":\"Cloud Yellow Team | Shell SDK\",\"homepage\":\"https://yellowteam.cloud\",\"license\":\"MIT\",\"repository\":{\"type\":\"git\",\"url\":\"https://github.com/ywteam/ydk-shell.git\",\"branch\":\"main\"},\"bugs\":{\"url\":\"https://bugs.yellowteam.cloud\"},\"author\":{\"name\":\"Raphael Rego\",\"email\":\"hello@raphaelcarlosr.dev\",\"url\":\"https://raphaelcarlosr.dev\"},\"build\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:36:03+00:00\"},\"release\":{\"name\":\"ydk-shell\",\"date\":\"2024-04-15T21:36:03+00:00\"},\"commit\":{\"id\":\"c61263f\",\"hash\":\"c61263f98e365865def7d11cedd3e00078def45f\",\"branch\":\"main\",\"tag\":\"0.0.0-alpha-0-4-gc61263f\",\"message\":\"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script\"}}" && readonly YDK_VERSION_LOCK
+	export YDK_VERSION_LOCK="" && readonly YDK_VERSION_LOCK
 	ydk:is() {
 	    case "$1" in
+	    fifo-exists)
+	        [ -p "$2" ] && return 0
+	        ;;
+	    fifo-readable)
+	        [ -p "$2" ] && [ -r "$2" ] && return 0
+	        ;;
+	    fifo-writable)
+	        [ -p "$2" ] && [ -w "$2" ] && return 0
+	        ;;
+	    fifo-opened)
+	        [ -p "$2" ] && lsof "$2" && return 0
+	        ;;
+	    descriptor-exists)
+	            "$2" ] && return 0
+	        ;;
+	    descriptor-readable)
+	        [ -r /proc/$$/fd/"$2" ] && return 0
+	        ;;
+	    descriptor-writable)
+	        [ -w /proc/$$/fd/"$2" ] && return 0
+	        ;;
+	    descriptor-opened)
+	        lsof -p $$ | grep " $2" && return 0
+	        ;;
+	    exists)
+	        [ -e "$2" ] && return 0
+	        ;;        
 	    not-defined)
 	        [ -z "$2" ] && return 0
 	        [ "$2" == "null" ] && return 0
@@ -87,31 +103,67 @@ ydk:cli(){
 	    local START_TIME=$(date +%s)
 	    ydk:is function "ydk:$IOC_TARGET" && IOC_TARGET="ydk:$IOC_TARGET"
 	    ! ydk:is function "$IOC_TARGET" && return 1
-	    exec 3>&1
-	    trap 'exec 3>&-' EXIT
 	    local IOC_STATUS
-	    $IOC_TARGET "${IOC_ARGS[@]}" 1>&3 2>&3
-	    IOC_STATUS=$? && [ -z "$IOC_STATUS" ] && IOC_STATUS=1
+	    $IOC_TARGET "${IOC_ARGS[@]}" || #1>&3 2>&3 ||
+	    IOC_STATUS=$? && IOC_STATUS=${IOC_STATUS:-0}    
 	    local END_TIME=$(date +%s)
 	    local ELAPSED_TIME=$((END_TIME - START_TIME))
 	    if [ -n "$IOC_STATUS" ] && [ "$IOC_STATUS" -eq 0 ]; then
-	        local IOC_RESULT="SUCCESS"        
+	        local IOC_RESULT="SUCCESS"
 	    else
 	        local IOC_RESULT="FAILED"
 	    fi
-	    exec 3>&-
-	    return $IOC_STATUS
+	    return "${IOC_STATUS}"
 	}
 	ydk:argv() {
+	    kv() {
+	        local KEY=${1#--} && KEY=${KEY#-}
+	        if [[ "$KEY" == *kv=* ]]; then
+	            local KEY=${KEY#kv=}
+	            local VALUE=${KEY#*:} && VALUE=${VALUE#*:} && VALUE=${VALUE#=}
+	            local KEY=${KEY%%:*}
+	        else
+	            local KEY=${KEY%%=*} && KEY=${KEY%%:*}
+	            local VALUE=${1#*=} && VALUE=${VALUE#*:} && VALUE=${VALUE#*=} && VALUE=${VALUE#--} && VALUE=${VALUE#-}
+	        fi
+	        [[ "$KEY" == "$VALUE" ]] && VALUE=true
+	        [[ -z "$VALUE" ]] && VALUE=true
+	        ! [[ "$VALUE" =~ ^[0-9]+$ ]] && ! [[ "$VALUE" =~ (true|false) ]] && VALUE="\"$VALUE\""
+	        if jq -e . >/dev/null 2>&1 <<<"$VALUE"; then
+	            VALUE=$(jq -c . <<<"$VALUE")
+	        fi
+	        echo -n "\"$KEY\": $VALUE"
+	    }
+	    walk() {
+	        local WALK_FIRST=true
+	        echo -n "{"
+	        while [[ $# -gt 0 ]]; do
+	            local FLAG="$1"
+	            [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
+	            kv "$FLAG"
+	            shift
+	            echo -n ","
+	        done #| sed -e 's/,$//'
+	        echo -n "\"__args\": ["
+	        WALK_FIRST=true
+	        for YDK_POSITIONAL_ARGS in "${YDK_POSITIONAL_ARGS[@]}"; do
+	            echo -n "\"$YDK_POSITIONAL_ARGS\""
+	            [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
+	        done
+	        echo -n "]"
+	        echo -n "}"
+	        export YDK_POSITIONAL_ARGS
+	        set -- "${YDK_POSITIONAL_ARGS[@]}"
+	        return 0
+	    }
 	    values() {
 	        [ -n "$YDK_ARGV" ] && echo "$YDK_ARGV" | jq -c . && return 0
-	        YDK_POSITIONAL=()
 	        export YDK_ARGV=$(
 	            {
 	                local JSON="{" && local FIRST=true
 	                while [[ $# -gt 0 ]]; do
 	                    local FLAG="$1"
-	                    [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL+=("$1") && shift && continue
+	                    [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
 	                    local KEY=${FLAG#--} && KEY=${KEY#-} && KEY=${KEY%%=*} && KEY=${KEY%%:*}
 	                    local VALUE=${FLAG#*=} && VALUE=${VALUE#*:} && VALUE=${VALUE#*=} && VALUE=${VALUE#--} && VALUE=${VALUE#-}
 	                    [[ "$KEY" == "$VALUE" ]] && VALUE=true
@@ -129,12 +181,11 @@ ydk:cli(){
 	    }
 	    form() {
 	        [ -n "$YDK_FORM" ] && echo "$YDK_FORM" | jq -c . && return 0
-	        YDK_POSITIONAL=()
 	        export YDK_FORM=$({
 	            local JSON="{" && local FIRST=true
 	            while [[ $# -gt 0 ]]; do
 	                local PARAM="$1"
-	                [[ "$PARAM" != kv=* ]] && YDK_POSITIONAL+=("$1") && shift && continue
+	                [[ "$PARAM" != kv=* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
 	                local KEY=${PARAM#kv=}
 	                local VALUE=${KEY#*:} && VALUE=${VALUE#*:} && VALUE=${VALUE#=}
 	                KEY=${KEY%%:*}
@@ -149,7 +200,6 @@ ydk:cli(){
 	        echo "$YDK_FORM" | jq -c .
 	    }
 	    flags() {
-	        YDK_POSITIONAL=()
 	        YDK_FLAGS=$(jq -n '{ "quiet": false, "trace": null, "logger": null, "debug": null, "output": null }')
 	        while [[ $# -gt 0 ]]; do
 	            case "$1" in
@@ -205,20 +255,98 @@ ydk:cli(){
 	                shift
 	                ;;
 	            -p* | --param*)
-	                YDK_POSITIONAL+=("$1")
+	                YDK_POSITIONAL_ARGS+=("$1")
 	                shift
 	                ;;
 	            *)
-	                YDK_POSITIONAL+=("$1")
+	                YDK_POSITIONAL_ARGS+=("$1")
 	                shift
 	                ;;
 	            esac
 	        done
-	        export YDK_FLAGS      # && readonly YDK_FLAGS
-	        set -- "${YDK_POSITIONAL[@]}"
+	        export YDK_FLAGS # && readonly YDK_FLAGS
+	        set -- "${YDK_POSITIONAL_ARGS[@]}"
 	        return 0
 	    }
-	    ydk:try:nnf "$@"
+	    YDK_POSITIONAL_ARGS=()
+	    ydk:try "$@"
+	    local ARGV_STATUS=$?
+	    export YDK_POSITIONAL_ARGS
+	    set -- "${YDK_POSITIONAL_ARGS[@]}"
+	    return $ARGV_STATUS
+	}
+	ydk:analytics() {
+	    [[ -z "$YDK_ANALYTICS_USERAGENT" ]] && local YDK_ANALYTICS_USERAGENT=$({
+	        echo -n "ydk-shell/0.0.0-local-0"
+	        echo -n " "
+	        echo -n "(curl 7.68.0; A; B)" # (Windows NT 10.0; Win64; x64)
+	        echo -n " "
+	        echo -n "bash/5.0.17(1)-release" # AppleWebKit/537.36
+	        echo -n " "
+	        echo -n "GoogleAnalytics/4.0" # (KHTML, like Gecko)
+	        echo -n " "
+	        echo -n "Linux/x86_64" # Chrome/123.0.0.0
+	        echo -n " "
+	        echo -n "AppleWebKit/537.36" # Safari/537.36
+	        echo -n " "
+	        echo -n "Edg/123.0.0.0" # Edg/123.0.0.0
+	    })
+	    [[ -z "$YDK_ANALYTICS_EVENTS" ]] && declare -a YDK_ANALYTICS_EVENTS=(
+	        '{"name": "file_downloaded", "params": {"file_name": "example.zip", "user_category": "premium_user"}}'
+	    ) && readonly YDK_ANALYTICS_EVENTS
+	    ga() {
+	        collect() {
+	            MEASUREMENT_ID="G-9KYCLP5VXR"
+	            API_SECRET="kwhudb31Q5W7sGQr1SDFFg"
+	            EVENT_NAME="file_downloaded"
+	            CLIENT_ID="7947731687"
+	            BODY='{
+	                "client_id": "'"$CLIENT_ID"'",
+	                "user_id": "'"$(whoami | md5sum | awk '{print $1}')"'",
+	                "non_personalized_ads": false,
+	                "user_properties":{
+	                    "group":{
+	                        "value": "'"$(whoami | md5sum | awk '{print $1}')"'",
+	                    }
+	                },
+	                "events": [{
+	                    "name": "'"$EVENT_NAME"'",
+	                    "params": {                        
+	                        "file_name": "example.zip",
+	                        "user_category": "premium_user"
+	                    }
+	                }]
+	            }'
+	            GA4_ENDPOINT="https://www.google-analytics.com/mp/collect?measurement_id=$MEASUREMENT_ID&api_secret=$API_SECRET"
+	            curl -X POST "$GA4_ENDPOINT" \
+	                -H "Content-Type: application/json" \
+	                -H "User-Agent: $YDK_ANALYTICS_USERAGENT" \
+	                -H "Accept: application/json" \
+	                -d "$BODY" &
+	        }
+	        collect:v1() {
+	            TRACKING_ID="G-9KYCLP5VXR"
+	            CLIENT_ID="7947731687"
+	            EVENT_CATEGORY="shell_script"
+	            EVENT_ACTION="execute"
+	            EVENT_LABEL="example_script"
+	            EVENT_VALUE="1" # Optional
+	            GA_ENDPOINT="https://www.google-analytics.com/debug/collect"
+	            curl -X POST "$GA_ENDPOINT" \
+	                -d "v=1" \
+	                -d "tid=$TRACKING_ID" \
+	                -d "cid=$CLIENT_ID" \
+	                -d "t=event" \
+	                -d "ec=$EVENT_CATEGORY" \
+	                -d "ea=$EVENT_ACTION" \
+	                -d "el=$EVENT_LABEL" \
+	                -d "ev=$EVENT_VALUE"
+	            echo "Event sent to Google Analytics"
+	        }
+	        ydk:try "$@"
+	        return $?
+	    }
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:assets() {
@@ -227,6 +355,9 @@ ydk:cli(){
 	    local YDK_REPO_BRANCH="main"
 	    local YDK_REPO_URL="https://github.com/${YDK_USERNAME}/${YDK_REPO_NAME}"
 	    local YDK_REPO_RAW_URL="https://raw.githubusercontent.com/${YDK_USERNAME}/${YDK_REPO_NAME}/${YDK_REPO_BRANCH}"
+	    activate(){
+	        echo "assets package"
+	    }
 	    download(){
 	        local YDK_ASSET_PATH="${1}"
 	        local YDK_ASSET_URL="${YDK_REPO_RAW_URL}/${YDK_ASSET_PATH}"
@@ -245,7 +376,305 @@ ydk:cli(){
 	        mv "${YDK_ASSET_TMP}" "${YDK_ASSET_FILE}"
 	        return $?
 	    }    
-	    ydk:try:nnf "$@"
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:async() {
+	    local YDK_LOGGER_CONTEXT="async"
+	    declare -a PIDS=()
+	    declare -a RESULTS=()
+	    declare -a ERRORS=()
+	    declare -a COMMANDS=()
+	    declare -a START_TIMES=()
+	    local ASYNC_OUTPUT=$(ydk:temp "async")
+	    for COMMAND in "$@"; do
+	        local CMD_OUTPUT=$(ydk:temp "async.out")
+	        local CMD_ERROR=$(ydk:temp "async.err")
+	        RESULTS+=("$CMD_OUTPUT")
+	        ERRORS+=("$CMD_ERROR")
+	        COMMANDS+=("$COMMAND")
+	        START_TIMES+=("$(date -u +%s.%N)")
+	        {
+	            bash -c "$COMMAND" >"$CMD_OUTPUT" 2>"$CMD_ERROR"
+	        } &
+	        PIDS+=("$!")
+	    done
+	    ydk:log info "Waiting for ${#PIDS[@]} commands to finish"
+	    local TASKS_LENGTH=${#PIDS[@]}
+	    local TASKS_LEFT=${#PIDS[@]}
+	    local TASKS_DONE=0
+	    local TASKS_ERROR=0
+	    local TASKS_ID=1
+	    for PID_IDX in "${!PIDS[@]}"; do
+	        local YDK_ASYNC_PID="${PIDS[$PID_IDX]}"
+	        local YDK_ASYNC_RESULT="${RESULTS[$PID_IDX]}"
+	        local YDK_ASYNC_ERROR="${ERRORS[$PID_IDX]}"
+	        local YDK_ASYNC_COMMAND="${COMMANDS[$PID_IDX]}"
+	        local YDK_ASYNC_STARTED_AT="${START_TIMES[$PID_IDX]}"
+	        local YDK_ASYNC_COMMAND_NAME=$(echo "$YDK_ASYNC_COMMAND" | awk '{print $1}')
+	        local YDK_ASYNC_MESSAGE="($YDK_ASYNC_PID) ${YDK_ASYNC_COMMAND_NAME} ${TASKS_ID} of ${TASKS_LENGTH}, remaining ${TASKS_LEFT}, done ${TASKS_DONE}, errors ${TASKS_ERROR}"
+	        ydk:await spin "$YDK_ASYNC_PID" "Waiting $YDK_ASYNC_MESSAGE" 1>&2
+	        local YDK_ASYNC_STATUS=$?
+	        local YDK_ASYNC_EXIT_CODE="${YDK_ASYNC_STATUS}"
+	        local YDK_ASYNC_FINISHED_AT=$(date -u +%s.%N)
+	        local YDK_ASYNC_ELAPSED_TIME=$(awk "BEGIN {printf \"%.2f\", $YDK_ASYNC_FINISHED_AT - $YDK_ASYNC_STARTED_AT}")
+	        {
+	            echo -n "{"
+	            echo -n "\"idx\": ${PID_IDX},"
+	            echo -n "\"pid\": ${YDK_ASYNC_PID},"
+	            echo -n "\"started_at\": ${YDK_ASYNC_STARTED_AT},"
+	            echo -n "\"finished_at\": ${YDK_ASYNC_FINISHED_AT},"
+	            echo -n "\"elapsed_time\": ${YDK_ASYNC_ELAPSED_TIME:-0},"
+	            echo -n "\"command\": \"${YDK_ASYNC_COMMAND//\"/\\\"}\","
+	            echo -n "\"exit_code\": ${YDK_ASYNC_EXIT_CODE},"
+	            echo -n "\"result\": \"$YDK_ASYNC_RESULT\","
+	            echo -n "\"error\": \"$YDK_ASYNC_ERROR\""
+	            echo -n "}"
+	            echo
+	        } | jq -c . >>"$ASYNC_OUTPUT"
+	        TASKS_LEFT=$((TASKS_LEFT - 1))
+	        TASKS_ID=$((TASKS_ID + 1))
+	        TASKS_DONE=$((TASKS_DONE + 1))
+	        [ "$YDK_ASYNC_EXIT_CODE" -gt 0 ] && TASKS_ERROR=$((TASKS_ERROR + 1))
+	        ydk:log success "Done $YDK_ASYNC_MESSAGE"
+	        rm -f "$YDK_ASYNC_RESULT" "$YDK_ASYNC_ERROR"
+	    done
+	    ydk:log success "All commands executed successfully ${ASYNC_OUTPUT}"
+	    if jq -se . "$ASYNC_OUTPUT" >/dev/null 2>&1; then
+	        jq -sc . "$ASYNC_OUTPUT" >&4
+	    else
+	        cat "$ASYNC_OUTPUT" >&4
+	    fi
+	    rm -f "$ASYNC_OUTPUT"
+	    return 0
+	}
+	async:v1() {
+	    YWT_LOG_CONTEXT="ASYNC"
+	    await() {
+	        spinner spin "$@"
+	    }
+	    __content:extract:json() {
+	        [[ -z "$1" ]] && echo -n "null" && return 0
+	        if [ -f "$1" ]; then
+	            sed -n '/{/,$p' "$1"
+	        else
+	            echo -n "$1" | sed -n '/{/,$p'
+	        fi
+	        return 0
+	    }
+	    __content:sanitize() {
+	        local CONTENT="$1"
+	        [ -f "$CONTENT" ] && CONTENT=$(cat "$CONTENT")
+	        [[ -z "$CONTENT" ]] && echo -n "null" && return 0
+	        echo -n "$CONTENT" |
+	            sed -r 's/\x1B\[[0-9;]*[mK]//g' |
+	            sed -r 's/\\x1B]8;; //g' |
+	            sed -r 's/\\x1B]8;0=;//g'
+	        return 0
+	    }
+	    __content:normatize() {
+	        local FILE="$1"
+	        {
+	            echo -n "{"
+	            echo -n "\"file\": \"${FILE}\","
+	            echo -n "\"size\": $(stat -c%s "${FILE}"),"
+	            if [ ! -f "${FILE}" ]; then
+	                echo -n "\"error\": \"File not found\""
+	                echo -n "}"
+	                return 1
+	            fi
+	            if [ ! -s "${FILE}" ]; then
+	                echo -n "\"error\": \"Empty file\""
+	                echo -n "}"
+	                return 1
+	            fi
+	            if jq -e . "${FILE}" >/dev/null 2>&1; then
+	                echo -n "\"format\": \"json1\","
+	                echo -n "\"content\": $(
+	                    jq -c '
+	                    map_values(
+	                        if type == "string" then
+	                            . | gsub("\n"; "\\n") | gsub("\""; "\\\"")
+	                        else
+	                            .
+	                        end
+	                    )
+	                    ' "${FILE}"
+	                )"
+	                echo -n "}"
+	                return 0
+	            fi
+	            local CONTENT=$(__content:extract:json "$FILE")
+	            if [[ -n "$CONTENT" ]] && jq -e . <<<"$CONTENT" >/dev/null 2>&1; then
+	                echo -n "\"format\": \"json2\","
+	                echo -n "\"content\": $(jq -c . <<<"$CONTENT" || echo -n "null")"
+	                echo -n "}"
+	                return 0
+	            fi
+	            local CONTENT=$(__content:sanitize "$FILE")
+	            if [[ -n "$CONTENT" ]] && jq -e . <<<"$CONTENT" >/dev/null 2>&1; then
+	                echo -n "\"format\": \"json3\","
+	                echo -n "\"content\": $(jq -c . <<<"$CONTENT" || echo -n "null")"
+	                echo -n "}"
+	                return 0
+	            fi
+	            CONTENT="${CONTENT//$'\n'/\\n}"
+	            CONTENT="${CONTENT//\"/\\\"}"
+	            echo -n "\"format\": \"text\","
+	            echo -n "\"content\": \"${CONTENT}\""
+	            echo -n "}"
+	        } | jq -c .
+	        return 0
+	    }
+	    declare -a PIDS=()
+	    declare -a RESULTS=()
+	    declare -a ERRORS=()
+	    declare -a COMMANDS=()
+	    declare -a START_TIMES=()
+	    local ASYNC_OUTPUT=$(mktemp -u -t "ywt-async-XXXXXX")
+	    for COMMAND in "$@"; do
+	        local CMD_OUTPUT=$(mktemp -u -t "ywt-async-XXXXXX" --suffix=".out")
+	        local CMD_ERROR=$(mktemp -u -t "ywt-async-XXXXXX" --suffix=".err")
+	        RESULTS+=("$CMD_OUTPUT")
+	        ERRORS+=("$CMD_ERROR")
+	        COMMANDS+=("$COMMAND")
+	        START_TIMES+=("$(date -u +%s.%N)")
+	        {
+	            bash -c "source $YWT_SDK_FILE $COMMAND" >"$CMD_OUTPUT" 2>"$CMD_ERROR"
+	        } &
+	        PIDS+=("$!")
+	    done
+	    echo "Waiting for ${#PIDS[@]} commands to finish" | logger info
+	    local TASKS_LENGTH=${#PIDS[@]}
+	    local TASKS_LEFT=${#PIDS[@]}
+	    local TASKS_DONE=0
+	    local TASKS_ERROR=0
+	    local TASKS_ID=1
+	    for IDX in "${!PIDS[@]}"; do
+	        local YPID="${PIDS[$IDX]}"
+	        local RESULT="${RESULTS[$IDX]}"
+	        local ERROR="${ERRORS[$IDX]}"
+	        local COMMAND="${COMMANDS[$IDX]}"
+	        local STARTED_AT="${START_TIMES[$IDX]}"
+	        local COMMAND_NAME=$(echo "$COMMAND" | awk '{print $1}')
+	        local MESSAGE="(${YELLOW}$YPID${NC}) ${BLUE}${COMMAND_NAME}${NC} ${TASKS_ID} of ${TASKS_LENGTH}, remaining ${TASKS_LEFT}, done ${TASKS_DONE}, errors ${TASKS_ERROR}"
+	        echo "Running $MESSAGE" | logger info
+	        await "$YPID" "Waiting $MESSAGE" # & wait "${YPID}"
+	        local STATUS=$?
+	        local EXIT_CODE="${STATUS}" #"${EXIT_CODES[$IDX]}"
+	        local FINISHED_AT=$(date -u +%s.%N)
+	        local ELAPSED_TIME=$(awk "BEGIN {printf \"%.2f\", $FINISHED_AT - $STARTED_AT}")
+	        {
+	            echo -n "{"
+	            echo -n "\"idx\": ${IDX},"
+	            echo -n "\"pid\": ${YPID},"
+	            echo -n "\"started_at\": ${STARTED_AT},"
+	            echo -n "\"finished_at\": ${FINISHED_AT},"
+	            echo -n "\"elapsed_time\": ${ELAPSED_TIME:-0},"
+	            echo -n "\"command\": \"${COMMAND//\"/\\\"}\","
+	            echo -n "\"exit_code\": ${EXIT_CODE},"
+	            echo -n "\"result\": $(__content:normatize "$RESULT" 2>&1),"
+	            echo -n "\"error\": $(__content:normatize "$ERROR" 2>&1)"
+	            echo -n "}"
+	            echo
+	        } | jq -c . >>"$ASYNC_OUTPUT"
+	        TASKS_LEFT=$((TASKS_LEFT - 1))
+	        TASKS_ID=$((TASKS_ID + 1))
+	        TASKS_DONE=$((TASKS_DONE + 1))
+	        [ "$EXIT_CODE" -gt 0 ] && TASKS_ERROR=$((TASKS_ERROR + 1))
+	        echo "Done $MESSAGE" | logger success
+	        rm -f "$RESULT" "$ERROR"
+	    done
+	    echo "All commands executed successfully ${ASYNC_OUTPUT}" | logger success
+	    if jq -se . "$ASYNC_OUTPUT" >/dev/null 2>&1; then
+	        jq -sc . "$ASYNC_OUTPUT"
+	    else
+	        cat "$ASYNC_OUTPUT"
+	    fi
+	    rm -f "$ASYNC_OUTPUT"
+	    return 0
+	}
+	ydk:await() {
+	    local YDK_LOGGER_CONTEXT="await"
+	    [[ -z "$YDK_AWAIT_SPINNERS_FILE" ]] && local YDK_AWAIT_SPINNERS_FILE="/workspace/rapd-shell/assets/spinners.json"
+	    [[ -z "$YDK_AWAIT_SPECS" ]] && declare -A YDK_AWAIT_SPECS=(
+	        ["all"]=".[]"
+	        ["count"]="keys | length"
+	        ["names"]="keys | .[]"
+	        ["by_name"]="to_entries[] | select(.key == \$SPINNER_NAME) | .value | .name = \$SPINNER_NAME"
+	        ["by_index"]="select(.index == \$SPINNER_INDEX)"
+	    ) && readonly YDK_AWAIT_SPECS
+	    __cursor:back() {
+	        local N=${1:-1}
+	        echo -en "\033[${N}D"
+	    }
+	    spinners() {
+	        startup() {
+	            tput civis
+	        }
+	        list() {
+	            jq -c . "$YDK_AWAIT_SPINNERS_FILE" >&4
+	            return 0
+	        }
+	        names() {
+	            list 4>&1 | jq -cr "${YDK_AWAIT_SPECS[names]}" | tr '\n' ' ' >&4
+	            return 0
+	        }
+	        random() {
+	            read -r -a SPINNERS_NAMES <<<"$(names 4>&1)"
+	            local SPINNER_INDEX=$((RANDOM % ${#SPINNERS_NAMES[@]}))
+	            SPINNER_INDEX=$((RANDOM % ${#SPINNERS_NAMES[@]}))
+	            local SPINNER_NAME="weather" # "${SPINNERS_NAMES[$SPINNER_INDEX]}"
+	            jq -cr \
+	                --arg SPINNER_NAME "$SPINNER_NAME" \
+	                "${YDK_AWAIT_SPECS[by_name]}" \
+	                "$YDK_AWAIT_SPINNERS_FILE" >&4
+	            return 0
+	        }
+	        trap "tput cnorm" EXIT INT TERM
+	        ydk:try "$@"
+	        return $?
+	    }
+	    spin() {
+	        local SPINNER_TARGET_PID=$1 && [[ -z "$SPINNER_TARGET_PID" ]] && SPINNER_TARGET_PID=$$
+	        local SPINNER_MESSAGE="${2:-}"
+	        local SPINNER=$(spinners random 4>&1)
+	        local SPINNER_NAME=$(jq -r '.name' <<<"$SPINNER" 2>/dev/null)
+	        read -r -a SPINNER_FRAMES <<<"$({
+	            jq -r '.frames | .[]' <<<"$SPINNER" | tr '\n' ' '
+	        } 2>/dev/null )" 2>/dev/null
+	        local SPINNER_INTERVAL=$(jq -r '.interval' <<<"$SPINNER" 2>/dev/null)
+	        local SPINNER_LENGTH=${#SPINNER_FRAMES[@]}
+	        local SPINNER_INDEX=0
+	        local SPINNER_MESSAGE="${2:-}"
+	        while ps a | awk '{print $1}' | grep -q "$SPINNER_TARGET_PID"; do
+	            local FRAME=${SPINNER_FRAMES[$SPINNER_INDEX]}
+	            printf " %s  %s\r" "$FRAME" "$SPINNER_MESSAGE" 1>&2
+	            SPINNER_INDEX=$(((SPINNER_INDEX + 1) % SPINNER_LENGTH))
+	            sleep "$((SPINNER_INTERVAL / 500))"
+	            __cursor:back 1
+	            printf "\b\b\b\b\b\b" 1>&2
+	        done
+	        printf "\b\b\b\b" 1>&2
+	        return 0
+	    }
+	    examples() {
+	        local COMMANDS=()
+	        read -r -a SPINNERS_NAMES <<<"$(spinners names 4>&1)"
+	        local SPINNER_INDEX=0
+	        for SPINNER_NAME in "${SPINNERS_NAMES[@]}"; do
+	            local MESSAGE="Spinner $SPINNER_NAME ${SPINNER_INDEX} of ${#SPINNERS_NAMES[@]}"
+	            COMMANDS+=("sleep $(((SPINNER_INDEX + 1) * 2)); echo \"$MESSAGE\"")
+	            SPINNER_INDEX=$((SPINNER_INDEX + 1))
+	        done
+	        ydk:async "${COMMANDS[@]}" 4>&1 #| jq '.'
+	        return $?
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:builder() {
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:bundle() {
@@ -325,6 +754,8 @@ ydk:cli(){
 	        grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#" | sed -e 's/^/\t/'
 	    }
 	    copyright() {
+	        echo ""
+	        return 0
 	        ydk:version | jq -cr '
 	                . |
 	                "Name: \(.name)",
@@ -357,7 +788,7 @@ ydk:cli(){
 	        echo "#!/bin/bash" >"$BUNDLE_TMP"
 	        {
 	            copyright
-	            local COPYRIGHT=$(ydk:version | jq -cr .)
+	            local COPYRIGHT="" #$(ydk:version | jq -cr .)
 	            COPYRIGHT=${COPYRIGHT//\"/\\\"}
 	            local BUNDLE_NAME=$(jq -r '.name' <<<"$VALIDATION")
 	            if [[ "$BUNDLE_NAME" == "ydk" ]]; then 
@@ -384,6 +815,7 @@ ydk:cli(){
 	                echo "exit \$?"
 	            else 
 	                curl -sSL https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
+	                echo "# Added YDK CLI"
 	            fi 
 	            copyright
 	        } >>"$BUNDLE_TMP"
@@ -468,7 +900,54 @@ ydk:cli(){
 	        compile "$BUNDLE_FILE" "$EXPIRES_AT"
 	        return $?
 	    }
-	    ydk:try:nnf "$@"
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:cache() {
+	    ydk:try "$@"
+	    return $?
+	}
+	cache:v1() {
+	    [ -z "$YWT_PATH_CACHE" ] && YWT_PATH_CACHE="$(jq -r '.cache' <<<"$YWT_PATHS")"
+	    [ ! -d "$YWT_PATH_CACHE" ] && mkdir -p "$YWT_PATH_CACHE"
+	    [ ! -r "$YWT_PATH_CACHE" ] || [ ! -w "$YWT_PATH_CACHE" ] || [ ! -x "$YWT_PATH_CACHE" ] && {
+	        __log error "cache: cannot read, write, or execute $YWT_PATH"
+	    }
+	    __key() {
+	        local KEY="${1// /_}" && KEY="${KEY//[^a-zA-Z0-9_]/}"
+	        local TMP_FILE="$(mktemp -u -t "ywt.cache.XXXXXXXXXX" --tmpdir="$YWT_PATH_CACHE")"
+	        local KEY="${KEY}.$(basename "$TMP_FILE")"
+	        echo "$KEY"
+	    }
+	    __get() {
+	        local KEY="$(__key "$1")"
+	        local FILE="$YWT_PATH_CACHE/$KEY"
+	        [ -f "$FILE" ] && cat "$FILE"
+	    }
+	    __set() {
+	        local KEY="$(__key "$1")" && shift
+	        local FILE="$YWT_PATH_CACHE/$KEY"
+	        local CONTENT="$1" && [ -z "$CONTENT" ] && CONTENT="$(cat)"
+	        echo "$CONTENT" >"$FILE"
+	    }
+	    __delete() {
+	        local KEY="$(__key "$1")"
+	        local FILE="$YWT_PATH_CACHE/$KEY"
+	        [ -f "$FILE" ] && rm -f "$FILE"
+	    }
+	    __clear() {
+	        rm -rf "$YWT_PATH_CACHE" && mkdir -p "$YWT_PATH_CACHE"
+	    }
+	    case "$1" in
+	    get) __get "$2" ;;
+	    set) __set "$2" "$3" ;;
+	    delete) __delete "$2" ;;
+	    clear) __clear ;;
+	    *) __nnf "$@" || usage "$?" "tests" "$@" && return 1 ;;
+	    esac
+	}
+	ydk:capabilities() {
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:checksum() {
@@ -511,24 +990,570 @@ ydk:cli(){
 	        echo "Hash mismatch: $FILE_HASH != $HASH"
 	        return 1        
 	    }
-	    ydk:try:nnf "$@"
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:colors() {
+	    inspect(){
+	        local COLORS=("${!YDK_COLORS[@]}")
+	        for COLOR in "${COLORS[@]}"; do
+	            echo -n "${COLOR}: "
+	            ydk:colors:"${COLOR,,}" " ${COLOR} " && echo
+	        done
+	    
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	{
+	    if [[ -z "$YDK_COLORS" ]]; then
+	        declare -g -A YDK_COLORS=(
+	            [NC]="\033[0m"
+	            [NBG]="\033[49m"
+	            [BLACK]="\033[0;30m"
+	            [BLACK_BG]="\033[40m"
+	            [BRIGHT_BLACK]="\033[1;30m"
+	            [BRIGHT_BLACK_BG]="\033[100m"
+	            [DARK_GRAY]="\033[1;30m"
+	            [DARK_GRAY_BG]="\033[100m"
+	            [RED]="\033[0;31m"
+	            [RED_BG]="\033[41m"
+	            [BRIGHT_RED]="\033[1;31m"
+	            [GREEN]="\033[0;32m"
+	            [GREEN_BG]="\033[42m"
+	            [BRIGHT_GREEN]="\033[1;32m"
+	            [YELLOW]="\033[0;33m"
+	            [YELLOW_BG]="\033[43m"
+	            [BRIGHT_YELLOW]="\033[1;33m"
+	            [BLUE]="\033[0;34m"
+	            [BLUE_BG]="\033[44m"
+	            [BRIGHT_BLUE]="\033[1;34m"
+	            [PURPLE]="\033[0;35m"
+	            [PURPLE_BG]="\033[45m"
+	            [BRIGHT_PURPLE]="\033[1;35m"
+	            [CYAN]="\033[0;36m"
+	            [CYAN_BG]="\033[46m"
+	            [BRIGHT_CYAN]="\033[1;36m"
+	            [GRAY]="\033[0;37m"
+	            [GRAY_BG]="\033[47m"
+	            [BRIGHT_GRAY]="\033[1;37m"
+	            [WHITE]="\033[0;37m"
+	            [WHITE_BG]="\033[107m"
+	            [BRIGHT_WHITE]="\033[1;37m"            
+	        ) && readonly YDK_COLORS
+	        [[ -n "$NO_COLOR" ]] && [[ "$NO_COLOR" == 1 || "$NO_COLOR" == true ]] && return 0
+	        for COLOR in "${!YDK_COLORS[@]}"; do
+	            COLOR_CODE="${YDK_COLORS[$COLOR]}"
+	            declare -g "${COLOR^^}=${COLOR_CODE}"
+	            eval "ydk:colors:${COLOR,,}() { echo -en \"${COLOR_CODE}\${*}${NC}${NBG}\"; }"
+	            export -f "ydk:colors:${COLOR,,}"
+	        done
+	    fi
+	}
+	ydk:config() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:dates() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:debugger() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:domains() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:dotenv() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:drawer() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:emojis() {
+	    [[ -z "$YDK_EMOJIS_FILE" ]] && local YDK_EMOJIS_FILE="/workspace/rapd-shell/assets/emojis.json"
+	    list() {
+	        local YDK_EMOJIS=$(jq -cr . "$YDK_EMOJIS_FILE" 2>/dev/null)
+	        jq -cr . <<<"$YDK_EMOJIS" >&4
+	        return 0
+	    }
+	    get() {
+	        local EMOJI_NAME="$1"
+	        local EMOJI=$(jq -cr ".[\"$EMOJI_NAME\"]" "$YDK_EMOJIS_FILE" 2>/dev/null)
+	        echo -n "$EMOJI" >&4
+	        return 0
+	    }
+	    substr() {
+	        local RAW_STR="$1"
+	        while IFS= read -r MATCH; do
+	            local EMOJI_NAME=${MATCH:1:-1} #"${MATCH:1:${#MATCH}-2}"
+	            local EMOJI_CHAR=$(jq -cr ".[\"$EMOJI_NAME\"]" "$YDK_EMOJIS_FILE" 2>/dev/null)
+	            [[ -n "$EMOJI_CHAR" ]] && RAW_STR=${RAW_STR//"$MATCH"/"$EMOJI_CHAR"}
+	        done < <(echo "$RAW_STR" | grep -o ':[a-zA-Z_]\+:')
+	        echo -n "$RAW_STR" >&4
+	        return 0
+	    }
+	    ydk:try "$@" 4>&1
+	    return $?
+	}
+	ydk:envsubst() {
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:errors() {
-	    ydk:try:nnf "$@"
+	    messages() {
+	        echo -n "{"
+	        echo -n "\"errors\": {"
+	        for YDK_ERROR_CODE in "${!YDK_ERRORS_MESSAGES[@]}"; do
+	            local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_ERROR_CODE]}"
+	            echo -n "\"$YDK_ERROR_CODE\": \"$YDK_ERROR_MESSAGE\","
+	        done | sed -e 's/,$//'
+	        echo -n "}"
+	        echo -n "}"
+	        echo
+	        return 0
+	    }
+	    message() {
+	        local YDK_ERROR_CODE="${1:-255}"
+	        local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_ERROR_CODE]:-"An error occurred"}"
+	        echo "$YDK_ERROR_MESSAGE" >&4
+	        return "$YDK_ERROR_CODE"
+	    }
+	    ydk:try "$@"
 	    return $?
 	}
-	(
-	    [[ -z "$YDK_ERRORS_MESSAGES" ]] && declare -a YDK_ERRORS_MESSAGES=(
+	{
+	    [[ -z "$YDK_ERRORS_MESSAGES" ]] && declare -g -a YDK_ERRORS_MESSAGES=(
+	        [0]="Success"
+	        [1]="Not super-user"
+	        [2]="Misuse of shell builtins"
+	        [3]="No such process"
+	        [4]="Interrupted system call"
+	        [5]="I/O error"
+	        [6]="No such device or address"
+	        [7]="Arg list too long"
+	        [8]="Exec format error"
+	        [9]="Bad file number"
+	        [10]="No children"
+	        [11]="No more processes"
+	        [12]="Not enough core"
+	        [13]="Permission denied"
+	        [14]="Bad address"
+	        [15]="Block device required"
+	        [16]="Mount device busy"
+	        [17]="File exists"
+	        [18]="Cross-device link"
+	        [19]="No such device"
+	        [20]="Not a directory"
+	        [21]="Is a directory"
+	        [22]="Invalid argument"
+	        [23]="Too many open files in system"
+	        [24]="Too many open files"
+	        [25]="Not a typewriter"
+	        [26]="Text file busy"
+	        [27]="File too large"
+	        [28]="No space left on device"
+	        [29]="Illegal seek"
+	        [30]="Read only file system"
+	        [31]="Too many links"
+	        [32]="Broken pipe"
+	        [33]="Math arg out of domain of func"
+	        [34]="Math result not representable"
+	        [35]="File locking deadlock error"
+	        [36]="File or path name too long"
+	        [37]="No record locks available"
+	        [38]="Function not implemented"
+	        [39]="Directory not empty"
+	        [40]="Too many symbolic links"
+	        [42]="No message of desired type"
+	        [43]="Identifier removed"
+	        [44]="Channel number out of range"
+	        [45]="Level 2 not synchronized"
+	        [46]="Level 3 halted"
+	        [47]="Level 3 reset"
+	        [48]="Link number out of range"
+	        [49]="Protocol driver not attached"
+	        [50]="No CSI structure available"
+	        [51]="Level 2 halted"
+	        [52]="Invalid exchange"
+	        [53]="Invalid request descriptor"
+	        [54]="Exchange full"
+	        [55]="No anode"
+	        [56]="Invalid request code"
+	        [57]="Invalid slot"
+	        [59]="Bad font file fmt"
+	        [60]="Device not a stream"
+	        [61]="No data (for no delay io)"
+	        [62]="Timer expired"
+	        [63]="Out of streams resources"
+	        [64]="Machine is not on the network"
+	        [65]="Package not installed"
+	        [66]="The object is remote"
+	        [67]="The link has been severed"
+	        [68]="Advertise error"
+	        [69]="Srmount error"
+	        [70]="Communication error on send"
+	        [71]="Protocol error"
+	        [72]="Multihop attempted"
+	        [73]="Cross mount point (not really error)"
+	        [74]="Trying to read unreadable message"
+	        [75]="Value too large for defined data type"
+	        [76]="Given log. name not unique"
+	        [77]="f.d. invalid for this operation"
+	        [78]="Remote address changed"
+	        [79]="Can   access a needed shared lib"
+	        [80]="Accessing a corrupted shared lib"
+	        [81]=".lib section in a.out corrupted"
+	        [82]="Attempting to link in too many libs"
+	        [83]="Attempting to exec a shared library"
+	        [84]="Illegal byte sequence"
+	        [86]="Streams pipe error"
+	        [87]="Too many users"
+	        [88]="Socket operation on non-socket"
+	        [89]="Destination address required"
+	        [90]="Message too long"
+	        [91]="Protocol wrong type for socket"
+	        [92]="Protocol not available"
+	        [93]="Unknown protocol"
+	        [94]="Socket type not supported"
+	        [95]="Not supported"
+	        [96]="Protocol family not supported"
+	        [97]="Address family not supported by protocol family"
+	        [98]="Address already in use"
+	        [99]="Address not available"
+	        [100]="Network interface is not configured"
+	        [101]="Network is unreachable"
+	        [102]="Connection reset by network"
+	        [103]="Connection aborted"
+	        [104]="Connection reset by peer"
+	        [105]="No buffer space available"
+	        [106]="Socket is already connected"
+	        [107]="Socket is not connected"
+	        [108]="Can't send after socket shutdown"
+	        [109]="Too many references"
+	        [110]="Connection timed out"
+	        [111]="Connection refused"
+	        [112]="Host is down"
+	        [113]="Host is unreachable"
+	        [114]="Socket already connected"
+	        [115]="Connection already in progress"
+	        [116]="Stale file handle"
+	        [122]="Quota exceeded"
+	        [123]="No medium (in tape drive)"
+	        [125]="Operation canceled"
+	        [126]="Invoked command cannot execute"
+	        [127]="Command not found"
+	        [128]="Invalid exit argument"
+	        [129]="Hangup"
+	        [130]="Interrupt/Previous owner died"
+	        [131]="Quit and dump core/State not recoverable"
+	        [132]="Illegal instruction"
+	        [133]="Trace/breakpoint"
+	        [134]="Process aborted"
+	        [135]="Bus error"
+	        [136]="Floating point exception"
+	        [137]="Kill"
+	        [138]="User-defined 1"
+	        [139]="Segmentation violation"
+	        [140]="User-defined 2"
+	        [141]="Write to pipe with no one reading"
+	        [142]="Signal raised by alarm"
+	        [143]="Termination"
+	        [145]="Child process terminated"
+	        [146]="Continue if stopped"
+	        [147]="Stop executing temporarily"
+	        [148]="Terminal stop signal"
+	        [149]="Background process attempting to read from tty"
+	        [150]="Background process attempting to write to tty"
+	        [151]="Urgent data available on socket"
+	        [152]="CPU time limit exceeded"
+	        [153]="File size limit exceeded"
+	        [154]="Signal raised by timer counting virtual time"
+	        [155]="Profiling timer expired"
+	        [157]="Pollable event"
+	        [159]="Bad syscall"
+	        [251]="Not found"
+	        [252]="Invalid argument"
+	        [253]="Failed to install"
+	        [254]="Missing required packages"
 	        [255]="An error occurred"
-	        [254]="Failed to install ydk"
-	        [253]="Failed to install libraries"
-	        [252]="Failed to download"
-	    ) && export YDK_ERRORS_MESSAGES
-	)
+	    )
+	    export YDK_ERRORS_MESSAGES
+	}
+	ydk:fetch() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:fifo() {
+	    stdin() {
+	        [ ! -p /dev/stdin ] && [ ! -t 0 ] && return "$1"
+	        while IFS= read -r INPUT; do
+	            echo "$INPUT" >&0
+	        done
+	        unset INPUT
+	    }
+	    stdout() {
+	        [ ! -p /dev/stdout ] && [ ! -t 1 ] && return "$1"
+	        while IFS= read -r OUTPUT; do
+	            echo "$OUTPUT" >&1
+	        done
+	        unset OUTPUT
+	    }
+	    stderr() {
+	        [ ! -p /dev/stderr ] && [ ! -t 2 ] && return "$1"
+	        while IFS= read -r ERROR; do
+	            echo "$ERROR" >&2
+	        done
+	        unset ERROR
+	    }
+	    stdvalue() {
+	        local STD="${1:-4}"
+	        [ -e /proc/$$/fd/"$STD" ] && echo "$@" >&"$STD" && return 0
+	        return 1
+	    }
+	    stdio() {
+	        stdin "$1" && stdout "$1" && stderr "$1"
+	    }
+	    descriptor() {
+	        exists() {
+	            [ -z "$1" ] && return 1
+	            [ -e /proc/$$/fd/"$1" ] && return 0 || return 1
+	        }
+	        writable() {
+	            [ -z "$1" ] && return 1
+	            [ -w /proc/$$/fd/"$1" ] && return 0 || return 1
+	            { true >&"$1"; } 2>/dev/null && return 0 || return 1
+	        }
+	        readable() {
+	            [ -z "$1" ] && return 1
+	            [ -r /proc/$$/fd/"$1" ] && return 0 || return 1
+	            { true <&"$1"; } 2>/dev/null && return 0 || return 1
+	            read -t 0 <&"$1" && return 0 || return 1
+	        }
+	        opened() {
+	            [ -z "$1" ] && return 1
+	            [ -e /proc/$$/fd/"$1" ] && return 0 || return 1
+	            lsof -p $$ | grep " $1" && return 0 || return 1
+	        }
+	        ydk:try "$@"
+	        return $?
+	    }
+	    exists() {
+	        [ -p "$1" ] && return 0 || return 1
+	    }
+	    create() {
+	        [ -z "$1" ] && return 1
+	        mkfifo "$1" && return 0 || return 1
+	    }
+	    delete() {
+	        [ -z "$1" ] && return 1
+	        rm -f "$1" && return 0 || return 1
+	    }
+	    read() {
+	        [ -z "$1" ] && return 1
+	        [ -p "$1" ] && cat "$1" && return 0 || return 1
+	    }
+	    write() {
+	        [ -z "$1" ] && return 1
+	        [ -p "$1" ] && echo "$2" >"$1" && return 0 || return 1
+	    }
+	    writable() {
+	        [ -z "$1" ] && return 1
+	        [ -w "$1" ] && return 0 || return 1
+	    }
+	    readable() {
+	        [ -z "$1" ] && return 1
+	        [ -r "$1" ] && return 0 || return 1
+	    }
+	    opened() {
+	        [ -z "$1" ] && return 1
+	        lsof "$1" && return 0 || return 1
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:functions() {
+	    echo -n "{"
+	    echo -n "\"functions\": ["
+	    local FUNC_LIST=$(
+	        declare -F |
+	            awk '{print $3}' |
+	            tr ' ' '\n' |
+	            sort |
+	            uniq |
+	            tr '\n' ' ' |
+	            sed -e 's/ $//'
+	    )
+	    for FUNC_NAME in ${FUNC_LIST}; do
+	        [[ "$FUNC_NAME" == _* ]] && continue
+	        [[ "$FUNC_NAME" == bats_* ]] && continue
+	        [[ "$FUNC_NAME" == batslib_* ]] && continue
+	        [[ "$FUNC_NAME" == assert_* ]] && continue
+	        [[ ! "$FUNC_NAME" == ydk* ]] && continue
+	        [[  "$FUNC_NAME" == ydk ]] && continue
+	        [[ "$FUNC_NAME" == *:*:* ]] && continue 
+	        echo -n "\"${FUNC_NAME}\","
+	    done | sed -e 's/,$//'
+	    echo -n "]"
+	    echo -n "}"
+	    echo
+	    return 0
+	}
+	ydk:host() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:hrml() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:hron() {
+	    ydk:try "$@"
+	    return $?
+	}
 	ydk:installer() {
+	    YDK_LOGGER_CONTEXT="installer"
+	    path() {
+	        {
+	            local YDK_PATH_NAME="$1" && [[ -z "$YDK_PATH_NAME" ]] && pwd && return 1
+	            local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+	            [[ -z "$YDK_PATH" ]] && pwd && return 1
+	            [[ "${YDK_PATH:0:1}" == "!" ]] && YDK_PATH="${YDK_PATH:1}"
+	            [[ ! -d "$YDK_PATH" ]] && echo "$YDK_PATH" && return 1
+	            echo "$YDK_PATH"
+	            return 0
+	        } >&4
+	    }
+	    paths() {
+	        {
+	            echo -n "{"
+	            for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
+	                local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+	                local YDK_PATH="${YDK_PATH//\/\//\/}"
+	                echo -n "\"$YDK_PATH_NAME\":\"$YDK_PATH\","
+	            done | sed 's/,$//'
+	            echo -n "}"
+	        } >&4
+	        return 0
+	    }
+	    check:path() {
+	        local YDK_PATH="$1"
+	        local YDK_PATH="${YDK_PATH//\/\//\/}"
+	        [[ "${YDK_PATH:0:1}" == "!" ]] && {
+	            YDK_PATH="${YDK_PATH:1}"
+	            rm -rf "${YDK_PATH:1}"
+	        }
+	        [[ ! -d "$YDK_PATH" ]] && {
+	            mkdir -p "$YDK_PATH"
+	        }
+	        return 0
+	    }
+	    check:paths() {
+	        for YDK_PATH_NAME in "${!YDK_PATHS[@]}"; do
+	            local YDK_PATH="${YDK_PATHS[$YDK_PATH_NAME]}"
+	            check:path "$YDK_PATH"
+	        done
+	        return 0
+	    }
+	    state() {
+	        local YDK_STATE_FILE="${YDK_PATHS["var"]}/state.json"
+	        local YDK_STATE=$(jq -c . <"$YDK_STATE_FILE" 2>/dev/null)
+	        [[ -z "$YDK_STATE" ]] && echo -n "{}" && return 1
+	        echo -n "$YDK_STATE"
+	        return 0
+	    }
 	    install() {
-	        local YDK_BINARY_PATH=/usr/local/bin
+	        check:paths
+	        local YDK_PATH_MAP=$(paths 4>&1) && echo "MAP: $YDK_PATH_MAP"
+	        local YDK_PATH_BIN=$(path "bin" 4>&1) && echo "BIN1: $YDK_PATH_BIN"
+	        return 0
+	    }
+	    __installer:opts() {
+	        local YDK_INSTALLER_OPTS=()
+	        while [[ $# -gt 0 ]]; do
+	            case "$1" in
+	            -h | --help)
+	                shift
+	                ydk:usage 0 "ydk" "install" "usage"
+	                exit 0
+	                ;;
+	            -b | --bin)
+	                YDK_PATHS["bin"]="${2}"
+	                shift 2
+	                ;;
+	            -l | --lib)
+	                YDK_PATHS["lib"]="${2}"
+	                shift 2
+	                ;;
+	            -e | --etc)
+	                YDK_PATHS["etc"]="${2}"
+	                shift 2
+	                ;;
+	            -v | --var)
+	                YDK_PATHS["var"]="${2}"
+	                shift 2
+	                ;;
+	            -c | --cache)
+	                YDK_PATHS["cache"]="${2}"
+	                shift 2
+	                ;;
+	            -L | --logs)
+	                YDK_PATHS["logs"]="${2}"
+	                shift 2
+	                ;;
+	            -r | --runtime)
+	                YDK_PATHS["runtime"]="${2}"
+	                shift 2
+	                ;;
+	            -d | --data)
+	                YDK_PATHS["data"]="${2}"
+	                shift 2
+	                ;;
+	            -C | --config)
+	                YDK_PATHS["config"]="${2}"
+	                shift 2
+	                ;;
+	            -t | --tmp)
+	                YDK_PATHS["tmp"]="${2}"
+	                shift 2
+	                ;;
+	            -H | --home)
+	                YDK_PATHS["home"]="${2}"
+	                shift 2
+	                ;;
+	            -s | --share)
+	                YDK_PATHS["share"]="${2}"
+	                shift 2
+	                ;;
+	            -D | --doc)
+	                YDK_PATHS["doc"]="${2}"
+	                shift 2
+	                ;;
+	            *)
+	                if [[ "$1" =~ ^- ]]; then
+	                    ydk:log "WARN" "Unknown option: $1 $2"
+	                    shift 2
+	                else 
+	                    YDK_INSTALLER_OPTS+=("$1")
+	                    shift
+	                fi
+	                ;;
+	            esac
+	        done
+	        set -- "${YDK_INSTALLER_OPTS[@]}"
+	        [[ "${#YDK_INSTALLER_OPTS[@]}" -eq 0 ]] && {
+	            ydk:throw 252 "Failed to parse installer options"
+	            return 1
+	        }
+	        echo "${YDK_INSTALLER_OPTS[@]}" >&4
+	        return 0
+	    }
+	    install:v1() {
+	        local YDK_BINARY_PATH="/usr/local/bin"
 	        local YDK_INSTALL_PATH="/ywteam/ydk-shell"
 	        local YDK_LOGS_PATH="/var/log/ywteam/ydk-shell"
 	        local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
@@ -592,7 +1617,7 @@ ydk:cli(){
 	        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
 	            echo "Failed to install required packages"
 	            ydk:throw 255 "ERR" "Failed to install required packages"
-	        }        
+	        }
 	        ydk:log "INFO" "Packages installed, verifying dependencies"
 	        ydk:require "${YDK_DEPENDENCIES[@]}"
 	        ydk:log "INFO" "Done, Getting version info"
@@ -708,7 +1733,375 @@ ydk:cli(){
 	        rm -f "${YDK_TMP}"
 	        ydk welcome
 	    }
-	    ydk:try:nnf "$@"
+	    set -- "$(__installer:opts "$@" 4>&1)" && ydk:try "$@"
+	    return $?
+	}
+	{
+	    [[ -z "${YDK_PATHS[*]}" ]] && declare -g -A YDK_PATHS=(
+	        ["bin"]="${YDK_CONFIG_PATH_BIN:-"/usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["lib"]="${YDK_CONFIG_PATH_LIB:-"/usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["etc"]="${YDK_CONFIG_PATH_ETC:-"/etc/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["var"]="${YDK_CONFIG_PATH_VAR:-"/var/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["cache"]="${YDK_CONFIG_PATH_CACHE:-"!/var/cache/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["logs"]="${YDK_CONFIG_PATH_LOGS:-"/var/log/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["runtime"]="${YDK_CONFIG_PATH_RUNTIME:-"/opt/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["data"]="${YDK_CONFIG_PATH_DATA:-"/var/lib/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["config"]="${YDK_CONFIG_PATH_CONFIG:-"/etc/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["tmp"]="${YDK_CONFIG_PATH_TMP:-"/tmp/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["home"]="${YDK_CONFIG_PATH_HOME:-"$HOME/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["share"]="${YDK_CONFIG_PATH_SHARE:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}"}"
+	        ["doc"]="${YDK_CONFIG_PATH_DOC:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}/doc"}"
+	    ) && export YDK_PATHS
+	}
+	ydk:limits() {
+	    current() {
+	        ulimit -a
+	    }
+	    set() {
+	        ulimit -Sn 1024 # Set soft limit
+	        ulimit -Hn 4096 # Set hard limit
+	        ulimit -c 0
+	        ulimit -d 0
+	        ulimit -f 0
+	        ulimit -l 64
+	        ulimit -m 0
+	        ulimit -n 1024
+	        ulimit -q 0
+	        ulimit -s 1024
+	        ulimit -t 20
+	        ulimit -u 40
+	        ulimit -v 4000000
+	        ulimit -x 0
+	        ulimit -T 0
+	        ulimit -I 3
+	        ulimit -l 64
+	        ulimit -p 20
+	        ulimit -i 30
+	        ulimit -o 40
+	        ulimit -r 0
+	        ulimit -e 0
+	        ulimit -k 0
+	        ulimit -c 0
+	        ulimit -f 0
+	        ulimit -t 20
+	        ulimit -v 4000000
+	        ulimit -n 1024
+	        ulimit -m 0
+	        ulimit -u 40
+	        ulimit -s 1024
+	        ulimit -l 64
+	        ulimit -p 20
+	        ulimit -i 30
+	        ulimit -o 40
+	        ulimit -r 0
+	        ulimit -q 0
+	        ulimit -e 0
+	        ulimit -k 0
+	        ulimit -x 0
+	        ulimit -T 0
+	        ulimit -I 3
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:linter() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:logger() {
+	    __logger:enabled() {
+	        local LOG_LEVEL=${1:-info}
+	        local LOG_LEVEL_IDX=-1
+	        local LOG_CONFIG_LEVEL=${YDK_DEFAULTS_LOGGER[0]:-output}
+	        local LOG_CONFIG_LEVEL_IDX=-1
+	        for YDK_LOGGER_LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
+	            local LEVEL=${YDK_LOGGER_LEVELS[$YDK_LOGGER_LEVEL_IDX]}
+	            [[ $LOG_LEVEL == "$LEVEL" ]] && LOG_LEVEL_IDX=$YDK_LOGGER_LEVEL_IDX
+	            [[ $LOG_CONFIG_LEVEL == "$LEVEL" ]] && LOG_CONFIG_LEVEL_IDX=$YDK_LOGGER_LEVEL_IDX
+	        done
+	        [[ $LOG_LEVEL_IDX -lt 0 ]] && return 1
+	        [[ $LOG_CONFIG_LEVEL_IDX -lt 0 ]] && return 1
+	        [[ $LOG_LEVEL_IDX -ge $LOG_CONFIG_LEVEL_IDX ]] && return 0
+	        return 1
+	    }
+	    __logger:is:level() {
+	        local LEVEL=${1:-info}
+	        for LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
+	            [[ $LEVEL == "${YDK_LOGGER_LEVELS[$LEVEL_IDX]}" ]] && return 0
+	        done
+	        return 1
+	    }
+	    __logger:message:sanetize() {
+	        echo -e "$1" | sed -r "s/\x1B\[[0-9;]*[mK]//g" | sed 's/\x1b\[[0-9;]*m//g' >&4
+	    }
+	    __logger:message:truncate() {
+	        echo -e "$1"
+	        return 0
+	        local LOG_MESSAGE=$({
+	            if jq -e . <<<"$1" 2>/dev/null 1>/dev/null; then
+	                jq -c . <<<"$1" >&4
+	            else
+	                echo "$1" >&4
+	            fi
+	        } 4>&1)
+	        local LOG_CHARS=${2:-70}
+	        local LOG_MAX_LENGTH=${#LOG_MESSAGE}
+	        if [[ $LOG_MAX_LENGTH -le $((LOG_CHARS * 2)) ]]; then
+	            echo -en "$LOG_MESSAGE" >&4
+	        else
+	            local LOG_MESSAGE_SANETIZED=$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)
+	            local LOG_MESSAGE_START=${LOG_MESSAGE_SANETIZED:0:$LOG_CHARS}
+	            local LOG_MESSAGE_END=${LOG_MESSAGE_SANETIZED: -$LOG_CHARS}
+	            echo -e "${LOG_MESSAGE_START:-"Start"}...${LOG_MESSAGE_END:-"End"}" >&4
+	        fi
+	        return 0
+	    }
+	    __logger:write:file() {
+	        local LOGGER_OPTS=$1
+	        local LOG_JSON=$2
+	        local LOG_FILE=$(jq -r '.file' <<<"$LOGGER_OPTS")
+	        local LOG_MAXSIZE=$(jq -r '.maxsize' <<<"$LOGGER_OPTS")
+	        LOG_MAXSIZE=$(echo "$LOG_MAXSIZE" | sed -r 's/([0-9]+)([KMG])/\1 \2/' | awk '{print $1 * 1024^index("KMG", $2)}')
+	        if [[ -f "$LOG_FILE" ]]; then
+	            local LOG_FILE_SIZE=$(stat -c %s "$LOG_FILE")
+	            if [[ $LOG_FILE_SIZE -gt $LOG_MAXSIZE ]]; then
+	                local LOG_FILE_ROTATE=$(dirname "$LOG_FILE")/$(basename "$LOG_FILE" .log)-$(date +"%Y%m%d%H%M%S").log
+	                mv "$LOG_FILE" "$LOG_FILE_ROTATE"
+	                echo -n >"$LOG_FILE"
+	                echo "$LOG_MAXSIZE = $(stat -c %s "$LOG_FILE")" 1>&2
+	                echo "Rotated log file $LOG_FILE to $LOG_FILE_ROTATE" 1>&2
+	            fi
+	        fi
+	        jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
+	        return 0
+	    }
+	    __logger:write:console() {
+	        local LOG_MESSAGE=$1
+	        local LOGGER_OPTS=$2
+	        local LOG_JSON=$3
+	        if ! jq -c . <<<"$LOG_JSON" 2>/dev/null 1>/dev/null; then
+	            echo -e "$LOG_JSON" 1>&2
+	            return 0
+	        fi
+	        if grep -qE ":[a-z_]+:" <<<"$LOG_MESSAGE"; then
+	            LOG_MESSAGE=$(ydk:emojis substr "$LOG_MESSAGE" 4>&1)
+	        fi
+	        local LOG_ENABLED=$(jq -r '.priority.enabled // false' <<<"$LOG_JSON" 2>/dev/null)
+	        [[ $LOG_ENABLED != "true" ]] && return 0
+	        local LOG_LEVEL=$(jq -r '.priority.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_COLOR=$(jq -r '.priority.color' <<<"$LOG_JSON" 2>/dev/null || echo "info") && LOG_COLOR=${LOG_COLOR^^}
+	        local LOG_ICON=$(jq -r '.priority.icon' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_CONTEXT=$(jq -r '.context' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_TIMESTAMP=$(jq -r '.timestamp' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_PID=$(jq -r '.pid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_PPID=$(jq -r '.ppid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_ETIME=$(jq -r '.etime' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_CLI=$(jq -r '.cli' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_NAME=$(jq -r '.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+	        local LOG_FORMAT=$(jq -r '.format' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
+	        local LOG_TEMPLATE=$(jq -r '.template' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
+	        local LOG_FORMATTED=$(echo -e "$LOG_FORMAT" | sed 's/{{/\\(/g' | sed 's/}}/)/g' | sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' | sed -E 's/\| ascii_upcase/| ascii_upcase/g')
+	        {
+	            echo -ne "[${YELLOW}${YDK_BRAND^^}${NC}] "            
+	            echo -ne "${LOG_ICON} "
+	            echo -ne "[${LOG_CONTEXT^^}] "
+	            echo -ne "$LOG_MESSAGE "
+	            eval "echo -ne \"\$${LOG_COLOR:-YELLOW}\""
+	            echo -ne "[${LOG_LEVEL^^}] "
+	            echo -ne "${NC} "
+	            echo -ne "[${BLUE}$LOG_PID${NC}] "
+	            echo -ne "[${BLUE}$LOG_TIMESTAMP${NC}] "
+	            echo -ne "[${DARK_GRAY}$LOG_ETIME${NC}]"
+	            echo
+	        } 1>&2
+	        return 0
+	    }
+	    __logger:write() {
+	        local LOGGER_OPTS=$1 && shift
+	        local LOG_LEVEL_NAME=${1} && shift
+	        local LOG_LEVEL=$(jq -cr ".[] | select(.name == \"$LOG_LEVEL_NAME\") | . // {}" < <(levels 4>&1) 2>/dev/null)
+	        local LOG_MESSAGE=${*//$'\n'/\\n} && [ -z "$LOG_MESSAGE" ] && LOG_MESSAGE="$# $*"
+	        local LOG_JSON=$({
+	            echo -n "{"
+	            echo -n "\"config\": $(
+	                jq -c '
+	                    del(.template) |
+	                    del(.format) |
+	                    del(.file) |
+	                    del(.maxsize)                     
+	                ' <<<"${LOGGER_OPTS:-"{}"}"
+	            ),"
+	            echo -n "\"priority\": $(jq -c . <<<"${LOG_LEVEL:-"{}"}"),"
+	            echo -n "\"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\","
+	            echo -n "\"host\": \"$(hostname | md5sum | cut -d' ' -f1)\","
+	            echo -n "\"context\": \"${YDK_LOGGER_CONTEXT:-ydk}\","
+	            echo -n "\"pid\": $$,"
+	            echo -n "\"ppid\": $PPID,"
+	            echo -n "\"etime\": \"$(ydk:process etime)\","
+	            echo -n "\"cli\": \"${YDK_CLI_NAME:-}\","
+	            echo -n "\"name\": \"${YDK_CLI_NAME:-}\","
+	            echo -n "\"message\": "
+	            if jq -e . <<<"$LOG_MESSAGE" 2>/dev/null 1>/dev/null; then
+	                local LOG_WELLFORMATED_MESSAGE=$(jq -c . <<<"$LOG_MESSAGE")
+	            else
+	                local LOG_WELLFORMATED_MESSAGE="\"$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)\""
+	            fi
+	            echo -n "${LOG_WELLFORMATED_MESSAGE:-"\"$# $*\""}"
+	            echo -n "}"
+	            echo
+	        })
+	        {
+	            __logger:write:file "${LOGGER_OPTS}" "${LOG_JSON}" &                   #4>&1
+	            __logger:write:console "${LOG_MESSAGE}" "${LOGGER_OPTS}" "${LOG_JSON}" #& #4>&1
+	        } 4>&1
+	    }
+	    defaults() {
+	        local YDK_LOGGER_DEFAULTS=$({
+	            echo -n "{"
+	            echo -n "\"level\": \"${YDK_DEFAULTS_LOGGER[0]}\","
+	            echo -n "\"template\": \"${YDK_DEFAULTS_LOGGER[1]}\","
+	            echo -n "\"format\": \"${YDK_DEFAULTS_LOGGER[2]}\","
+	            echo -n "\"context\": \"${YDK_DEFAULTS_LOGGER[3]:-${YDK_LOGGER_CONTEXT:-ydk}}\","
+	            echo -n "\"file\": \"${YDK_DEFAULTS_LOGGER[4]}\","
+	            echo -n "\"maxsize\": \"${YDK_DEFAULTS_LOGGER[5]}\""
+	            echo -n "}"
+	        })
+	        jq -c . <<<"$YDK_LOGGER_DEFAULTS" >&4
+	        return 0
+	    }
+	    levels() {
+	        {
+	            echo -n "["
+	            for YDK_LOGGER_LEVEL_IDX in "${!YDK_LOGGER_LEVELS[@]}"; do
+	                local LOG_LEVEL=${YDK_LOGGER_LEVELS[$YDK_LOGGER_LEVEL_IDX]}
+	                echo -n "{"
+	                echo -n "\"level\": ${YDK_LOGGER_LEVEL_IDX},"
+	                echo -n "\"name\": \"${LOG_LEVEL}\","
+	                case $LOG_LEVEL in
+	                trace)
+	                    echo -n "\"color\": \"cyan\","
+	                    echo -n "\"icon\": \"🔍\""
+	                    ;;
+	                debug)
+	                    echo -n "\"color\": \"cyan\","
+	                    echo -n "\"icon\": \"🐞\""
+	                    ;;
+	                info)
+	                    echo -n "\"color\": \"DARK_GRAY\","
+	                    echo -n "\"icon\": \"💬\""
+	                    ;;
+	                warn)
+	                    echo -n "\"color\": \"yellow\","
+	                    echo -n "\"icon\": \"🔔\""
+	                    ;;
+	                error)
+	                    echo -n "\"color\": \"red\","
+	                    echo -n "\"icon\": \"🚨\""
+	                    ;;
+	                success)
+	                    echo -n "\"color\": \"BRIGHT_GREEN\","
+	                    echo -n "\"icon\": \"👍\""
+	                    ;;
+	                output)
+	                    echo -n "\"color\": \"green\","
+	                    echo -n "\"icon\": \"📝\""
+	                    ;;
+	                fatal)
+	                    echo -n "\"color\": \"red\","
+	                    echo -n "\"icon\": \"💀\""
+	                    ;;
+	                panic)
+	                    echo -n "\"color\": \"red\","
+	                    echo -n "\"icon\": \"🔥\""
+	                    ;;
+	                esac
+	                echo -n ",\"enabled\":"
+	                __logger:enabled "$LOG_LEVEL" && echo -n "true" || echo -n "false"
+	                echo -n "},"
+	            done | sed -e 's/,$//'
+	            echo -n "]"
+	        } >&4
+	    }
+	    activate() {
+	        echo "logger activated" 1>&2
+	    }
+	    local LOGGER_OPTS=$(defaults 4>&1)
+	    local LOGGER_ARGS=()
+	    while [[ $# -gt 0 ]]; do
+	        case $1 in
+	        -l | --level)
+	            LOGGER_OPTS=$(jq '. + {"level": "'"$2"'"}' <<<"$LOGGER_OPTS")
+	            shift 2
+	            ;;
+	        -c | --context)
+	            LOGGER_OPTS=$(jq '. + {"context": "'"$2"'"}' <<<"$LOGGER_OPTS")
+	            shift 2
+	            ;;
+	        -f | --format)
+	            LOGGER_OPTS=$(jq '. + {"format": "'"$2"'"}' <<<"$LOGGER_OPTS")
+	            shift 2
+	            ;;
+	        -t | --template)
+	            LOGGER_OPTS=$(jq '. + {"template": "'"$2"'"}' <<<"$YDK_LOGGER_DEFAULTS")
+	            shift 2
+	            ;;
+	        -m | --message)
+	            LOGGER_OPTS=$(jq '. + {"message": "'"$2"'"}' <<<"$LOGGER_OPTS")
+	            shift 2
+	            ;;
+	        *)
+	            LOGGER_ARGS+=("$1")
+	            shift
+	            ;;
+	        esac
+	    done
+	    set -- "${LOGGER_ARGS[@]}" && unset LOGGER_ARGS
+	    local LOG_LEVEL_OR_ACTION=${1} && shift    
+	    local LOG_LINES=()
+	    [[ -p /dev/stdin ]] && while read -r LINE; do LOG_LINES+=("$LINE"); done <&0
+	    if __logger:is:level "$LOG_LEVEL_OR_ACTION"; then
+	        __logger:write "${LOGGER_OPTS}" "$LOG_LEVEL_OR_ACTION" "$@" "${LOG_LINES[@]}" 4>&1
+	        return $?
+	    else
+	        ydk:try "$LOG_LEVEL_OR_ACTION" "$@" 4>&1
+	        return $?
+	    fi
+	}
+	{
+	    [[ -z "$YDK_DEFAULTS_LOGGER" ]] && declare -g -a YDK_DEFAULTS_LOGGER=(
+	        [0]="trace"
+	        [1]="[{{.pid}}] [{{.timestamp}}] {{.icon}} {{.level | ascii_upcase}} {{.context | ascii_upcase }} {{.message}} [{{.etime}}]"
+	        [2]="text"
+	        [3]="ydk"
+	        [4]="/var/log/ydk.log"
+	        [5]="1M"
+	    ) && readonly YDK_DEFAULTS_LOGGER
+	    [[ -z "$YDK_LOGGER_LEVELS" ]] && declare -g -a YDK_LOGGER_LEVELS=(
+	        [0]="trace"
+	        [1]="debug"
+	        [2]="info"
+	        [3]="warn"
+	        [4]="error"
+	        [5]="success"
+	        [6]="output"
+	        [7]="fatal"
+	        [8]="panic"
+	    ) && readonly YDK_LOGGER_LEVELS
+	}
+	ydk:network() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:osint() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:param() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:parse() {
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:process() {
@@ -718,34 +2111,14 @@ ydk:cli(){
 	        else
 	            ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
 	        fi
-	    }
-	    stdin() {
-	        [ ! -p /dev/stdin ] && [ ! -t 0 ] && return "$1"
-	        while IFS= read -r INPUT; do
-	            echo "$INPUT"
-	        done
-	        unset INPUT
-	    }
-	    stdout() {
-	        [ ! -p /dev/stdout ] && [ ! -t 1 ] && return "$1"
-	        while IFS= read -r OUTPUT; do
-	            echo "$OUTPUT"
-	        done
-	        unset OUTPUT
-	    }
-	    stderr() {
-	        [ ! -p /dev/stderr ] && [ ! -t 2 ] && return "$1"
-	        while IFS= read -r ERROR; do
-	            echo "$ERROR" >&2
-	        done
-	        unset ERROR
-	    }
+	    }   
+	    
 	    inspect(){
 	        jq -cn \
 	            --arg pid "$$" \
 	            --arg etime "$(etime)" \
 	            --argjson cli "$(ydk:cli)" \
-	            --argjson package "$(ydk:version)" \
+	            --argjson package "{}" \
 	            '{ 
 	                pid: $pid,
 	                etime: $etime,
@@ -753,368 +2126,1326 @@ ydk:cli(){
 	                package: $package
 	            }'
 	    }
-	    ydk:try:nnf "$@"
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:resources() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:scan() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:scap() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:secops() {
+	    YDK_LOGGER_CONTEXT="secops"
+	    ydk:log info "Continuous Security Operations"
+	    [[ -z "$YDK_SECOPS_SPECS" ]] && declare -A YDK_SECOPS_SPECS=(
+	        ["all"]="."
+	        ["count"]=". | length"
+	        ["query"]=".[] | select(.name == \$SCANNER_ID or .id == \$SCANNER_ID)"
+	        ["installed"]="
+	            .[] | 
+	            if .id == \$SCANNER_ID then 
+	                .installed = \$SCANNER_INSTALLED
+	            else 
+	                .installed = false
+	            end"
+	        ["available"]=".[] | select(.installed == true or .installed == \"true\")"
+	        ["unavailable"]=".[] | select(.installed == false or .installed == \"false\")"
+	        ["packages"]=".packages[]"
+	        ["status-log"]='
+	            .[1] |
+	            if .status == 0 then
+	                "success"
+	            else
+	                "error"
+	            end'
+	        ["result-summary"]='
+	            .[0] as $scanner |
+	            .[1] as $result |
+	            "/\($scanner.name)/\($scanner.path) done with status \($result.status) in \($result.elapsed_time) seconds. Content type \($result.content.type), at \($result.location)"'
+	        ["result-output"]='
+	            .[0] as $scanner |
+	            .[1] as $result |
+	            {
+	                "scanner": $scanner,
+	                "result": $result
+	            }'
+	    ) && readonly YDK_SECOPS_SPECS && export YDK_SECOPS_SPECS
+	    [[ -z "${YDK_SECOPS_CONFIG[*]}" ]] && declare -A YDK_SECOPS_CONFIG=(
+	        ["scanners"]="/workspace/rapd-shell/assets/scanners.json"
+	        ["auto-install"]=true
+	        ["auto-uninstall"]=false
+	        ["keep-output"]=false
+	        ["output-file"]="secops-output"
+	    )
+	    scanners() {
+	        local SCANNERS_FILE="/workspace/rapd-shell/assets/scanners.json"
+	        [ ! -f "$SCANNERS_FILE" ] && echo "[]" >&4 && ydk:log error "No scanners found" && return 1
+	        list() {
+	            ydk:log info "$(jq -cr "${YDK_SECOPS_SPECS[count]}" "$SCANNERS_FILE") scanners available"
+	            {
+	                while read -r SCANNER && [ -n "$SCANNER" ]; do
+	                    [ -z "$SCANNER" ] && continue
+	                    local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER") && [ -z "$SCANNER_ID" ] && continue
+	                    local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER") && [ -z "$SCANNER_NAME" ] && continue
+	                    local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
+	                    jq -rc \
+	                        --arg SCANNER_ID "$SCANNER_ID" \
+	                        --arg SCANNER_INSTALLED "$SCANNER_INSTALLED" \
+	                        "${YDK_SECOPS_SPECS[installed]}" "$SCANNERS_FILE"
+	                done < <(jq -c "${YDK_SECOPS_SPECS[all]} | .[]" "$SCANNERS_FILE")
+	            } | jq -rsc '.' >&4
+	            ydk:log success "Use 'scanners available' to list available scanners"
+	            return 0
+	        }
+	        get() {
+	            local SCANNER_ID=$1
+	            local SCANNER=$(
+	                jq -cr --arg SCANNER_ID "$SCANNER_ID" "${YDK_SECOPS_SPECS[query]}" <<<"$(list 4>&1)"
+	            )
+	            [ -z "$SCANNER" ] && echo "{}" >&4 && ydk:log error "Scanner ${SCANNER_ID} not found" && return 22
+	            jq -c . <<<"$SCANNER" >&4
+	            ydk:log success "Scanner found $(jq -cr '.name' <<<"$SCANNER")"
+	            return 0
+	        }
+	        available() {
+	            local SCANNERS=$(list 4>&1)
+	            local SCANNERS_INSTALLED=$(jq -cr "${YDK_SECOPS_SPECS[available]}" <<<"$SCANNERS")
+	            echo "$SCANNERS_INSTALLED" >&4
+	            local SCANNERS_INSTALLED_COUNT=$(jq -cr "${YDK_SECOPS_SPECS[count]}" <<<"$SCANNERS_INSTALLED") &&
+	                SCANNERS_INSTALLED_COUNT="${SCANNERS_INSTALLED_COUNT:-0}"
+	            [[ "$SCANNERS_INSTALLED_COUNT" -eq 0 ]] && ydk:log warn "No scanners available" && return 251
+	            [[ "$SCANNERS_INSTALLED_COUNT" -gt 0 ]] && ydk:log success "${SCANNERS_INSTALLED_COUNT} scanners available" && return 0
+	        }
+	        unavailable() {
+	            local SCANNERS=$(list 4>&1)
+	            local SCANNERS_UNINSTALLED=$(jq -cr "${YDK_SECOPS_SPECS[unavailable]}" <<<"$SCANNERS")
+	            echo "$SCANNERS_UNINSTALLED" >&4
+	            local SCANNERS_UNINSTALLED_COUNT=$(jq -cr "${YDK_SECOPS_SPECS[count]}" <<<"$SCANNERS_UNINSTALLED") &&
+	                SCANNERS_UNINSTALLED_COUNT="${SCANNERS_UNINSTALLED_COUNT:-0}"
+	            ydk:log success "${SCANNERS_UNINSTALLED_COUNT} scanners unavailable"
+	            return 0
+	        }
+	        manager() {
+	            local YDK_SECOPS_MANAGER_ACTION=$1 && [ -z "$YDK_SECOPS_MANAGER_ACTION" ] && return 22
+	            shift
+	            ydk:log info "SecOps Manager $YDK_SECOPS_MANAGER_ACTION"
+	            for SCANNER_NAME in "$@"; do
+	                local SCANNER=$(jq -c --arg SCANNER_ID "$SCANNER_NAME" "${YDK_SECOPS_SPECS[query]}" <<<"$(list 4>&1)")
+	                [ -z "$SCANNER" ] && echo "{}" >&4 && ydk:log error "Scanner ${SCANNER_NAME} not found" && return 22
+	                local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER") && [ -z "$SCANNER_ID" ] && continue
+	                read -r -a SCANNER_PACKAGES <<<"$(jq -r '.packages[]' <<<"$SCANNER")" && [ -z "${SCANNER_PACKAGES[*]}" ] && continue
+	                local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
+	                ydk:log info "Scanner $SCANNER_NAME is installed: $SCANNER_INSTALLED, packages: ${SCANNER_PACKAGES[*]}"
+	                case "$YDK_SECOPS_MANAGER_ACTION" in
+	                install)
+	                    if [ "$SCANNER_INSTALLED" = false ]; then
+	                        ydk:upm install "$SCANNER_NAME" 4>&1
+	                    fi
+	                    ;;
+	                uninstall)
+	                    if [ "$SCANNER_INSTALLED" = true ]; then
+	                        ydk:upm cli 4>&1
+	                    fi
+	                    ;;
+	                *)
+	                    ydk:log error "Unsupported action $YDK_SECOPS_MANAGER_ACTION"
+	                    return 22
+	                    ;;
+	                esac
+	            done
+	            return 0
+	        }
+	        install() {
+	            if ! manager install "$@"; then
+	                ydk:log error "Failed to install scanner $SCANNER_NAME"
+	                return 1
+	            fi
+	        }
+	        uninstall() {
+	            if ! manager uninstall "$@"; then
+	                ydk:log error "Failed to uninstall scanner $SCANNER_NAME"
+	                return 1
+	            fi
+	        }
+	        ydk:try "$@"
+	        return $?
+	    }
+	    secops:cli:entrypoint() {
+	        [ -z "$1" ] && return 22
+	        local API_SCANNER_NAME=$(cut -d'/' -f1 <<<"$1")
+	        local API_SCANNER_PATH=${1#"$API_SCANNER_NAME"} && API_SCANNER_PATH=${API_SCANNER_PATH#/}
+	        [ -z "$API_SCANNER_NAME" ] && return 22
+	        local API_SCANNER=$({
+	            if ! scanners get "$API_SCANNER_NAME" 4>&1 >&4; then
+	                ydk:log error "Scanner $API_SCANNER_NAME not found"
+	                return 10
+	            fi
+	            return 0
+	        } 4>&1)
+	        [ -z "$API_SCANNER" ] && return 22
+	        if ! {
+	            jq -cr \
+	                --arg API_SCANNER_NAME "$API_SCANNER_NAME" \
+	                --arg API_SCANNER_PATH "${API_SCANNER_PATH:-""}" \
+	                --argjson SCANNER "$(jq -c . <<<"$API_SCANNER")" \
+	                '
+	                {
+	                    "scanner":$SCANNER,
+	                    "path":$API_SCANNER_PATH,
+	                    "name":$API_SCANNER_NAME
+	                }' <<<"{}"
+	        } 2>/dev/null >&4; then
+	            ydk:log error "Scanner $SCANNER_CMD endpoint unavailable"
+	            return 1
+	        fi
+	        return 0
+	    }
+	    secops:cli:arg() {
+	        {
+	            for ARG in "$@"; do
+	                case "$ARG" in
+	                *\{\{.*\}\}*)
+	                    echo -n "$(ydk:interpolate "$ARG" "$@" 4>&1),"
+	                    ;;
+	                *) ;;
+	                esac
+	                if ydk:is number "$ARG"; then
+	                    echo -n "$ARG,"
+	                elif ydk:is boolean "$ARG"; then
+	                    echo -n "$ARG,"
+	                elif jq -e . <<<"$ARG" 2>/dev/null 1>/dev/null; then
+	                    echo -n "$(jq -c . <<<"$ARG"),"
+	                else
+	                    echo -n "\"$ARG\","
+	                fi
+	            done
+	        } | sed 's/,$//' >&4
+	        return $?
+	    }
+	    secops:cli:result:issarif() {
+	        local SCANNER_OUTPUT_FILE=$1
+	        jq -c '
+	             .version
+	             | select(. == "2.1.0")
+	             | .runs
+	             | select(. != null)
+	             | .[]
+	             | .tool
+	             | select(. != null)
+	             | .driver
+	             | select(. != null)
+	        ' <<<"$SCANNER_OUTPUT_FILE" 2>/dev/null 1>/dev/null
+	        return $?
+	    }
+	    secops:cli:result:content() {
+	        local SCANNER_OUTPUT_FILE=$1
+	        {
+	            local SCANNER_OUTPUT_TYPE=$({
+	                if jq -e . "$SCANNER_OUTPUT_FILE" 2>/dev/null 1>/dev/null; then
+	                    if secops:cli:result:issarif "$SCANNER_OUTPUT_FILE"; then
+	                        echo -n "sarif"
+	                    else
+	                        echo -n "json"
+	                    fi
+	                else
+	                    echo -n "plain"
+	                fi
+	            })
+	            echo -n "{"
+	            echo -n "\"type\":\"$SCANNER_OUTPUT_TYPE\","
+	            echo -n "\"data\":"
+	            case "$SCANNER_OUTPUT_TYPE" in
+	            "sarif" | "json")
+	                jq -c . "$SCANNER_OUTPUT_FILE" 2>/dev/null
+	                ;;
+	            "plain")
+	                echo -n "\"$(sed 's/"/\\"/g' <"$SCANNER_OUTPUT_FILE" 2>/dev/null)\""
+	                ;;
+	            *)
+	                echo -n "\"${SCANNER_OUTPUT_FILE}\""
+	                ;;
+	            esac
+	            echo -n "}"
+	        } | jq -c . >&4
+	    }
+	    secops:cli:result() {
+	        local SCANNER_OUTPUT_FILE=$1
+	        local SCANNER_STATUS=$2
+	        local SCANNER_PID=$3
+	        local SCANNER_START_AT=$4
+	        local SCANNER_END_AT=$(date +%s)
+	        local SCANNER_ELAPSED_TIME=$((SCANNER_END_AT - SCANNER_START_AT))
+	        {
+	            echo -n "{"
+	            echo -n "\"status\":$SCANNER_STATUS,"
+	            echo -n "\"pid\":$SCANNER_PID,"
+	            echo -n "\"location\":\"$SCANNER_OUTPUT_FILE\","
+	            echo -n "\"start_at\":$SCANNER_START_AT,"
+	            echo -n "\"end_at\":$SCANNER_END_AT,"
+	            echo -n "\"elapsed_time\":$SCANNER_ELAPSED_TIME,"
+	            echo -n "\"content\": $(secops:cli:result:content "$SCANNER_OUTPUT_FILE" 4>&1)"
+	            echo -n "}"
+	        } | jq -c . 2>/dev/null >&4
+	        return "$SCANNER_STATUS"
+	    }
+	    cli() {
+	        local SCANNER_ENTRYPOINT=$(secops:cli:entrypoint "$@" 4>&1)
+	        [ -z "$SCANNER_ENTRYPOINT" ] && return 22
+	        shift
+	        local SCANNER_CLI=$(jq -r '.scanner.cli' <<<"$SCANNER_ENTRYPOINT")
+	        [ -z "$SCANNER_CLI" ] && return 22
+	        local SCANNER_CMD=$(jq -r ".scanner.cli.cmd" <<<"$SCANNER_ENTRYPOINT")
+	        [ -z "$SCANNER_CMD" ] && return 22
+	        local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER_ENTRYPOINT")
+	        [ -z "$SCANNER_NAME" ] && return 22
+	        if ! command -v "$SCANNER_CMD" 2>/dev/null 1>/dev/null; then
+	            ydk:log error "Scanner $SCANNER_CMD is not installed"
+	            return 1
+	        fi
+	        read -r -a SCANNER_CMD_DEFAULT_ARGS <<<"$(jq -r '.scanner.cli.args[]' <<<"$SCANNER_ENTRYPOINT")"
+	        [ -z "${SCANNER_CMD_DEFAULT_ARGS[*]}" ] && return 22
+	        local SCANNER_CLI_METADATA=$({
+	            {
+	                echo -n "{"
+	                echo -n "\"scanner\":$(jq -c '.scanner | del(.cli)' <<<"$SCANNER_ENTRYPOINT"),"
+	                echo -n "\"cmd\":["
+	                echo -n "\"$SCANNER_CMD\","
+	                secops:cli:arg "${SCANNER_CMD_DEFAULT_ARGS[@]}" "$@" 4>&1
+	                echo -n ",\"\""
+	                echo -n "]"
+	                echo -n "}"
+	                return 0
+	            } >&4
+	        } 4>&1)
+	        if ! jq . 2>/dev/null 1>/dev/null <<<"${SCANNER_CLI_METADATA}"; then # >&4; then
+	            ydk:log error "Scanner $SCANNER_CMD cli unavailable"
+	            return 1
+	        fi
+	        [ -z "$SCANNER_CLI_METADATA" ] && return 22
+	        readarray -t SCANNER_COMMAND <<<"$(jq -cr '.cmd[]' <<<"$SCANNER_CLI_METADATA")"
+	        [ -z "${SCANNER_COMMAND[*]}" ] && return 22
+	        [[ "${#SCANNER_COMMAND[@]}" -eq 0 ]] && return 22
+	        [[ "${SCANNER_COMMAND[0]}" == "null" ]] && return 22
+	        local SCANNER_CMD=${SCANNER_COMMAND[0]}
+	        local SCANNER_CMD_ARGS=("${SCANNER_COMMAND[@]:1}")
+	        local SCANNER_CLI_OUTPUT=$(ydk:temp "secops-cli-output")
+	        ydk:log info "Running scanner $SCANNER_CMD ${SCANNER_CMD_ARGS[*]}"
+	        local SCANNER_CLI_START_AT=$(date +%s)
+	        $SCANNER_CMD "${SCANNER_CMD_ARGS[@]}" 2>/dev/null 1>"$SCANNER_CLI_OUTPUT"
+	        local SCANNER_PID=$!
+	        local SCANNER_STATUS=$?
+	        local SCANNER_CMD_LOG_ACTION="info"
+	        [ "$SCANNER_STATUS" -ne 0 ] && SCANNER_CMD_LOG_ACTION="error"
+	        ydk:log "$SCANNER_CMD_LOG_ACTION" "Scanner $SCANNER_CMD exited with status $SCANNER_STATUS"
+	        ydk:log output "Results on $SCANNER_CLI_OUTPUT"
+	        local SCANNER_CLI_RESULT=$(secops:cli:result "$SCANNER_CLI_OUTPUT" "$SCANNER_STATUS" "$SCANNER_PID" "$SCANNER_CLI_START_AT" 4>&1)
+	        [ -z "$SCANNER_CLI_RESULT" ] && return 22
+	        jq -c . <<<"$SCANNER_CLI_RESULT" >"$SCANNER_CLI_OUTPUT"
+	        if [[ "$(type -t ydk:secops:result:"${SCANNER_NAME}" 2>/dev/null)" == "function" ]]; then
+	            ydk:log debug "Parsing result"
+	            if ! ydk:secops:result:"${SCANNER_NAME}" "$SCANNER_CLI_OUTPUT" 2>/dev/null; then
+	                local YDK_SECOPS_RESULT_STATUS=$?
+	                ydk:log error "($YDK_SECOPS_RESULT_STATUS) Failed to parse result for scanner $SCANNER_NAME"
+	                return "$YDK_SECOPS_RESULT_STATUS"
+	            else
+	                ydk:log success "($YDK_SECOPS_RESULT_STATUS) Parsed result for scanner $SCANNER_NAME"
+	            fi
+	        fi
+	        jq -c . "$SCANNER_CLI_OUTPUT" >&4
+	        local SCANNER_CLI_OUTPUT_LOG=$(jq -rc '.content.data' "$SCANNER_CLI_OUTPUT" 2>/dev/null)
+	        SCANNER_CLI_OUTPUT_LOG=$(head -c 70 <<<"$SCANNER_CLI_OUTPUT_LOG" 2>/dev/null)
+	        ydk:log output "Result Data: $SCANNER_CLI_OUTPUT_LOG"
+	        return "$SCANNER_STATUS"
+	    }
+	    api() {
+	        __secops:api:validate() {
+	            local SCANNER_ENTRYPOINT=$(secops:cli:entrypoint "$@" 4>&1)
+	            [ -z "$SCANNER_ENTRYPOINT" ] && return 22
+	            shift
+	            local SCANNER_API=$(jq -cr '.scanner.api' <<<"$SCANNER_ENTRYPOINT")
+	            [ -z "$SCANNER_API" ] && return 22
+	            local SCANNER_API_METHODS=$(jq -cr '.' <<<"$SCANNER_API")
+	            [ -z "$SCANNER_API_METHODS" ] && return 22
+	            local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER_ENTRYPOINT")
+	            [ -z "$SCANNER_NAME" ] && return 22
+	            local SCANNER_API_PATH=$(jq -r '.path' <<<"$SCANNER_ENTRYPOINT")
+	            [ -z "$SCANNER_API_PATH" ] && return 22
+	            jq -c . <<<"$SCANNER_ENTRYPOINT" >&4
+	            return 0
+	        }
+	        endpoints() {
+	            local SCANNER_ENTRYPOINT=$(__secops:api:validate "$@" 4>&1)
+	            [ -z "$SCANNER_ENTRYPOINT" ] && return 22
+	            local SCANNER_API=$(jq -cr '.scanner.api' <<<"$SCANNER_ENTRYPOINT")
+	            local SCANNER_API_METHODS=$(jq -cr '.' <<<"$SCANNER_API")
+	            ydk:log info "Scanner API Methods"
+	            {
+	                echo -e "Command\tArgs"
+	                while read -r SCANNER_API_METHOD && [ -n "$SCANNER_API_METHOD" ]; do
+	                    [ -z "$SCANNER_API_METHOD" ] && continue
+	                    readarray -t SCANNER_API_METHOD_ARGS <<<"$(jq -cr '.["'"$SCANNER_API_METHOD"'"][]' <<<"$SCANNER_API_METHODS")"
+	                    [ -z "${SCANNER_API_METHOD_ARGS[*]}" ] && continue
+	                    echo -n "secops api $(jq -r '.name' <<<"$SCANNER_ENTRYPOINT") fetch "
+	                    echo -ne "$SCANNER_API_METHOD\t"
+	                    for ARG_IDX in "${!SCANNER_API_METHOD_ARGS[@]}"; do
+	                        local ARG_NAME="${SCANNER_API_METHOD_ARGS[ARG_IDX]}"
+	                        ! [[ $ARG_NAME == *\{\{.*\}\}* ]] && continue
+	                        ARG_NAME=${ARG_NAME//\{\{./--}
+	                        ARG_NAME=${ARG_NAME//\}\}/}
+	                        echo -ne "\t${ARG_NAME}="
+	                    done
+	                    echo
+	                done < <(jq -rc 'keys | .[]' <<<"$SCANNER_API_METHODS")
+	            } | column -t -s $'\t'
+	        }
+	        fetch() {
+	            local SCANNER_ENTRYPOINT=$(__secops:api:validate "$@" 4>&1)
+	            [ -z "$SCANNER_ENTRYPOINT" ] && return 22
+	            local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER_ENTRYPOINT")
+	            local SCANNER_API_PATH=$(jq -r '.path' <<<"$SCANNER_ENTRYPOINT")
+	            local SCANNER_API=$(jq -cr '.scanner.api' <<<"$SCANNER_ENTRYPOINT")
+	            local SCANNER_API_METHODS=$(jq -cr '.' <<<"$SCANNER_API")
+	            readarray -t SCANNER_API_METHOD_ARGS <<<"$(jq -cr '.scanner.api["'"$SCANNER_API_PATH"'"][]' <<<"$SCANNER_ENTRYPOINT")"
+	            for SCANNER_API_METHOD_ARG in "$@"; do
+	                if [[ $SCANNER_API_METHOD_ARG == --*=* ]]; then
+	                    local KEY=${SCANNER_API_METHOD_ARG%%=*}
+	                    local VALUE=${SCANNER_API_METHOD_ARG#*=}
+	                    KEY=${KEY#--}
+	                    KEY=${KEY//./}
+	                    for i in "${!SCANNER_API_METHOD_ARGS[@]}"; do
+	                        SCANNER_API_METHOD_ARGS[i]=${SCANNER_API_METHOD_ARGS[i]//\{\{.$KEY\}\}/$VALUE}
+	                    done
+	                fi
+	            done
+	            {
+	                echo -n "{"
+	                echo -n "\"args\":["
+	                for i in "${!SCANNER_API_METHOD_ARGS[@]}"; do
+	                    if ydk:is number "${SCANNER_API_METHOD_ARGS[i]}"; then
+	                        echo -n "${SCANNER_API_METHOD_ARGS[i]},"
+	                    elif ydk:is boolean "${SCANNER_API_METHOD_ARGS[i]}"; then
+	                        echo -n "${SCANNER_API_METHOD_ARGS[i]},"
+	                    elif jq -e . <<<"${SCANNER_API_METHOD_ARGS[i]}" 2>/dev/null 1>/dev/null; then
+	                        echo -n "$(jq -c . <<<"${SCANNER_API_METHOD_ARGS[i]}"),"
+	                    else
+	                        echo -n "\"${SCANNER_API_METHOD_ARGS[i]}\","
+	                    fi
+	                done | sed 's/,$//'
+	                echo -n "]"
+	                echo -n "}"
+	            } | jq -c \
+	                --argjson ENTRYPOINT "$SCANNER_ENTRYPOINT" \
+	                '
+	                $ENTRYPOINT + .
+	            ' >&4
+	            ydk:log info "Running scanner $SCANNER_NAME API"
+	            ydk:secops cli "$SCANNER_NAME" "${SCANNER_API_METHOD_ARGS[@]}" 4>&1
+	            return $?
+	        }
+	        case "$1" in
+	        fetch)
+	            shift
+	            local API_FETCH=$({
+	                fetch "$@" 4>&1 >&4
+	                local API_FETCH_STATUS=$?
+	                [ "$API_FETCH_STATUS" -ne 0 ] && ydk:log error "($API_FETCH_STATUS) Failed to fetch API"
+	            } 4>&1)
+	            [ -z "$API_FETCH" ] && return 22
+	            jq -cs "${YDK_SECOPS_SPECS["result-output"]}" <<<"$API_FETCH" >&4
+	            ydk:log -c "${YDK_LOGGER_CONTEXT}:fetch" \
+	                "$(jq -sr "${YDK_SECOPS_SPECS["status-log"]}" <<<"$API_FETCH" 2>/dev/null)" \
+	                "$(jq -rs "${YDK_SECOPS_SPECS["result-summary"]}" <<<"$API_FETCH" 2>/dev/null)"
+	            return 0
+	            ;;
+	        endpoints)
+	            shift
+	            endpoints "$@" 4>&1
+	            return $?
+	            ;;
+	        *)
+	            ydk:try "$@" 4>&1
+	            return $?
+	            ;;
+	        esac
+	    }
+	    secops:plan:merge() {
+	        local ASSETS=$1
+	        if [[ -p /dev/stdin ]]; then
+	            local ASSETS=$(jq -c '.' /dev/stdin 2>/dev/null)
+	        elif [[ -f "$ASSETS" ]]; then
+	            local ASSETS=$(jq -c '.' "$ASSETS" 2>/dev/null)
+	        else
+	            local ASSETS=$(jq -c '.' <<<"$ASSETS" 2>/dev/null)
+	        fi
+	        if [[ -z "$ASSETS" ]]; then
+	            ydk:log error "Failed to parse assets"
+	            return 22
+	        fi
+	        local ASSETS_COUNT=$(jq -rc '. | length' <<<"${ASSETS}")
+	        if [ "${ASSETS_COUNT}" -gt 10 ]; then
+	            ydk:log error "Multiple assets not supported"
+	            return 1
+	        fi
+	        jq -cn \
+	            --argjson ASSETS "${ASSETS}" \
+	            --argjson SCANNERS "$(scanners list 4>&1)" \
+	            '
+	            {
+	                "assets":$ASSETS,
+	                "scanners":$SCANNERS
+	            }
+	            ' >&4
+	        return 0
+	    }
+	    plan() {
+	        local ASSETS="$1" && [ -z "$ASSETS" ] && return 22
+	        if ! jq -e . "$ASSETS" 2>/dev/null 1>/dev/null; then
+	            ydk:log error "Failed to parse assets"
+	            return 22
+	        fi
+	        local SECOPS_PLAN_SCANNERS=$(jq -c "." < <(scanners list 4>&1) 2>/dev/null)
+	        local SECOPS_PLAN_FILE=$(ydk:temp "secops-plan")
+	        local SECOPS_PLAN="{}"
+	        ydk:log info "SecOps Plan ${SECOPS_PLAN_FILE}"
+	        while read -r ASSET && [ -n "$ASSET" ]; do
+	            if ! jq -e . <<<"$ASSET" 2>/dev/null 1>/dev/null; then
+	                ydk:log error "Failed to parse asset"
+	                continue
+	            fi
+	            local ASSET_TYPE=$(jq -r '.type' <<<"$ASSET" 2>/dev/null) && [ -z "$ASSET_TYPE" ] && continue
+	            ASSET_TYPE="asset/$ASSET_TYPE"
+	            local SECOPS_PLAN_SCANNER_APIS=$(
+	                jq -c '
+	                    .[] |
+	                    select(.api != null) |
+	                    .api |
+	                    to_entries |
+	                    .[] |
+	                    select(.key == "'"${ASSET_TYPE}"'") |
+	                    .
+	                ' <<<"$SECOPS_PLAN_SCANNERS" 2>/dev/null
+	            )
+	            echo "$ASSET_TYPE / $SECOPS_PLAN_SCANNER_APIS" 1>&2
+	        done < <(jq -c ".[]" "$ASSETS" 2>/dev/null)
+	        jq -c . <<<"$SECOPS_PLAN" >"$SECOPS_PLAN_FILE"
+	        jq -c . "$SECOPS_PLAN_FILE" >&4
+	        ydk:log success "SecOps Plan ${SECOPS_PLAN_FILE}"
+	        rm -f "$SECOPS_PLAN_FILE"
+	        return 0
+	    }
+	    secops:opts() {
+	        while [ "$#" -gt 0 ]; do
+	            case "$1" in
+	            -i | auto-install)
+	                YDK_SECOPS_CONFIG["auto-install"]=true
+	                ydk:log warn "Auto install enabled"
+	                ;;
+	            -u | auto-uninstall)
+	                YDK_SECOPS_CONFIG["auto-uninstall"]=true
+	                ydk:log warn "Auto uninstall enabled"
+	                ;;
+	            -k | keep-output)
+	                YDK_SECOPS_CONFIG["keep-output"]=true
+	                ydk:log warn "Keep output enabled"
+	                ;;
+	            -o=* | --output-file=*)
+	                YDK_SECOPS_CONFIG["output-file"]="${1#*=}"
+	                ydk:log debug "Output file set to ${YDK_SECOPS_CONFIG["output-file"]}"
+	                ;;
+	            *)
+	                YDK_SECOPS_OPTS+=("$1")
+	                ;;
+	            esac
+	            shift
+	        done
+	        return 0
+	    }
+	    local YDK_SECOPS_OPTS=() && secops:opts "$@" && set -- "${YDK_SECOPS_OPTS[@]}" && unset YDK_SECOPS_OPTS
+	    ydk:try "$@" 4>&1
+	    return $?
+	}
+	{
+	    ydk:secops:result:cloc() {
+	        echo "ydk:secops:result:cloc $# $*" 1>&2 # >&4
+	        return 0
+	    }
+	}
+	ydk:spinner() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:spwan() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:store() {
+	    ydk:try "$@"
 	    return $?
 	}
 	ydk:strings() {
-	    echo "strings"
-	    return 0
+	    trim() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        echo "$STR" | awk '{$1=$1};1'
+	    }
+	    contains() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        local SUB="$2"
+	        echo "$STR" | grep -- "$SUB" >/dev/null 2>&1
+	    }
+	    endswith() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        local SUB="$2"
+	        echo "$STR" | grep -- "$SUB\$" >/dev/null 2>&1
+	    }
+	    startswith() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        local SUB="$2"
+	        echo "$STR" | grep -- "^$SUB" >/dev/null 2>&1
+	    }
+	    lowercase() {
+	        tr '[:upper:]' '[:lower:]'
+	    }
+	    uppercase() {
+	        tr '[:lower:]' '[:upper:]'
+	    }
+	    capitalize() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        echo "$STR" | sed 's/\b\(.\)/\u\1/g'
+	    }
+	    reverse() {
+	        rev
+	    }
+	    count_char() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        local CHAR="$2"
+	        local COUNT="${#STR}"
+	        local STRIPPED="${STR//"$CHAR"/}"
+	        local COUNT_STRIPPED="${#STRIPPED}"
+	        echo $((COUNT - COUNT_STRIPPED))
+	    }
+	    mask() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        local MASK="${2:-*}"
+	        local LENGTH="${#STR}"
+	        local MASK_LEN="${#MASK}"
+	        local MASKED=""
+	        for ((i = 0; i < LENGTH; i++)); do
+	            [ "$i" -lt 1 ] && MASKED+="${STR:i:1}" && continue
+	            [ "$i" -eq $((LENGTH - 1)) ] && MASKED+="${STR:i:1}" && continue
+	            MASKED+="${MASK:i%MASK_LEN:1}"
+	        done
+	        echo "$MASKED"
+	    }
+	    sanetize() {
+	        local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
+	        {
+	            echo -n "$STR" |
+	                sed -e 's/[^a-zA-Z0-9]/_/g' \
+	                    -e 's/__*/_/g' \
+	                    -e 's/^_//g' \
+	                    -e 's/_$//g' \
+	                    -r "s/\x1B\[[0-9;]*[mK]//g" |
+	                sed 's/\x1b\[[0-9;]*m//g'
+	        } >&4
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:styles() {
+	    YWT_LOG_CONTEXT="styles"
+	    apply() {
+	        local STYLE=${1:-bold} && STYLE=${STYLE,,}
+	        local TEXT=${2}
+	        local KIND=${3:-normal} && KIND=${KIND,,}
+	        [[ ! $KIND =~ ^(normal|italic|underline|blink|inverse|hidden)$ ]] && KIND=normal
+	        case $STYLE in
+	        bold) STYLE=1 ;;
+	        dim) STYLE=2 ;;
+	        italic) STYLE=3 ;;
+	        underline) STYLE=4 ;;
+	        blink) STYLE=5 ;;
+	        inverse) STYLE=7 ;;
+	        hidden) STYLE=8 ;;
+	        esac
+	        echo -ne "\e[${STYLE}m${TEXT}\e[0m" >&4
+	    }
+	    list() {
+	        local STYLES=("${!YDK_STYLES[@]}")
+	        {
+	            echo -e $'style\techo\tsdk\tcli'
+	            for STYLE in "${STYLES[@]}"; do
+	                echo -ne "${STYLE,,}\t"
+	                echo -ne "${YDK_STYLES[$STYLE]}echo \"\${$STYLE}ydk-shell\${\$NC}\"${YDK_STYLES[NC]}\t"
+	                echo -ne "$(
+	                    ydk:styles:"${STYLE,,}" "ydk:styles:${STYLE,,} \"ydk-shell\"" 2>/dev/null
+	                )\t"
+	                echo -ne "$(
+	                    apply "${STYLE,,}" "ydk styles apply ${STYLE,,} \"ydk-shell\"" 4>&1
+	                )"
+	                echo
+	            done
+	        } | column -t -s $'\t' >&4
+	    }
+	    hyperlink() {
+	        local OSC=$'\e]'
+	        local BEL=$'\a'
+	        local SEP=';'
+	        local PARAM_SEP=':'
+	        local EQ='='
+	        local URI=$1
+	        local TEXT=$2
+	        local PARAMS=$3
+	        local PARAM_STR=""
+	        for PARAM in "${!PARAMS[@]}"; do
+	            PARAM_STR+="${PARAM}${EQ}${PARAMS[$param]}${PARAM_SEP}"
+	        done
+	        PARAM_STR=${PARAM_STR%"$PARAM_SEP"}
+	        printf "%s8%s%s%s%s%s%s%s8%s%s%s" "$OSC" "$SEP" "$PARAM_STR" "$SEP" "$URI" "$BEL" "$TEXT" "$OSC" "$SEP" "$SEP" "$BEL"
+	        echo -e "${NC}${NSTL}${NBG}" >&4
+	    }
+	    ydk:try "$@" 4>&1
+	    return $?
+	}
+	{
+	    [[ -z "$YDK_STYLES" ]] && declare -g -A YDK_STYLES=(
+	        [NC]="\033[0m"
+	        [BOLD]="\033[1m"
+	        [DIM]="\033[2m"
+	        [ITALIC]="\033[3m"
+	        [UNDERLINE]="\033[4m"
+	        [BLINK]="\033[5m"
+	        [INVERSE]="\033[7m"
+	        [HIDDEN]="\033[8m"
+	        [STRIKETHROUGH]="\033[9m"
+	    ) && readonly YDK_STYLES && {
+	        for STYLE in "${!YDK_STYLES[@]}"; do
+	            STYLE_CODE="${YDK_STYLES[$STYLE]}"
+	            declare -g "${STYLE^^}=${STYLE_CODE}"
+	            eval "ydk:styles:${STYLE,,}() { echo -en \"${STYLE_CODE}\${*}${NC}\"; }"
+	            export -f "ydk:styles:${STYLE,,}"
+	        done
+	    }
+	}
+	ydk:tcp() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:team() {
+	    local YDK_LOGGER_CONTEXT="team"
+	    release() {
+	        local YDK_OUTPUT=$({
+	            echo -n "{"
+	            echo -n "   \"id\": \"$(git rev-parse --short HEAD 2>/dev/null || echo "Unknown")\","
+	            echo -n "   \"hash\": \"$(git rev-parse HEAD 2>/dev/null || echo "Unknown")\","
+	            echo -n "   \"branch\": \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "Unknown")\","
+	            echo -n "   \"tag\": \"$(git describe --tags 2>/dev/null || echo "Unknown")\","
+	            echo -n "   \"message\": \"$(git log -1 --pretty=format:'%s' 2>/dev/null || echo "Unknown")\""
+	            echo -n "}"
+	        })
+	        ydk:logger success "$(jq -rc '.id + " SDK " + .tag + " | " + .message' <<<"$YDK_OUTPUT" 2>/dev/null)"
+	        echo "$YDK_OUTPUT" >&4
+	        return 0
+	    }
+	    info() {
+	        local YDK_OUTPUT=$({
+	            echo -n "{"
+	            echo -n "\"license\": \"MIT\","
+	            echo -n "\"repo\": {"
+	            echo -n "\"owner\": \"$YDK_OWNER\","
+	            echo -n "\"name\": \"$YDK_REPO\","
+	            echo -n "\"branch\": \"$YDK_BRANCH\","
+	            echo -n "\"version\": \"$YDK_VERSION\","
+	            echo -n "\"api\": \"https://api.github.com/repos/$YDK_OWNER/$YDK_REPO\","
+	            echo -n "\"raw\": \"https://raw.githubusercontent.com/$YDK_OWNER/$YDK_REPO/$YDK_BRANCH\","
+	            echo -n "\"homepage\": \"${YDK_LINKS[homepage]}\""
+	            echo -n "},"
+	            echo -n "\"info\": {"
+	            echo -n "\"team\": \"${YDK_INFO[team]}\","
+	            echo -n "\"name\": \"${YDK_INFO[name]}\","
+	            echo -n "\"version\": \"${YDK_INFO[version]}\","
+	            echo -n "\"description\": \"${YDK_INFO[description]}\""
+	            echo -n "},"
+	            echo -n "\"author\": {"
+	            echo -n "\"name\": \"${YDK_AUTHOR[name]}\","
+	            echo -n "\"email\": \"${YDK_AUTHOR[email]}\","
+	            echo -n "\"uri\": \"${YDK_AUTHOR[uri]}\""
+	            echo -n "},"
+	            echo -n "\"build\": {"
+	            echo -n "   \"name\": \"ydk-shell\","
+	            echo -n "   \"date\": \"$(date -Iseconds)\""
+	            echo -n "},"
+	            echo -n "\"release\": {"
+	            echo -n "   \"name\": \"ydk-shell\","
+	            echo -n "   \"date\": \"$(date -Iseconds)\""
+	            echo -n "}"
+	            echo -n "}"
+	        })
+	        echo "$YDK_OUTPUT" >&4
+	        return 0
+	    }
+	    welcome() {
+	        local YDK_TEAM_INFO=$(info 4>&1)
+	        ydk:logger success "$(jq -rc '.info.team + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"
+	        ydk:logger info "Need a help? Visit ${YDK_LINKS[docs]} :book:"
+	        return 0
+	    }
+	    copyright() {
+	        local YDK_TEAM_INFO={} YDK_RELEASE_INFO={}
+	        info && read -r -u 4 YDK_TEAM_INFO || return $?
+	        release && read -r -u 4 YDK_RELEASE_INFO || return $?
+	        echo "# YELLOW TEAM BUNDLE"
+	        echo "# $(jq -c .info <<<"$YDK_TEAM_INFO")"
+	        echo "# This file is generated by yellowteam sdk builder. Do not edit this file"
+	        echo "# Build date: $(date -Iseconds)"
+	        echo "# Build ID: $(jq -r .id <<<"$YDK_RELEASE_INFO")"
+	        echo "# Build branch: $(jq -r .branch <<<"$YDK_RELEASE_INFO")"
+	        echo "# Build tag: $(jq -r .tag <<<"$YDK_RELEASE_INFO")"
+	        echo "# Build commit: $(jq -r .hash <<<"$YDK_RELEASE_INFO")"
+	        echo "# Build message: $(jq -r .message <<<"$YDK_RELEASE_INFO")"
+	        return 0
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	{
+	    [[ -z "$YDK_OWNER" ]] && export YDK_OWNER="ywteam" # "cloudyellowteam"
+	    [[ -z "$YDK_REPO" ]] && export YDK_REPO="ydk-shell" && readonly YDK_REPO
+	    [[ -z "$YDK_BRANCH" ]] && export YDK_BRANCH="main" && readonly YDK_BRANCH
+	    [[ -z "$YDK_VERSION" ]] && export YDK_VERSION="0.0.0-dev-0"
+	    [[ -z "$YDK_LINKS" ]] && declare -g -A YDK_LINKS=(
+	        ["homepage"]="https://yellowteam.cloud"
+	        ["api"]="https://api.github.com/repos/${YDK_OWNER}/${YDK_REPO}"
+	        ["raw"]="https://raw.githubusercontent.com/${YDK_OWNER}/${YDK_REPO}/${YDK_BRANCH}"
+	        ["bugs"]="https://bugs.yellowteam.cloud"
+	        ["docs"]="https://docs.yellowteam.cloud"
+	        ["wiki"]="https://wiki.yellowteam.cloud"
+	        ["chat"]="https://chat.yellowteam.cloud"
+	        ["forum"]="https://forum.yellowteam.cloud"
+	        ["store"]="https://store.yellowteam.cloud"
+	    ) && readonly YDK_LINKS
+	    [[ -z "$YDK_INFO" ]] && declare -g -A YDK_INFO=(
+	        ["team"]="@ywteam"
+	        ["name"]="https://yellowteam.cloud/ydk-shell"
+	        ["version"]="$YDK_VERSION"
+	        ["description"]="shell SDK"
+	    ) && readonly YDK_INFO
+	    [[ -z "$YDK_AUTHOR" ]] && declare -g -A YDK_AUTHOR=(
+	        ["name"]="Raphael Rego"
+	        ["email"]="hello@raphaelcarlosr.dev"
+	        ["homepage"]="https://raphaelcarlosr.dev"
+	    ) && readonly YDK_AUTHOR
+	}
+	ydk:tests() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:timezones() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:upm() {
+	    local YDK_LOGGER_CONTEXT="upm"
+	    detect() {
+	        local OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
+	        local OS_VENDOR=$({
+	            case $OS_NAME in
+	            linux)
+	                local OS_VENDOR=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"')
+	                ;;
+	            darwin)
+	                local OS_VENDOR="macos"
+	                ;;
+	            cygwin* | mingw* | msys*)
+	                local OS_VENDOR="windows"
+	                ;;
+	            *)
+	                local OS_VENDOR="unknown"
+	                ;;
+	            esac
+	            OS_VENDOR=${OS_VENDOR,,}
+	            echo -n "{"
+	            echo -n "\"os\":\"$OS_NAME\","
+	            echo -n "\"vendor\":\"$OS_VENDOR\","
+	            echo -n "\"managers\":{"
+	            local IFS=" "
+	            for PM in ${YDK_UPM_OS_MAP[$OS_VENDOR]}; do
+	                echo -n "\"$PM\":{ "
+	                echo -n "\"installed\":$(command -v "$PM" &>/dev/null && echo -n "true" || echo -n "false"),"
+	                echo -n "\"path\":\"$(command -v "$PM" 2>/dev/null)\","
+	                echo -n "\"version\":\"$($PM --version 2>/dev/null)\""
+	                echo -n "},"
+	            done | sed 's/,$//'
+	            echo -n "}"
+	            echo -n "}"
+	        } | jq -c .)
+	        ydk:logger output < <(
+	            jq -rc '
+	                "\(.os)/\(.vendor). \(.managers | length) package managers detected. \(.managers | keys | join(" "))"
+	            ' <<<"${OS_VENDOR}"
+	        )
+	        jq -c . <<<"${OS_VENDOR}" >&4
+	        return 0
+	    }
+	    vendor() {
+	        local MANAMGER_NAME=$1
+	        jq -r "
+	            .[] | 
+	            select(.name == \"$MANAMGER_NAME\") |
+	            first(.)
+	        " "/workspace/rapd-shell/assets/upm.vendors.json" >&4
+	    }
+	    cli() {
+	        local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
+	        [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
+	        local UPM_MANAGER=$(
+	            jq -r '
+	                if .managers != null then
+	                    .managers | 
+	                    to_entries[] |
+	                    select(.value.installed == true) | 
+	                    first(.key)
+	                else
+	                    empty
+	                end
+	            ' <<<"$YDK_UPM_DETECT"
+	        )
+	        [[ -z "$UPM_MANAGER" ]] && ydk:throw 255 "No package manager found"
+	        local UPM_MANAGER_VENDOR=$(vendor "$UPM_MANAGER" 4>&1)
+	        [[ -z "$UPM_MANAGER_VENDOR" ]] && ydk:throw 255 "No package manager vendor found"
+	        local UPM_MANAGER=$({
+	            jq -n \
+	                --argjson DETECT "$YDK_UPM_DETECT" \
+	                --arg UPM_MANAGER "$UPM_MANAGER" \
+	                --argjson UPM_VENDOR "$UPM_MANAGER_VENDOR" \
+	                '{
+	                os: $DETECT.os,
+	                vendor: $DETECT.vendor,
+	                manager: ($UPM_VENDOR + {
+	                    path: $DETECT.managers[$UPM_MANAGER].path,
+	                    version: $DETECT.managers[$UPM_MANAGER].version
+	                }),                
+	                managers: $DETECT.managers                
+	            }'
+	        })
+	        ydk:log info "Detected package manager $(jq -r '.manager.name' <<<"$UPM_MANAGER")"
+	        jq . <<<"$UPM_MANAGER" >&4
+	    }
+	    cmd() {
+	        local UPM_MANAGER_CMD=$1 && [ -z "$UPM_MANAGER_CMD" ] && return 22
+	        shift
+	        local YDK_UPM_CLI=$(cli 4>&1) && [[ -z "$YDK_UPM_CLI" ]] && return 255
+	        local UPM_MANAGER=$(jq -r '.manager' <<<"$YDK_UPM_CLI") && [[ -z "$UPM_MANAGER" ]] && return 255
+	        local UPM_MANAGER_NAME=$(jq -r '.name' <<<"$UPM_MANAGER")
+	        local UPM_MANAGER_VERSION=$(jq -r '.version' <<<"$UPM_MANAGER")
+	        local UPM_MANAGER_CONFIRM=$(jq -r '.confirm' <<<"$UPM_MANAGER")
+	        UPM_MANAGER_CONFIRM=${UPM_MANAGER_CONFIRM%%\/*}
+	        local UPM_MANAGER_COMMAND=$(jq -r '.'"${UPM_MANAGER_CMD}"'' <<<"$UPM_MANAGER")
+	        UPM_MANAGER_COMMAND=${UPM_MANAGER_COMMAND//\$/}
+	        [[ -z "$UPM_MANAGER_COMMAND" ]] && return 255
+	        local UPM_COMMAND="$UPM_MANAGER_COMMAND"
+	        case $UPM_MANAGER_CMD in
+	        install | remove | upgrade)
+	            UPM_COMMAND+=" $UPM_MANAGER_CONFIRM"
+	            ;;
+	        list_installed)
+	            UPM_COMMAND=${UPM_COMMAND%%\/*}            
+	            ;;
+	        *) ;;
+	        esac
+	        ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION"
+	        $UPM_COMMAND "$@"
+	        return $?
+	    }
+	    install() {
+	        cmd install "$@"
+	        return $?
+	    }
+	    uninstall() {
+	        cmd remove "$@"
+	        return $?
+	    }
+	    upgrade() {
+	        cmd upgrade "$@"
+	        return $?
+	    }
+	    search() {
+	        cmd search "$@"
+	        return $?
+	    }
+	    info() {
+	        cmd info "$@"
+	        return $?
+	    }
+	    update() {
+	        cmd update_index
+	        return $?
+	    }
+	    upgrade_all() {
+	        cmd upgrade_all
+	        return $?
+	    }
+	    installed() {
+	        cmd list_installed
+	        return $?
+	    }
+	    ydk:try "$@"
+	    return $?
+	}
+	{
+	    declare -g -A YDK_UPM_OS_MAP=(
+	        [windows]="scoop choco winget"
+	        [macos]="brew port"
+	        [ubuntu]="apt"
+	        [debian]="apt"
+	        [linuxmint]="apt"
+	        [pop]="apt"
+	        [deepin]="apt"
+	        [elementray]="apt"
+	        [kali]="apt"
+	        [raspbian]="apt"
+	        [aosc]="apt"
+	        [zorin]="apt"
+	        [antix]="apt"
+	        [devuan]="apt"
+	        [bodhi]="apt"
+	        [lxle]="apt"
+	        [sparky]="apt"
+	        [fedora]="dnf yum"
+	        [redhat]="dnf yum"
+	        [rhel]="dnf yum"
+	        [amzn]="dnf yum"
+	        [ol]="dnf yum"
+	        [almalinux]="dnf yum"
+	        [rocky]="dnf yum"
+	        [oubes]="dnf yum"
+	        [centos]="dnf yum"
+	        [qubes]="dnf yum"
+	        [eurolinux]="dnf yum"
+	        [arch]="pacman"
+	        [manjaro]="pacman"
+	        [endeavouros]="pacman"
+	        [arcolinux]="pacman"
+	        [garuda]="pacman"
+	        [antergos]="pacman"
+	        [kaos]="pacman"
+	        [alpine]="apk"
+	        [postmarket]="apk"
+	        [opensuse]="zypper"
+	        [opensuse - leap]="zypper"
+	        [opensuse - tumbleweed]="zypper"
+	        [nixos]="nix-env"
+	        [gentoo]="emerge"
+	        [funtoo]="emerge"
+	        [void]="xbps"
+	        [mageia]="urpm"
+	        [slackware]="slackpkg"
+	        [solus]="eopkg"
+	        [openwrt]="opkg"
+	        [nutyx]="cards"
+	        [crux]="prt-get"
+	        [freebsd]="pkg"
+	        [ghostbsd]="pkg"
+	        [android]="pkg(termux)"
+	        [haiku]="pkgman"
+	    )
+	}
+	ydk:usage() {
+	    local YDK_USAGE_STATUS=$?
+	    [[ $1 =~ ^[0-9]+$ ]] && local YDK_USAGE_STATUS="${1}" && shift
+	    local YDK_USAGE_MESSAGE="${1:-"command not found"}" && shift
+	    local YDK_USAGE_COMMAND_ARGS=("$@")
+	    local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_USAGE_STATUS]:-"An error occurred"}"
+	    echo -n "{"
+	    echo -n "\"error\": true,"
+	    echo -n "\"status\": $YDK_USAGE_STATUS,"
+	    echo -n "\"message\": \"${YDK_ERROR_MESSAGE}. ${YDK_USAGE_MESSAGE}\","
+	    echo -n "\"command\": \"$1\","
+	    echo -n "\"args\": ["
+	    for YDK_USAGE_COMMAND_ARG in "${YDK_USAGE_COMMAND_ARGS[@]}"; do
+	        echo -n "\"${YDK_USAGE_COMMAND_ARG}\","
+	    done | sed -e 's/,$//'
+	    echo -n "],"
+	    echo -n "\"available\": "
+	    ydk:functions
+	    echo -n "}"
+	    echo
+	    return "$YDK_USAGE_STATUS"
+	}
+	ydk:users() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:vault() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:versions() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:watcher() {
+	    ydk:try "$@"
+	    return $?
+	}
+	ydk:worker() {
+	    ydk:try "$@"
+	    return $?
 	}
 	YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 	YDK_CLI_ARGS=("$@")
+	export YDK_BRAND="YDK" && readonly YDK_BRAND
+	export YDK_PACKAGE_NAME="ydk-shell" && readonly YDK_PACKAGE_NAME
+	export YDK_IS_INSTALL=false && [[ "${1,,}" =~ ^(install|setup|upgrade|uninstall|remove|purge)$ ]] && YDK_IS_INSTALL=true
+	readonly YDK_IS_INSTALL
+	set -e -o pipefail
+	set -e -o errtrace
 	ydk() {
-	    set -e -o pipefail
+	    local YDK_CLI_NAME=$(basename "${YDK_CLI_ENTRYPOINT}") && readonly YDK_CLI_FILE_NAME
+	    local YDK_CLI_DIR=$(cd "$(dirname "${YDK_CLI_ENTRYPOINT}")" && pwd) && readonly YDK_CLI_DIR
 	    local YDK_INITIALIZED=false
-	    local YDK_POSITIONAL=()
-	    local YDK_DEPENDENCIES=("jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column")
-	    local YDK_MISSING_DEPENDENCIES=()
-	    ydk:log() {
-	        local YDK_LOG_LEVEL="${1:-"INFO"}"
-	        local YDK_LOG_MESSAGE="${2:-""}"
-	        local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-	        echo "[YDK][$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^}: $YDK_LOG_MESSAGE" 1>&2
+	    local YDK_BOOTSTRAPED=false
+	    export YDK_POSITIONAL_ARGS=()
+	    local YDK_PATH_TMP="/tmp/ywteam/${YDK_PACKAGE_NAME}" && mkdir -p "${YDK_PATH_TMP}"
+	    local YDK_DEPENDENCIES=(
+	        "jq" "curl" "sed" "awk" "tr" "sort" "basename" "dirname" "mktemp" "openssl" "column" "ps" "kill" "trap" "mkfifo"
+	    )
+	    local YDK_DEPENDENCIES_MISSING=()
+	    ydk:prgma() {
+	        local YDK_VERSION="0.0.0-dev-0"
+	        [ -f "${YDK_CLI_DIR}/VERSION" ] && YDK_VERSION=$(cat "./VERSION")
+	        local YDK_CLI_BINARY=false
+	        if command -v file >/dev/null 2>&1; then
+	            file "${YDK_CLI_ENTRYPOINT}" | grep -q "ELF" && YDK_CLI_BINARY=true
+	        elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
+	            YDK_CLI_BINARY=true
+	        fi
+	        local YDK_CLI=$({
+	            echo -n "{"
+	            echo -n "\"brand\": \"${YDK_BRAND}\","
+	            echo -n "\"package\": \"${YDK_PACKAGE_NAME}\","
+	            echo -n "\"version\": \"${YDK_VERSION}\","
+	            echo -n "\"binary\": ${YDK_CLI_BINARY},"
+	            echo -n "\"cwd\": \"$(pwd)\","
+	            echo -n "\"entrypoint\": \"${YDK_CLI_ENTRYPOINT}\","
+	            echo -n "\"name\": \"${YDK_CLI_NAME//.cli.sh/}\","
+	            echo -n "\"file\": \"${YDK_CLI_NAME}\","
+	            echo -n "\"path\": \"${YDK_CLI_DIR}\","
+	            echo -n "\"args\": ["
+	            for YDK_CLI_ARG in "${YDK_CLI_ARGS[@]}"; do
+	                echo -n "\"${YDK_CLI_ARG}\","
+	            done | sed 's/,$//'
+	            echo -n "],"
+	            echo -n "\"sources\": ["
+	            for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
+	                YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
+	                echo -n "\"${YDK_BASH_SOURCE}\","
+	            done | sed 's/,$//'
+	            echo -n "]"
+	            echo -n "}"
+	        })
+	        echo "$YDK_CLI" >&4
+	        ydk:log "info" ":shorts: ${YDK_PACKAGE_NAME}@${YDK_VERSION} $([[ "${YDK_CLI_BINARY}" == true ]] && echo "app" || echo "sdk")"
+	        return 0
 	    }
 	    ydk:require() {
+	        local RESULT=0
 	        for DEPENDENCY in "${@}"; do
 	            ! echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && YDK_DEPENDENCIES+=("${DEPENDENCY}")
 	            if ! command -v "$DEPENDENCY" >/dev/null 2>&1; then
-	                YDK_MISSING_DEPENDENCIES+=("${DEPENDENCY}")
+	                YDK_DEPENDENCIES_MISSING+=("${DEPENDENCY}")
+	                RESULT=1
 	            fi
 	        done
-	        [ "${#YDK_MISSING_DEPENDENCIES[@]}" -eq 0 ] && return 0
-	        {
+	        local DETAILS=$({
 	            echo -n "{"
-	            echo -n "\"error\": \"missing ${#YDK_MISSING_DEPENDENCIES[@]} dependencies\","
+	            echo -n "\"error\":"
+	            [[ "${#YDK_DEPENDENCIES_MISSING[@]}" -eq 0 ]] && echo -n "false," || echo -n "true,"
+	            echo -n "\"missing\": ${#YDK_DEPENDENCIES_MISSING[@]},"
 	            echo -n "\"dependencies\": ["
-	            for MISSING_DEPENDENCY in "${YDK_MISSING_DEPENDENCIES[@]}"; do
+	            for MISSING_DEPENDENCY in "${YDK_DEPENDENCIES_MISSING[@]}"; do
 	                echo -n "\"${MISSING_DEPENDENCY}\","
 	            done | sed 's/,$//'
 	            echo -n "]"
 	            echo -n "}"
-	        } | jq -c .
-	        return 1
-	    }
-	    ydk:cli() {
-	        YDK_RUNTIME_ENTRYPOINT="$YDK_CLI_ENTRYPOINT"
-	        YDK_RUNTIME_ENTRYPOINT_NAME=$(basename "${YDK_RUNTIME_ENTRYPOINT}")
-	        YDK_RUNTIME_IS_CLI=false
-	        [[ "${YDK_RUNTIME_ENTRYPOINT_NAME}" == *".cli.sh" ]] && YDK_RUNTIME_IS_CLI=true
-	        YDK_RUNTIME_NAME="${YDK_RUNTIME_ENTRYPOINT_NAME//.cli.sh/}"
-	        YDK_RUNTIME_DIR=$(cd "$(dirname "${YDK_RUNTIME_ENTRYPOINT}")" && pwd)
-	        YDK_RUNTIME_VERSION="0.0.0-dev-0"
-	        [ -f "${YDK_RUNTIME_DIR}/package.json" ] && {
-	            YDK_RUNTIME_VERSION=$(jq -r '.version' "${YDK_RUNTIME_DIR}/package.json")
-	        } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
-	            YDK_RUNTIME_VERSION=$(cat "./VERSION")
+	        })
+	        [[ "$RESULT" -gt 0 ]] && {
+	            ydk:log error "Missing required packages '${YDK_DEPENDENCIES_MISSING[*]}'. Please install"
 	        }
-	        YDK_RUNTIME_IS_BINARY=false
-	        if [ -f "${YDK_RUNTIME_ENTRYPOINT}" ]; then
-	            if command -v file >/dev/null 2>&1; then
-	                file "${YDK_RUNTIME_ENTRYPOINT}" | grep -q "ELF" && YDK_RUNTIME_IS_BINARY=true
-	            elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
-	                YDK_RUNTIME_IS_BINARY=true
-	            else
-	                YDK_RUNTIME_IS_BINARY=false
-	            fi
-	        fi
-	        echo -n "{"
-	        echo -n "\"file\": \"${YDK_RUNTIME_ENTRYPOINT_NAME}\","
-	        echo -n "\"cli\": ${YDK_RUNTIME_IS_CLI},"
-	        echo -n "\"binary\": ${YDK_RUNTIME_IS_BINARY},"
-	        echo -n "\"sources\": ["
-	        for YDK_BASH_SOURCE in "${BASH_SOURCE[@]}"; do
-	            YDK_BASH_SOURCE=${YDK_BASH_SOURCE//\"/\\\"}
-	            echo -n "\"${YDK_BASH_SOURCE}\","
-	        done | sed 's/,$//'
-	        echo -n "],"
-	        echo -n "\"name\": \"${YDK_RUNTIME_NAME}\","
-	        echo -n "\"entrypoint\": \"${YDK_RUNTIME_ENTRYPOINT}\","
-	        echo -n "\"path\": \"${YDK_RUNTIME_DIR}\","
-	        echo -n "\"args\": ["
-	        for YDK_CLI_ARG in "${YDK_CLI_ARGS[@]}"; do
-	            YDK_CLI_ARG=${YDK_CLI_ARG//\"/\\\"}
-	            echo -n "\"${YDK_CLI_ARG}\","
-	        done | sed 's/,$//'
-	        echo -n "],"
-	        echo -n "\"version\": \"${YDK_RUNTIME_VERSION:-"0.0.0-local-0"}\""
-	        echo -n "}"
+	        echo "$DETAILS" >&4
+	        return "$RESULT"
 	    }
-	    ydk:version() {
-	        ydk:require "jq"
-	        local YDK_REPO_OWNER="ywteam"
-	        local YDK_REPO_NAME="ydk-shell"
-	        local YDK_REPO_BRANCH="main"
-	        local YDK_RUNTIME_VERSION="0.0.0-dev-0"
-	        [ -f "${YDK_RUNTIME_DIR}/package.json" ] && {
-	            YDK_RUNTIME_VERSION=$(jq -r '.version' "${YDK_RUNTIME_DIR}/package.json")
-	        } || [ -f "${YDK_RUNTIME_DIR}/VERSION" ] && {
-	            YDK_RUNTIME_VERSION=$(cat "./VERSION")
-	        }
-	        echo -n "{"
-	        echo -n '"name": "@ywteam/ydk-shell",'
-	        echo -n "\"version\": \"${YDK_RUNTIME_VERSION:-"0.0.0-local-0"}\","
-	        echo -n '"description": "Cloud Yellow Team | Shell SDK",'
-	        echo -n '"homepage": "https://yellowteam.cloud",'
-	        echo -n '"license": "MIT",'
-	        echo -n '"repository": {'
-	        echo -n "   \"type\": \"git\","
-	        echo -n "   \"url\": \"https://github.com/${YDK_REPO_OWNER}/${YDK_REPO_NAME}.git\","
-	        echo -n "   \"branch\": \"${YDK_REPO_BRANCH}\""
-	        echo -n "},"
-	        echo -n "\"bugs\": {"
-	        echo -n "   \"url\": \"https://bugs.yellowteam.cloud\""
-	        echo -n "},"
-	        echo -n "\"author\": {"
-	        echo -n "   \"name\": \"Raphael Rego\","
-	        echo -n "   \"email\": \"hello@raphaelcarlosr.dev\","
-	        echo -n "   \"url\": \"https://raphaelcarlosr.dev\""
-	        echo -n "},"
-	        echo -n "\"build\": {"
-	        echo -n "   \"name\": \"ydk-shell\","
-	        echo -n "   \"date\": \"$(date -Iseconds)\""
-	        echo -n "},"
-	        echo -n "\"release\": {"
-	        echo -n "   \"name\": \"ydk-shell\","
-	        echo -n "   \"date\": \"$(date -Iseconds)\""
-	        echo -n "},"
-	        echo -n "\"commit\": {"
-	        echo -n "   \"id\": \"$(git rev-parse --short HEAD 2>/dev/null || echo "Unknown")\","
-	        echo -n "   \"hash\": \"$(git rev-parse HEAD 2>/dev/null || echo "Unknown")\","
-	        echo -n "   \"branch\": \"$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "Unknown")\","
-	        echo -n "   \"tag\": \"$(git describe --tags 2>/dev/null || echo "Unknown")\","
-	        echo -n "   \"message\": \"$(git log -1 --pretty=format:'%s' 2>/dev/null || echo "Unknown")\""
-	        echo -n "}"
-	        echo -n "}"
-	        echo
-	    }
-	    ydk:teardown() {
-	        local YDK_EXIT_CODE="${1:-$?}"
-	        local YDK_EXIT_MESSAGE="${2:-"exit with: ${YDK_EXIT_CODE}"}"
-	        local YDK_BUGS_REPORT=$(ydk:version | jq -r '.bugs.url') && [ "$YDK_BUGS_REPORT" == "null" ] && YDK_BUGS_REPORT="https://bugs.yellowteam.cloud"
-	        if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
-	            ydk:log "ERROR" "An error (${YDK_EXIT_CODE}) occurred, see you later"
-	            ydk:log "INFO" "Please report this issue at: ${YDK_BUGS_REPORT}"
-	        else
-	            ydk:log "INFO" "Done, ${YDK_EXIT_MESSAGE}, see you later"
-	            ydk:log "${YDK_EXIT_MESSAGE}, see you later"
-	        fi
-	        exit "${YDK_EXIT_CODE}"
-	    }
-	    ydk:terminate() {
-	        local YDK_TERM="${1:-"ERR"}"
-	        local YDK_TERM_MESSAGE="${2:-"terminate with: ${YDK_TERM}"}"
-	        ydk:log "ERROR" "($YDK_TERM) ${YDK_TERM_MESSAGE}"
-	        kill -s "${YDK_TERM}" $$ 2>/dev/null
-	    }
-	    ydk:raize() {
-	        local ERROR_CODE="${1:-$?}" && ERROR_CODE=${ERROR_CODE//[^0-9]/} && ERROR_CODE=${ERROR_CODE:-255}
-	        local ERROR_CUSTOM_MESSAGE="${2:-}"
-	        local ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$ERROR_CODE]:-An error occurred}" && ERROR_MESSAGE="${ERROR_MESSAGE} ${ERROR_CUSTOM_MESSAGE}"
-	        shift 2
-	        jq -cn \
-	            --arg code "${ERROR_CODE}" \
-	            --arg message "${ERROR_MESSAGE}" \
-	            '{ code: $code, message: $message }' | jq -c .
-	    }
-	    ydk:catch() {
-	        local YDK_CATH_STATUS="${1:-$?}"
-	        local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
-	        ydk:log "ERROR" "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE}"
-	        return "${YDK_CATH_STATUS}"
-	    }
-	    ydk:throw() {
-	        local YDK_THROW_STATUS="${1:-$?}"
-	        local YDK_TERM="${2:-"ERR"}"
-	        local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
-	        ydk:catch "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
-	        ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
-	    }
-	    ydk:try:nnf() {
-	        ydk:nnf "$@"
-	        YDK_STATUS=$? && [ -z "$YDK_STATUS" ] && YDK_STATUS=1
-	        [ "$YDK_STATUS" -ne 0 ] && ydk:usage "$YDK_STATUS" "$1" "${@:2}"
-	        return "${YDK_STATUS}"
-	    }
-	    ydk:temp() {
-	        local FILE_PREFIX="${1:-""}" && [[ -n "$FILE_PREFIX" ]] && FILE_PREFIX="${FILE_PREFIX}_"
-	        mktemp -u -t "${FILE_PREFIX}"XXXXXXXX -p /tmp --suffix=".ydk"
-	    }
-	    ydk:dependencies() {
-	        [[ ! -d "${1}" ]] && echo -n "[]" | jq -c '.' && return 1
-	        local YDK_DEP_OUTPUT=$(ydk:temp "dependencies")
-	        echo -n "" >"${YDK_DEP_OUTPUT}"
-	        while read -r LIB_ENTRYPOINT; do
-	            local LIB_ENTRYPOINT_NAME &&
-	                LIB_ENTRYPOINT_NAME=$(basename -- "$LIB_ENTRYPOINT") &&
-	                LIB_ENTRYPOINT_NAME=$(
-	                    echo "$LIB_ENTRYPOINT_NAME" |
-	                        tr '[:upper:]' '[:lower:]'
-	                )
-	            local LIB_NAME="${LIB_ENTRYPOINT_NAME//.ydk.sh/}" &&
-	                LIB_NAME=$(echo "$LIB_NAME" | sed 's/^[0-9]*\.//')
-	            local LIB_ENTRYPOINT_TYPE="$(type -t "ydk:$LIB_NAME")"
-	            {
-	                echo -n "{"
-	                echo -n "\"file\": \"${LIB_ENTRYPOINT_NAME}\","
-	                echo -n "\"name\": \"${LIB_NAME}\","
-	                echo -n "\"entrypoint\": \"${LIB_ENTRYPOINT}\","
-	                echo -n "\"path\": \"${1}\","
-	                echo -n "\"type\": \"${LIB_ENTRYPOINT_TYPE}\","
-	            } >>"${YDK_DEP_OUTPUT}"
-	            if [ -n "$LIB_ENTRYPOINT_TYPE" ] && [ "$LIB_ENTRYPOINT_TYPE" = function ]; then
-	                echo -n "\"imported\": false," >>"${YDK_DEP_OUTPUT}"
-	            else
-	                echo -n "\"imported\": true," >>"${YDK_DEP_OUTPUT}"
-	                source "${LIB_ENTRYPOINT}" >>"${YDK_DEP_OUTPUT}"
-	            fi
-	            {
-	                echo -n "\"activated\": true"
-	                echo -n "}"
-	            } >>"${YDK_DEP_OUTPUT}"
-	        done < <(find "$1" -type f -name "*.ydk.sh" | sort)
-	        jq -sc '.' "${YDK_DEP_OUTPUT}"
-	        rm -f "${YDK_DEP_OUTPUT}"
-	    }
-	    ydk:boostrap() {
-	        [ "$YDK_INITIALIZED" == true ] && return 0
-	        YDK_INITIALIZED=true && readonly YDK_INITIALIZED
-	        local YDK_RUNTIME=$(ydk:cli | jq -c '.')
-	        local YDK_RUNTIME_DIR=$(jq -r '.path' <<<"${YDK_RUNTIME}")
-	        local YDK_RUNTIME_NAME=$(jq -r '.name' <<<"${YDK_RUNTIME}")
-	        local YDK_DEP_OUTPUT=$(ydk:temp "dependencies")
-	        local YDK_INCLUDES=(lib extensions)
-	        for INCLUDE_IDX in "${!YDK_INCLUDES[@]}"; do
-	            local YDK_INCLUDE="${YDK_INCLUDES[$INCLUDE_IDX]}"
-	            ydk:dependencies "${YDK_RUNTIME_DIR}/${YDK_INCLUDE}" >>"${YDK_DEP_OUTPUT}"
-	        done
-	        jq "
-	            . + {\"cli\": ${YDK_RUNTIME}} |
-	            . + {\"version\": $(ydk:version)} |
-	            . + {\"dependencies\": $(jq -sc ". | flatten" "${YDK_DEP_OUTPUT}")}
-	        " <<<"{}"
-	        rm -f "${YDK_DEP_OUTPUT}"
-	        return 0
-	    }
-	    ydk:usage() {
-	        local YDK_USAGE_STATUS=$?
-	        [[ $1 =~ ^[0-9]+$ ]] && local YDK_USAGE_STATUS="${1}" && shift
-	        local YDK_USAGE_COMMAND="${1:-"<command>"}" && shift
-	        local YDK_USAGE_MESSAGE="${1:-"command not found"}" && shift
+	    ydk:help() {
+	        local YDK_USAGE_STATUS=$1
+	        local YDK_USAGE_COMMAND="${2:-""}"
+	        local YDK_USAGE_MESSAGE="${3:-""}"
 	        local YDK_USAGE_COMMANDS=("$@")
 	        {
-	            echo "($YDK_USAGE_STATUS) ${YDK_USAGE_MESSAGE}"
-	            echo "* Usage: ydk $YDK_USAGE_COMMAND"
+	            ydk:log "info" "($YDK_USAGE_STATUS) ${YDK_USAGE_MESSAGE}"
+	            ydk:log "info" "* Usage: ydk $YDK_USAGE_COMMAND ($_)"
 	            [ "${#YDK_USAGE_COMMANDS[@]}" -gt 0 ] && {
-	                echo " [commands]"
+	                ydk:log "info" " [commands]"
 	                for YDK_USAGE_COMMAND in "${YDK_USAGE_COMMANDS[@]}"; do
-	                    echo " ${YDK_USAGE_COMMAND}"
+	                    ydk:log "info" " ${YDK_USAGE_COMMAND}"
 	                done
 	            }
 	        } 1>&2
 	        return "$YDK_USAGE_STATUS"
 	    }
-	    ydk:setup() {
-	        local REQUIRED_LIBS=(
-	            "1.is"
-	            "2.nnf"
-	            "3.argv"
-	            "installer"
+	    ydk:inject() {
+	        local ENTRYPOINT_FILE="${1}" && [[ ! -f "${ENTRYPOINT_FILE}" ]] && return 0
+	        local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
+	        local ENTRYPOINT=${ENTRYPOINT_NAME//.ydk.sh/}
+	        ENTRYPOINT=$(echo "$ENTRYPOINT" | sed 's/^[0-9]*\.//')
+	        local ENTRYPOINT_TYPE="$(type -t "ydk:$ENTRYPOINT")" && [ -n "$ENTRYPOINT_TYPE" ] && return 0
+	        if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+	            source "${ENTRYPOINT_FILE}" activate
+	            local ENTRYPOINT_TYPE=$(type -t "ydk:$ENTRYPOINT")
+	        fi
+	        if ! [ "$ENTRYPOINT_TYPE" = function ]; then
+	            return 1
+	        fi
+	        return 0
+	    }
+	    ydk:boostrap() {
+	        ! ydk:require "find" "sort" && {
+	            read -r -u 4 REQUIRED_DEPS
+	            ydk:log error "${REQUIRED_DEPS}"
+	            ydk:throw 254 "Missing required packages '${YDK_DEPENDENCIES_MISSING[*]}'"
+	        }
+	        [ "$YDK_INITIALIZED" == true ] && return 0
+	        YDK_INITIALIZED=true && readonly YDK_INITIALIZED
+	        while read -r ENTRYPOINT_FILE; do
+	            if ! ydk:inject "${ENTRYPOINT_FILE}"; then
+	                ydk:throw 255 "Failed to load entrypoint: ${ENTRYPOINT_FILE}"
+	                return 1
+	            fi
+	        done < <(
+	            find "${YDK_CLI_DIR}" \
+	                -type f -name "*.ydk.sh" \
+	                -not -name "${YDK_CLI_FILE_NAME}" | sort
 	        )
-	        local RAW_URL="https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main"
-	        local YDK_RUNTIME=$(ydk:cli | jq -c '.')
-	        local YDK_RUNTIME_DIR=$(jq -r '.path' <<<"${YDK_RUNTIME}")
-	        ydk:log "INFO" "Setting up ydk"
-	        ydk:log "INFO" "Downloading libraries"
-	        ydk:log "INFO" "Downloading libraries from: ${RAW_URL}"
-	        ydk:log "INFO" "Installing libraries into: ${YDK_RUNTIME_DIR}"
-	        for LIB in "${REQUIRED_LIBS[@]}"; do
-	            if type -t "ydk:$LIB" = function >/dev/null 2>&1; then
-	                ydk:log "INFO" "Library $LIB is already installed"
-	                continue
-	            fi
-	            local LIB_FILE="${LIB}.ydk.sh"
-	            local LIB_URL="${RAW_URL}/packages/ydk/lib/${LIB_FILE}"
-	            mkdir -p "${YDK_RUNTIME_DIR}/lib"
-	            local LIB_PATH="${YDK_RUNTIME_DIR}/lib/${LIB_FILE}"
-	            if [ ! -f "${LIB_PATH}" ]; then
-	                ydk:log "INFO" "Downloading library: ${LIB_FILE} into ${LIB_PATH}"
-	                if ! curl -sfL "${LIB_URL}" -o "${LIB_PATH}" 2>&1; then
-	                    ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
-	                fi
-	                [[ ! -f "${LIB_PATH}" ]] && ydk:throw 252 "ERR" "Failed to download ${LIB_FILE}"
-	            fi
-	            ydk:log "INFO" "Installing library: ${LIB_FILE}"
-	            source "${LIB_PATH}"
-	        done
-	        ydk:log "INFO" "All libraries are installed"
+	        while read -r FUNC_NAME; do
+	            {
+	                [[ "$FUNC_NAME" =~ (activate|boostrap|inject|teardown|try|catch|throw|opts) ]] && continue
+	                [[ ! "$FUNC_NAME" == "ydk:logger" ]] && continue
+	                "$FUNC_NAME" activate >/dev/null 2>&1
+	            }
+	        done < <(ydk:functions | jq -r '.functions[]')
+	        YDK_BOOTSTRAPED=true && readonly YDK_BOOTSTRAPED
 	        return 0
 	    }
-	    ydk:entrypoint() {
-	        YDK_POSITIONAL=()
-	        while [[ $# -gt 0 ]]; do
-	            case "$1" in
-	            -i | --install | install)
-	                shift
-	                ydk:log "INFO" "Installing ydk"
-	                if ! type -t "ydk:installer" = function >/dev/null 2>&1; then
-	                    ydk:log "INFO" "Downloading installer library"
-	                    if ! ydk:setup "$@"; then
-	                        ydk:throw 253 "ERR" "Failed to install libraries"
-	                    fi
-	                fi
-	                ydk:log "INFO" "Installing ydk"
-	                if ! ydk:installer install "$@"; then
-	                    ydk:throw 254 "ERR" "Failed to install ydk"
-	                fi
-	                ydk:log "INFO" "Installation done"
-	                exit 0
-	                ;;
-	            -v | --version)
-	                shift
-	                ydk:version | jq -c '.'
-	                exit 0
-	                ;;
-	            -h | --help)
-	                shift
-	                ydk:usage 0 "ydk" "version" "usage" "install"
-	                exit 0
-	                ;;
-	            esac
-	            YDK_POSITIONAL+=("$1") && shift
-	        done
-	        set -- "${YDK_POSITIONAL[@]}"
+	    ydk:teardown() {
+	        local YDK_EXIT_CODE="${1:-$?}"
+	        local YDK_EXIT_MESSAGES=(
+	            "${2:-"exit with: ${YDK_EXIT_CODE}"}"
+	        )
+	        [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_EXIT_MESSAGES+=("${YDK_ERRORS_MESSAGES[$YDK_EXIT_CODE]}. ${YDK_CATH_MESSAGE}")
+	        local YDK_EXIT_LEVEL="" && [[ "${YDK_EXIT_CODE}" -ne 0 ]] && YDK_EXIT_LEVEL="error" || YDK_EXIT_LEVEL="success"
+	        local YDK_EXIT_JSON=$({
+	            if [ "${YDK_EXIT_CODE}" -ne 0 ]; then
+	                echo -n "{"
+	                echo -n "\"level\": \"error\","
+	                echo -n "\"error\": true,"
+	                echo -n "\"status\": ${YDK_EXIT_CODE},"
+	                echo -n "\"message\": \"An error occurred, see you later\","
+	                echo -n "\"report\": \"Please report this issue at: ${YDK_BUGS_REPORT}\""
+	                echo -n "}"
+	            else
+	                echo -n "{"
+	                echo -n "\"level\": \"success\","
+	                echo -n "\"error\": false,"
+	                echo -n "\"status\": ${YDK_EXIT_CODE},"
+	                echo -n "\"message\": \"Done, ${YDK_EXIT_MESSAGES[*]}, see you later\""
+	                echo -n "}"
+	            fi
+	        })
+	        rm -f ${YDK_FIFO}
+	        [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_THROW_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_THROW_STATUS]}. ${YDK_THROW_MESSAGE}"
+	        ydk:log "$YDK_EXIT_LEVEL" "($YDK_EXIT_CODE) ${YDK_EXIT_MESSAGES[*]}"
+	        exit "${YDK_EXIT_CODE}"
+	    }
+	    ydk:try() {
+	        ydk:nnf "$@" || {
+	            YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+	            [ "$YDK_STATUS" -ne 0 ] && [[ ! "$1" == "activate" ]] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
+	            return "${YDK_STATUS}"
+	        }
+	    }
+	    ydk:log() {
+	        local YDK_LOG_LEVEL="${1:-"INFO"}"
+	        local YDK_LOG_MESSAGE="${2:-""}"
+	        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] || [[ "$YDK_BOOTSTRAPED" == true ]]; then
+	            ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
+	        else
+	            local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+	            {
+	                echo -e "${YELLOW}[${YDK_BRAND}]${NC} [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}"
+	            } 1>&2
+	        fi
 	        return 0
 	    }
-	    ydk:welcome() {
-	        ydk:version | jq '.'
+	    ydk:catch() {
+	        local YDK_CATH_STATUS="${1:-$?}"
+	        local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
+	        ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE} ($_)"
+	        return "${YDK_CATH_STATUS}"
 	    }
-	    trap 'ydk:catch $? "An error occurred"' ERR INT TERM
-	    trap 'ydk:teardown $? "Exit with: $?"' EXIT
-	    [[ "$1" != "install" ]] && ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 255 "ERR" "Failed to install required packages"
-	    ydk:entrypoint "$@" || unset -f "ydk:entrypoint"
-	    ydk:boostrap >/dev/null 2>&1 || unset -f "ydk:boostrap"
-	    ydk:argv flags "$@" || set -- "${YDK_POSITIONAL[@]}"
-	    jq -c '.' <<<"$YDK_FLAGS"
-	    ydk:nnf "$@"
-	    YDK_STATUS=$? && [ -z "$YDK_STATUS" ] && YDK_STATUS=1
-	    [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "ERR" "Usage: ydk $YDK_USAGE_COMMAND"
-	    return "${YDK_STATUS:-0}"
+	    ydk:throw() {
+	        local YDK_THROW_STATUS="${1:-$?}"
+	        local YDK_THROW_MESSAGE="${2:-"throw with: ${YDK_THROW_STATUS}"}"
+	        local YDK_TERM="${3:-"ERR"}"
+	        ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
+	        exit "$YDK_THROW_STATUS"
+	    }
+	    ydk:temp() {
+	        local FILE_SUFFIX="${1}" && [[ -n "$FILE_SUFFIX" ]] && FILE_SUFFIX="${FILE_SUFFIX}"
+	        mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}"
+	    }
+	    ydk:opts() {
+	        local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)
+	        IFS=$'\n' read -r -d '' -a YDK_OPTS_ARGS <<<"$(jq -r '.__args[]' <<<"$YDK_OPTS")"
+	        set -- "${YDK_OPTS_ARGS[@]}"
+	        return 0
+	    }
+	    ydk:configure() {
+	        if [[ "$YDK_IS_INSTALL" == true ]]; then
+	            ydk:installer "$@"
+	            local YDK_INSTALL_STATUS=$?
+	            ydk:team welcome
+	            exit "$YDK_INSTALL_STATUS"
+	        fi
+	        return 0
+	    }
+	    trap 'ydk:catch $? "An unexpected error occurred"' ERR INT TERM
+	    trap 'ydk:teardown $? "Script exited"' EXIT
+	    local YDK_FIFO="/tmp/ydk.fifo" && readonly YDK_FIFO
+	    [[ ! -p "${YDK_FIFO}" ]] && mkfifo "${YDK_FIFO}"
+	    exec 4<>"${YDK_FIFO}" # exec 4<&- | # exec 4>&1 | # exec 4<&0
+	    trap 'exec 4>&-; rm -f '"${YDK_FIFO}"'' EXIT
+	    if ! ydk:boostrap 2>&1; then
+	        ydk:throw 255 "Failed to boostrap ydk"
+	    fi
+	    ydk:configure "$@"
+	    ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 254 "Failed to load dependencies"
+	    ydk:prgma
+	    ydk:team welcome
+	    ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+	    exec 4>&-
+	    rm -f "${YDK_FIFO}"
+	    return "${YDK_STATUS}"
 	}
-	ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && exit "${YDK_STATUS:-0}"
+	ydk "$@"
+	exit $?
 	ydk:try:nnf "$@"
 	return $?
 }
 ydk:cli "$@"
 exit $?
-# Name: @ywteam/ydk-shell
-# Version: 0.0.0-dev-0
-# Description: Cloud Yellow Team | Shell SDK
-# Homepage: https://yellowteam.cloud
-# License: MIT
-# Repository: https://github.com/ywteam/ydk-shell.git
-# Author: Raphael Rego <hello@raphaelcarlosr.dev> https://raphaelcarlosr.dev
-# Build: ydk-shell
-# Build Date: null
-# Release: ydk-shell
-# Release Date: 2024-04-15T21:36:03+00:00
-# Commit: {"id":"c61263f","hash":"c61263f98e365865def7d11cedd3e00078def45f","branch":"main","tag":"0.0.0-alpha-0-4-gc61263f","message":"Update ydk.cli.sh and bundle.ydk.sh scripts, and fix bundle.ydk.sh script"}
+

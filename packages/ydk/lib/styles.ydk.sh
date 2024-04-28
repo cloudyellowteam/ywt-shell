@@ -24,7 +24,7 @@ ydk:styles() {
             echo -e $'style\techo\tsdk\tcli'
             for STYLE in "${STYLES[@]}"; do
                 echo -ne "${STYLE,,}\t"
-                echo -ne "${YDK_STYLES[$STYLE]}echo \"\${$STYLE}ydk-shell\${\$NC}\"${YDK_STYLES[NC]}\t"
+                echo -ne "${YDK_STYLES[$STYLE]}echo \"\${$STYLE}ydk-shell\${\$NS}\"${YDK_STYLES[NS]}\t"
                 echo -ne "$(
                     ydk:styles:"${STYLE,,}" "ydk:styles:${STYLE,,} \"ydk-shell\"" 2>/dev/null
                 )\t"
@@ -54,7 +54,7 @@ ydk:styles() {
         PARAM_STR=${PARAM_STR%"$PARAM_SEP"}
 
         printf "%s8%s%s%s%s%s%s%s8%s%s%s" "$OSC" "$SEP" "$PARAM_STR" "$SEP" "$URI" "$BEL" "$TEXT" "$OSC" "$SEP" "$SEP" "$BEL"
-        echo -e "${NC}${NSTL}${NBG}" >&4
+        echo -e "${NS}${NSTL}${NBG}" >&4
         # local TEXT=${1}
         # local URL=${2}
         # echo -e "\e]8;;${URL}\e\\${TEXT}\e]8;;\e\\"
@@ -64,7 +64,7 @@ ydk:styles() {
 }
 {
     [[ -z "$YDK_STYLES" ]] && declare -g -A YDK_STYLES=(
-        [NC]="\033[0m"
+        [NS]="\033[0m"
         [BOLD]="\033[1m"
         [DIM]="\033[2m"
         [ITALIC]="\033[3m"
@@ -77,7 +77,7 @@ ydk:styles() {
         for STYLE in "${!YDK_STYLES[@]}"; do
             STYLE_CODE="${YDK_STYLES[$STYLE]}"
             declare -g "${STYLE^^}=${STYLE_CODE}"
-            eval "ydk:styles:${STYLE,,}() { echo -en \"${STYLE_CODE}\${*}${NC}\"; }"
+            eval "ydk:styles:${STYLE,,}() { echo -en \"${STYLE_CODE}\${*}${NS}\"; }"
             export -f "ydk:styles:${STYLE,,}"
         done
     }

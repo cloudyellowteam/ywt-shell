@@ -67,6 +67,22 @@ ydk:logger() {
         jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
         return 0
     }
+    __logger:padright() {
+        local LOG_MESSAGE=$1
+        local LOG_CHARS=${2:-70}
+        local LOG_MESSAGE_SANETIZED=$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)
+        local LOG_MAX_LENGTH=${#LOG_MESSAGE_SANETIZED}
+        if [[ $LOG_MAX_LENGTH -le $((LOG_CHARS * 2)) ]]; then
+            # local LOG_REST=$((LOG_CHARS - LOG_MAX_LENGTH))
+            # local LOG_PADDING=$(printf "%${LOG_REST}s" " ")
+            echo -n "${LOG_MESSAGE}${LOG_PADDING:-}" >&4
+        else
+            local LOG_MESSAGE_START=${LOG_MESSAGE:0:$LOG_CHARS}
+            local LOG_MESSAGE_END=${LOG_MESSAGE: -$LOG_CHARS}
+            echo -n "${LOG_MESSAGE_START:-"Start"}...${LOG_MESSAGE_END:-"End"}" >&4
+        fi
+        return 0
+    }
     __logger:write:console() {
         local LOG_MESSAGE=$1
         local LOGGER_OPTS=$2
@@ -87,30 +103,45 @@ ydk:logger() {
         # local LOG_MESSAGE=$(jq -r '.message' <<<"$LOG_JSON")
         local LOG_TIMESTAMP=$(jq -r '.timestamp' <<<"$LOG_JSON" 2>/dev/null || echo "info")
         local LOG_PID=$(jq -r '.pid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
-        local LOG_PPID=$(jq -r '.ppid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        # local LOG_PPID=$(jq -r '.ppid' <<<"$LOG_JSON" 2>/dev/null || echo "info")
         local LOG_ETIME=$(jq -r '.etime' <<<"$LOG_JSON" 2>/dev/null || echo "info")
-        local LOG_CLI=$(jq -r '.cli' <<<"$LOG_JSON" 2>/dev/null || echo "info")
-        local LOG_NAME=$(jq -r '.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
-        local LOG_FORMAT=$(jq -r '.format' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
-        local LOG_TEMPLATE=$(jq -r '.template' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
-        local LOG_FORMATTED=$(echo -e "$LOG_FORMAT" | sed 's/{{/\\(/g' | sed 's/}}/)/g' | sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' | sed -E 's/\| ascii_upcase/| ascii_upcase/g')
-        {
-            # echo -e "\$${LOG_COLOR^^}ddd"
-            echo -ne "[${YELLOW}${YDK_BRAND^^}${NC}] "            
-            # eval "echo -ne \"\$${LOG_COLOR:-YELLOW}\""
-            echo -ne "${LOG_ICON} "
-            # echo -ne "[${LOG_LEVEL^^}] "
-            # echo -ne "${NC} "
-            echo -ne "[${LOG_CONTEXT^^}] "
-            echo -ne "$LOG_MESSAGE "
-            eval "echo -ne \"\$${LOG_COLOR:-YELLOW}\""
-            echo -ne "[${LOG_LEVEL^^}] "
-            echo -ne "${NC} "
-            echo -ne "[${BLUE}$LOG_PID${NC}] "
-            echo -ne "[${BLUE}$LOG_TIMESTAMP${NC}] "
-            echo -ne "[${DARK_GRAY}$LOG_ETIME${NC}]"
+        # local LOG_CLI=$(jq -r '.cli' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        # local LOG_NAME=$(jq -r '.name' <<<"$LOG_JSON" 2>/dev/null || echo "info")
+        # local LOG_FORMAT=$(jq -r '.format' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
+        # local LOG_TEMPLATE=$(jq -r '.template' <<<"$LOGGER_OPTS" 2>/dev/null || echo "info")
+        # local LOG_FORMATTED=$(echo -e "$LOG_FORMAT" | sed 's/{{/\\(/g' | sed 's/}}/)/g' | sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' | sed -E 's/\| ascii_upcase/| ascii_upcase/g')
+        # local CURRENT_WIDTH=$(ydk:screen size 4>&1 | jq -r '.cols')
+        echo -e "$({
+            echo -n "[${YELLOW}${YDK_BRAND^^}${NC}]" #&& echo -n $'\t'
+            echo -n " ${LOG_ICON} "                  #&& echo -n $'\t'
+            echo -n "| $(
+                __logger:padright "$LOG_MESSAGE" 50 4>&1
+                # local LOG_CHARS=30
+                # local LOG_MESSAGE_SANETIZED=$(__logger:message:sanetize "$LOG_MESSAGE" 4>&1)
+                # local LOG_MAX_LENGTH=${#LOG_MESSAGE_SANETIZED}
+                # if [[ $LOG_MAX_LENGTH -le $((LOG_CHARS * 2)) ]]; then
+                #     # padleft message with spaces
+                #     local LOG_REST=$((LOG_CHARS - LOG_MAX_LENGTH))
+                #     local LOG_PADDING=$(printf "%${LOG_REST}s" " ")
+                #     echo -n "${LOG_MESSAGE_SANETIZED}${LOG_PADDING}"
+                #     # echo -n "$LOG_MESSAGE"
+                # else
+                #     local LOG_MESSAGE_START=${LOG_MESSAGE_SANETIZED:0:$LOG_CHARS}
+                #     local LOG_MESSAGE_END=${LOG_MESSAGE_SANETIZED: -$LOG_CHARS}
+                #     echo -n "${LOG_MESSAGE_START:-"Start"}...${LOG_MESSAGE_END:-"End"}"
+                # fi
+            )" && echo -n $'\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t'
+            echo -n "${ITALIC}${UNDERLINE}$(__logger:padright "[${LOG_CONTEXT^^}]" 5 4>&1)${NS}" # && echo -n $'\t'
+            echo -n "["
+            eval "echo -n \"\$${LOG_COLOR:-YELLOW}\""
+            echo -n "${BOLD}${LOG_LEVEL^^}${NS}"
+            echo -n "${NC}${NS}]"                  # && echo -n $'\t'
+            echo -n "[${YELLOW}${LOG_PID}${NC}]"     # && echo -n $'\t'
+            echo -n "[${BLUE}$LOG_TIMESTAMP${NC}]" # && echo -n $'\t'
+            echo -n "[${DARK_GRAY}$LOG_ETIME${NC}]"
+
             echo
-        } 1>&2
+        } | column --table --separator $'\t')" 1>&2
         return 0
     }
     __logger:write() {
@@ -187,7 +218,7 @@ ydk:logger() {
                     echo -n "\"icon\": \"🐞\""
                     ;;
                 info)
-                    echo -n "\"color\": \"DARK_GRAY\","
+                    echo -n "\"color\": \"blue\","
                     echo -n "\"icon\": \"💬\""
                     ;;
                 warn)
@@ -260,7 +291,7 @@ ydk:logger() {
     # echo -n "[${#LOGGER_ARGS}]" 1>&2
     set -- "${LOGGER_ARGS[@]}" && unset LOGGER_ARGS
     # echo -n "[${#}]" 1>&2
-    local LOG_LEVEL_OR_ACTION=${1} && shift    
+    local LOG_LEVEL_OR_ACTION=${1} && shift
     local LOG_LINES=()
     [[ -p /dev/stdin ]] && while read -r LINE; do LOG_LINES+=("$LINE"); done <&0
     # echo -n "[${#}][${#LOG_LINES}]" 1>&2

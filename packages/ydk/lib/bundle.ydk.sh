@@ -79,6 +79,8 @@ ydk:bundle() {
         grep -v "^#" "$FILE" | grep -v "^[[:space:]]*#[^!]" | grep -v "^$" | grep -v "^#!/usr/bin/env bash$" | grep -v "^# shellcheck disable" | grep -v "^#" | sed -e 's/^/\t/'
     }
     copyright() {
+        echo ""
+        return 0
         ydk:version | jq -cr '
                 . |
                 "Name: \(.name)",
@@ -111,11 +113,11 @@ ydk:bundle() {
         echo "#!/bin/bash" >"$BUNDLE_TMP"
         {
             copyright
-            local COPYRIGHT=$(ydk:version | jq -cr .)
+            local COPYRIGHT="" #$(ydk:version | jq -cr .)
             COPYRIGHT=${COPYRIGHT//\"/\\\"}
 
             local BUNDLE_NAME=$(jq -r '.name' <<<"$VALIDATION")
-            if [[ "$BUNDLE_NAME" == "ydk" ]]; then 
+            if [[ "$BUNDLE_NAME" == "ydk" ]]; then
                 BUNDLE_NAME="cli"
             else
                 BUNDLE_NAME="${BUNDLE_NAME}:addon"
@@ -145,11 +147,11 @@ ydk:bundle() {
             if [[ "$BUNDLE_NAME" == "cli" ]]; then
                 echo "ydk:${BUNDLE_NAME} \"\$@\""
                 echo "exit \$?"
-            else 
+            else
                 curl -sSL https://raw.githubusercontent.com/cloudyellowteam/ywt-shell/main/packages/ydk/ydk.sh
                 echo "# Added YDK CLI"
                 # cat /workspace/rapd-shell/packages/ydk/ydk.sh
-            fi 
+            fi
             # ydk "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0} && echo "done $YDK_STATUS" && exit "${YDK_STATUS:-0}"
             # echo "# End of bundle"
             copyright

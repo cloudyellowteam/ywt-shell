@@ -3,15 +3,27 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+> **2024.04.26**
+```shell
+clear; ./packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
+clear; ./packages/ydk/ydk.cli.sh packer defaults
+clear; ./packages/ydk/ydk.cli.sh screen expectSize 101 39
+clear; ./packages/ydk/ydk.cli.sh screen size 
+clear; ./packages/ydk/ydk.cli.sh screen defaults
+
+```
 
 > **2024.04.26**
 ```shell
-# pack and build a bundle
-clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/ydk/ydk.cli.sh 31/12/2999
-# compile a bundle 
-clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999
+clear; ./packages/ydk/ydk.cli.sh builder 
 # bundle a package, it's generate ydk.sh file
 clear; ./packages/ydk/ydk.cli.sh bundle pack ./packages/ydk/ydk.cli.sh
+# compile a bundle 
+clear; ./packages/ydk/ydk.cli.sh bundle compile ./packages/ydk/ydk.sh 31/12/2999
+# pack and build a bundle
+clear; ./packages/ydk/ydk.cli.sh bundle build ./packages/ydk/ydk.cli.sh 31/12/2999
+
+
 
 
 clear; ./packages/ydk/ydk.cli.sh secops plan  /workspace/rapd-shell/assets/assests.json
