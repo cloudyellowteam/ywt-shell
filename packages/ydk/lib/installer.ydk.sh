@@ -59,22 +59,168 @@ ydk:installer() {
         echo -n "$YDK_STATE"
         return 0
     }
+    __installer:upm() {
+        local PACKAGE_MANAGERS=("apt-get" "yum" "apk" "dnf" "zypper" "brew" "pkg" "port" "emerge" "opkg" "pacman" "xbps" "slackpkg" "swupd" "eopkg" "sol" "tazpkg" "xbps" "xbps-src" "xbps-bin" "xbps-uchroot" "xbps-repo" "xbps-query" "xbps-install" "xbps-remove" "xbps-pkgdb" "xbps-rindex" "xbps-rindex")
+        for PACKAGE_MANAGER in "${PACKAGE_MANAGERS[@]}"; do
+            command -v "$PACKAGE_MANAGER" >/dev/null 2>&1 && break
+        done
+        [[ -z "$PACKAGE_MANAGER" ]] && {
+            ydk:log "WARN" "No package manager found"
+            return 1
+        }
+        # loop into args as package
+        ydk:log info "Installing packages ($*) using $PACKAGE_MANAGER" 4>&1
+        {
+            case "$PACKAGE_MANAGER" in
+            apt-get)
+                apt-get update && apt-get install -y "$@"
+                ;;
+            yum)
+                yum install -y "$@"
+                ;;
+            apk)
+                apk add --update "$@"
+                ;;
+            dnf)
+                dnf install -y "$@"
+                ;;
+            zypper)
+                zypper install -y "$@"
+                ;;
+            brew)
+                brew install "$@"
+                ;;
+            pkg)
+                pkg install -y "$@"
+                ;;
+            port)
+                port install "$@"
+                ;;
+            emerge)
+                emerge "$@"
+                ;;
+            opkg)
+                opkg install "$@"
+                ;;
+            pacman)
+                pacman -S --noconfirm "$@"
+                ;;
+            xbps)
+                xbps-install -y "$@"
+                ;;
+            slackpkg)
+                slackpkg install "$@"
+                ;;
+            swupd)
+                swupd bundle-add "$@"
+                ;;
+            eopkg)
+                eopkg install -y "$@"
+                ;;
+            sol)
+                sol -i "$@"
+                ;;
+            tazpkg)
+                tazpkg get-install "$@"
+                ;;
+            *)
+                ydk:log "WARN" "Unknown package manager: $PACKAGE_MANAGER"
+                return 1
+                ;;
+            esac
+        } >/dev/null 2>&1
+        local INSTALL_STATUS=$?
+        [[ "$INSTALL_STATUS" -ne 0 ]] && {
+            ydk:log "WARN" "Failed to install $* using $PACKAGE_MANAGER"
+            return 1
+        }
+        ydk:log "INFO" "Installed $* using $PACKAGE_MANAGER"
+        return 0
+    }
+    __installer:cursor:back() {
+        local N=${1:-1}
+        echo -en "\033[${N}D"
+        # mac compatible, but goes back to the beginning of the line
+    }
+    __installer:animation() {
+        ICON="●" #  • ●
+        ARRAY_ANIMATION=(
+            "${BLUE}${ICON}${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}    "
+            " ${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}${BLUE}${ICON}   "
+            "  ${RED}${ICON}${MAGENTA}${ICON}${YELLOW}${ICON}${BLUE}${ICON}${GREEN}${ICON}  "
+            "   ${MAGENTA}${ICON}${BLUE}${ICON}${GREEN}${YELLOW}${ICON}${ICON}${RED}${ICON} "
+            "    ${BLUE}${ICON}${GREEN}${ICON}${RED}${ICON}${YELLOW}${ICON}${MAGENTA}${ICON}"
+        )
+        case $1 in
+        start)
+            ((column = COLUMNS - ${#2} - 8))
+            printf "%${column}s"
+            while true; do
+                for i in {0..4}; do
+                    # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
+                    printf "\b\r\033[2K${NC}${2} ${ARRAY_ANIMATION[i]}"
+                    sleep 0.12
+                done
+                # for i in {4..0}; do
+                #     # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
+                #     printf "\b\r\033[2K${NC}${2} ${ARRAY_ANIMATION[i]}"
+                #     sleep 0.12
+                # done
+                __installer:cursor:back 1
+                printf "\b\b\b\b\b\b" 1>&2
+            done
+            ;;
+        stop)
+            if [[ -z ${3} ]]; then
+                echo "Animation not running"
+                return 1
+            fi
+            kill "${3}" >/dev/null 2>&1
+            {
+                echo -en "\b${NC}  --> ["
+                if [[ $2 -eq 0 ]]; then
+                    echo -en " ${GREEN}Success${NC} "
+                else
+                    echo -en " ${RED}Error${NC} "
+                fi
+                echo -e "${NC}]"
+                printf "\b\b\b\b"
+            } 1>&2
+            ;;
+        *)
+            echo "invalid argument, try again with {start/stop}"
+            return 1
+            ;;
+        esac
+    }
     install() {
+        local YDK_INSTALL_DEPS=(
+            jq git parallel curl ncurses coreutils gcc g++ libgcc grep util-linux binutils findutils openssl
+        )
+        ydk:log info "Installing into ${YDK_PATHS[bin]}. Change passing -b /your/path" #>&4
+        __installer:animation "start" "Installing" &
+        local ANIMATION_PID=$!
         check:paths
-        local YDK_PATH_MAP=$(paths 4>&1) && echo "MAP: $YDK_PATH_MAP"
-        local YDK_PATH_BIN=$(path "bin" 4>&1) && echo "BIN1: $YDK_PATH_BIN"
+        ! ydk:require "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
+            ydk:log "INFO" "Installing required packages"
+            if ! __installer:upm "${YDK_INSTALL_DEPS[@]}" 4>&1; then
+                ydk:log "WARN" "Failed to install jq"
+            fi
+        }
+        sleep 10
+        __installer:animation "stop" "Installing" "$ANIMATION_PID"
         return 0
     }
     __installer:opts() {
-        local YDK_INSTALLER_OPTS=()
         while [[ $# -gt 0 ]]; do
             case "$1" in
             -h | --help)
                 shift
-                ydk:usage 0 "ydk" "install" "usage"
+                ydk:log info "Installer options: $*"
                 exit 0
                 ;;
             -b | --bin)
+                ydk:log "INFO" "Setting binary path: $2"
                 YDK_PATHS["bin"]="${2}"
                 shift 2
                 ;;
@@ -130,7 +276,7 @@ ydk:installer() {
                 if [[ "$1" =~ ^- ]]; then
                     ydk:log "WARN" "Unknown option: $1 $2"
                     shift 2
-                else 
+                else
                     YDK_INSTALLER_OPTS+=("$1")
                     shift
                 fi
@@ -150,112 +296,118 @@ ydk:installer() {
             ydk:throw 252 "Failed to parse installer options"
             return 1
         }
-        echo "${YDK_INSTALLER_OPTS[@]}" >&4
+        # echo "${YDK_INSTALLER_OPTS[@]}" >&4
         return 0
     }
-    install:v1() {
-        local YDK_BINARY_PATH="/usr/local/bin"
-        local YDK_INSTALL_PATH="/ywteam/ydk-shell"
-        local YDK_LOGS_PATH="/var/log/ywteam/ydk-shell"
-        local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
-        local YDK_DATA_PATH="/var/lib/ywteam/ydk-shell"
-        local YDK_CONFIG_PATH="/etc/ywteam/ydk-shell"
-        local YDK_RUNTIME_PATH="/opt/ywteam/ydk-shell"
-        local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
-        while [[ $# -gt 0 ]]; do
-            case "$1" in
-            -h | --help)
-                shift
-                ydk:usage 0 "ydk" "install" "usage"
-                exit 0
-                ;;
-            -p | --path)
-                YDK_INSTALL_PATH="${1}"
-                shift
-                ;;
-            -l | --logs)
-                YDK_LOGS_PATH="${1}"
-                shift
-                ;;
-            -c | --cache)
-                YDK_CACHE_PATH="${1}"
-                shift
-                ;;
-            -d | --data)
-                YDK_DATA_PATH="${1}"
-                shift
-                ;;
-            -r | --runtime)
-                YDK_RUNTIME_PATH="${1}"
-                shift
-                ;;
-            -C | --config)
-                YDK_CONFIG_PATH="${1}"
-                shift
-                ;;
-            -b | --binary)
-                YDK_BINARY_PATH="${1}"
-                shift
-                ;;
-            *)
-                echo "Unknown option: $1"
-                shift
-                ;;
-            esac
+    # set -- "$(__installer:opts "$@" 4>&1)" && ydk:try "$@" 4>&1
+    local YDK_INSTALLER_OPTS=() && __installer:opts "$@" 4>&1
+    set -- "${YDK_INSTALLER_OPTS[@]}"
+    ydk:try "$@" 4>&1
+    return $?
+}
+install:v1() {
+    local YDK_BINARY_PATH="/usr/local/bin"
+    local YDK_INSTALL_PATH="/ywteam/ydk-shell"
+    local YDK_LOGS_PATH="/var/log/ywteam/ydk-shell"
+    local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
+    local YDK_DATA_PATH="/var/lib/ywteam/ydk-shell"
+    local YDK_CONFIG_PATH="/etc/ywteam/ydk-shell"
+    local YDK_RUNTIME_PATH="/opt/ywteam/ydk-shell"
+    local YDK_CACHE_PATH="/var/cache/ywteam/ydk-shell"
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+        -h | --help)
+            shift
+            ydk:usage 0 "ydk" "install" "usage"
+            exit 0
+            ;;
+        -p | --path)
+            YDK_INSTALL_PATH="${1}"
+            shift
+            ;;
+        -l | --logs)
+            YDK_LOGS_PATH="${1}"
+            shift
+            ;;
+        -c | --cache)
+            YDK_CACHE_PATH="${1}"
+            shift
+            ;;
+        -d | --data)
+            YDK_DATA_PATH="${1}"
+            shift
+            ;;
+        -r | --runtime)
+            YDK_RUNTIME_PATH="${1}"
+            shift
+            ;;
+        -C | --config)
+            YDK_CONFIG_PATH="${1}"
+            shift
+            ;;
+        -b | --binary)
+            YDK_BINARY_PATH="${1}"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            shift
+            ;;
+        esac
+    done
+    [[ ! -d "$YDK_BINARY_PATH" ]] && echo "Binary path not found: $YDK_BINARY_PATH. Use -b or --binary to set valid one" && exit 254
+    local YDK_PATH="${YDK_BINARY_PATH}/${YDK_INSTALL_PATH}" && YDK_PATH=${YDK_PATH//\/\//\/}
+    local YDK_TMP=$(ydk:temp "install")
+    trap 'rm -f "${YDK_TMP}" >/dev/null 2>&1' EXIT
+    # mkdir -p "$(dirname "${YDK_INSTALL_PATH}")"
+    ydk:log "INFO" "Installing required packages into ${YDK_PATH}"
+    ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+        apk add --update
+        apk add --no-cache bash jq git parallel
+        apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
+        rm -rf /var/cache/apk/* /root/.npm /tmp/*
+    } >"$YDK_TMP" # >/dev/null 2>&1
+    ydk:log "INFO" "Packages installed, verifying dependencies"
+    ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
+        echo "Failed to install required packages"
+        ydk:throw 255 "ERR" "Failed to install required packages"
+    }
+    ydk:log "INFO" "Packages installed, verifying dependencies"
+    ydk:require "${YDK_DEPENDENCIES[@]}"
+    ydk:log "INFO" "Done, Getting version info"
+    {
+        for DEPENDENCY in "${YDK_DEPENDENCIES[@]}"; do
+            echo -n "{"
+            echo -n "\"name\": \"${DEPENDENCY}\","
+            if command -v "$DEPENDENCY" >/dev/null 2>&1; then
+                echo -n "\"path\": \"$(command -v "$DEPENDENCY")\","
+                case "$DEPENDENCY" in
+                awk)
+                    local VERSION="$("$DEPENDENCY" -W version 2>&1)"
+                    ;;
+                curl)
+                    local VERSION="$("$DEPENDENCY" -V 2>&1 | head -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
+                    ;;
+                *)
+                    if "$DEPENDENCY" --version >/dev/null 2>&1; then
+                        local VERSION="$("$DEPENDENCY" --version 2>&1)"
+                    elif "$DEPENDENCY" version >/dev/null 2>&1; then
+                        local VERSION="$("$DEPENDENCY" version 2>&1)"
+                    else
+                        local VERSION="null"
+                    fi
+                    ;;
+                esac
+                VERSION=${VERSION//\"/\\\"}
+                VERSION=$(echo "$VERSION" | head -n 1)
+                # VERSION=${VERSION//$'\n'/\\n}
+                echo -n "\"version\": \"$VERSION\""
+            else
+                echo -n "\"path\": \"null\""
+            fi
+            echo -n "}"
         done
-        [[ ! -d "$YDK_BINARY_PATH" ]] && echo "Binary path not found: $YDK_BINARY_PATH. Use -b or --binary to set valid one" && exit 254
-        local YDK_PATH="${YDK_BINARY_PATH}/${YDK_INSTALL_PATH}" && YDK_PATH=${YDK_PATH//\/\//\/}
-        local YDK_TMP=$(ydk:temp "install")
-        trap 'rm -f "${YDK_TMP}" >/dev/null 2>&1' EXIT
-        # mkdir -p "$(dirname "${YDK_INSTALL_PATH}")"
-        ydk:log "INFO" "Installing required packages into ${YDK_PATH}"
-        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
-            apk add --update
-            apk add --no-cache bash jq git parallel
-            apk add --no-cache curl ca-certificates openssl ncurses coreutils python2 make gcc g++ libgcc linux-headers grep util-linux binutils findutils
-            rm -rf /var/cache/apk/* /root/.npm /tmp/*
-        } >"$YDK_TMP" # >/dev/null 2>&1
-        ydk:log "INFO" "Packages installed, verifying dependencies"
-        ! ydk:require "${YDK_DEPENDENCIES[@]}" && {
-            echo "Failed to install required packages"
-            ydk:throw 255 "ERR" "Failed to install required packages"
-        }
-        ydk:log "INFO" "Packages installed, verifying dependencies"
-        ydk:require "${YDK_DEPENDENCIES[@]}"
-        ydk:log "INFO" "Done, Getting version info"
-        {
-            for DEPENDENCY in "${YDK_DEPENDENCIES[@]}"; do
-                echo -n "{"
-                echo -n "\"name\": \"${DEPENDENCY}\","
-                if command -v "$DEPENDENCY" >/dev/null 2>&1; then
-                    echo -n "\"path\": \"$(command -v "$DEPENDENCY")\","
-                    case "$DEPENDENCY" in
-                    awk)
-                        local VERSION="$("$DEPENDENCY" -W version 2>&1)"
-                        ;;
-                    curl)
-                        local VERSION="$("$DEPENDENCY" -V 2>&1 | head -n 1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
-                        ;;
-                    *)
-                        if "$DEPENDENCY" --version >/dev/null 2>&1; then
-                            local VERSION="$("$DEPENDENCY" --version 2>&1)"
-                        elif "$DEPENDENCY" version >/dev/null 2>&1; then
-                            local VERSION="$("$DEPENDENCY" version 2>&1)"
-                        else
-                            local VERSION="null"
-                        fi
-                        ;;
-                    esac
-                    VERSION=${VERSION//\"/\\\"}
-                    VERSION=$(echo "$VERSION" | head -n 1)
-                    # VERSION=${VERSION//$'\n'/\\n}
-                    echo -n "\"version\": \"$VERSION\""
-                else
-                    echo -n "\"path\": \"null\""
-                fi
-                echo -n "}"
-            done
-        } | jq -cs '
+    } | jq -cs '
             . |
             {
                 "dependencies": .,
@@ -269,28 +421,28 @@ ydk:installer() {
                 }
             }
         ' >"$YDK_TMP" #'.' >/dev/null 2>&1
-        while read -r DEPENDENCY; do
-            local DEPENDENCY_NAME=$(jq -r '.name' <<<"${DEPENDENCY}")
-            local DEPENDENCY_PATH=$(jq -r '.path' <<<"${DEPENDENCY}")
-            local DEPENDENCY_VERSION=$(jq -r '.version' <<<"${DEPENDENCY}")
-            # echo "Verifying dependency: $DEPENDENCY_NAME"
-            if command -v "$DEPENDENCY_NAME" >/dev/null 2>&1; then
-                continue
-                # local INSTALLED_VERSION=$(jq -r '.version' <<<"${DEPENDENCY}")
-                # if [ "$INSTALLED_VERSION" != "$DEPENDENCY_VERSION" ]; then
-                #     echo "Dependency version mismatch: $DEPENDENCY_NAME"
-                #     ydk:throw 251 "ERR" "Dependency version mismatch: $DEPENDENCY_NAME"
-                # fi
-            fi
-            if [ "$DEPENDENCY_PATH" == "null" ]; then
-                ydk:log "INFO" "Dependency not found: $DEPENDENCY_NAME"
-                ydk:throw 253 "ERR" "Dependency not found: $DEPENDENCY_NAME"
-            fi
-            if [ "$DEPENDENCY_VERSION" == "null" ]; then
-                ydk:log "INFO" "Dependency version not found: $DEPENDENCY_NAME"
-                ydk:throw 252 "ERR" "Dependency version not found: $DEPENDENCY_NAME"
-            fi
-        done < <(jq -c '
+    while read -r DEPENDENCY; do
+        local DEPENDENCY_NAME=$(jq -r '.name' <<<"${DEPENDENCY}")
+        local DEPENDENCY_PATH=$(jq -r '.path' <<<"${DEPENDENCY}")
+        local DEPENDENCY_VERSION=$(jq -r '.version' <<<"${DEPENDENCY}")
+        # echo "Verifying dependency: $DEPENDENCY_NAME"
+        if command -v "$DEPENDENCY_NAME" >/dev/null 2>&1; then
+            continue
+            # local INSTALLED_VERSION=$(jq -r '.version' <<<"${DEPENDENCY}")
+            # if [ "$INSTALLED_VERSION" != "$DEPENDENCY_VERSION" ]; then
+            #     echo "Dependency version mismatch: $DEPENDENCY_NAME"
+            #     ydk:throw 251 "ERR" "Dependency version mismatch: $DEPENDENCY_NAME"
+            # fi
+        fi
+        if [ "$DEPENDENCY_PATH" == "null" ]; then
+            ydk:log "INFO" "Dependency not found: $DEPENDENCY_NAME"
+            ydk:throw 253 "ERR" "Dependency not found: $DEPENDENCY_NAME"
+        fi
+        if [ "$DEPENDENCY_VERSION" == "null" ]; then
+            ydk:log "INFO" "Dependency version not found: $DEPENDENCY_NAME"
+            ydk:throw 252 "ERR" "Dependency version not found: $DEPENDENCY_NAME"
+        fi
+    done < <(jq -c '
             .dependencies[] |
             select(
                 .version != "null" or
@@ -307,9 +459,9 @@ ydk:installer() {
             ) |
             .[]
         ' "$YDK_TMP")
-        {
-            echo -e "Name\tVersion\tPath"
-            jq -cr '
+    {
+        echo -e "Name\tVersion\tPath"
+        jq -cr '
             .dependencies[] |
             [
                 .name,
@@ -317,9 +469,9 @@ ydk:installer() {
                 .path
             ] | @tsv
         ' "$YDK_TMP"
-        } | column -t -s $'\t'
+    } | column -t -s $'\t'
 
-        jq '
+    jq '
             . |
             .install.path as $path |
             .install.logs as $logs |
@@ -340,11 +492,8 @@ ydk:installer() {
                 }
             }
         ' "$YDK_TMP"
-        rm -f "${YDK_TMP}"
-        ydk welcome
-    }
-    set -- "$(__installer:opts "$@" 4>&1)" && ydk:try "$@"
-    return $?
+    rm -f "${YDK_TMP}"
+    ydk welcome
 }
 {
     [[ -z "${YDK_PATHS[*]}" ]] && declare -g -A YDK_PATHS=(

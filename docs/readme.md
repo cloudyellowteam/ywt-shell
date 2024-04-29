@@ -5,6 +5,10 @@
 ```
 > **2024.04.26**
 ```shell
+
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14  sh -c "apk add --update > /dev/null && apk add --no-cache bash > /dev/null && packages/ydk/ydk.cli.sh install && packages/ydk/ydk.cli.sh packer defaults"
+
 clear; ./packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
 clear; ./packages/ydk/ydk.cli.sh packer defaults
 clear; ./packages/ydk/ydk.cli.sh screen expectSize 101 39

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
-# source "/tmp/ywteam/ydk-shell/ydk.2RKuje9q.3044146.bundle" logger info test; 
+# source "/tmp/ywteam/ydk-shell/ydk.2RKuje9q.3044146.bundle" logger info test;
 # ydk prgma 4>&1
 # # ydk logger info test
 # exit 255
@@ -114,7 +114,7 @@ ydk() {
         local ENTRYPOINT_FILE="${1}" && [[ ! -f "${ENTRYPOINT_FILE}" ]] && return 0
         local ENTRYPOINT_NAME=$(basename "${ENTRYPOINT_FILE}")
         local ENTRYPOINT=${ENTRYPOINT_NAME//.ydk.sh/}
-        ENTRYPOINT=$(echo "$ENTRYPOINT" | sed 's/^[0-9]*\.//')
+        ENTRYPOINT=$(sed 's/^[0-9]*\.//' <<<"$ENTRYPOINT")
         local ENTRYPOINT_TYPE="$(type -t "ydk:$ENTRYPOINT")" && [ -n "$ENTRYPOINT_TYPE" ] && return 0
         if ! [ "$ENTRYPOINT_TYPE" = function ]; then
             # echo "Loading entrypoint: ${ENTRYPOINT}" 1>&2
@@ -149,13 +149,15 @@ ydk() {
                 -not -name "${YDK_CLI_FILE_NAME}" | sort
         )
         # ydk:logger info "Activating entrypoints"
-        while read -r FUNC_NAME; do
-            {
-                [[ "$FUNC_NAME" =~ (activate|boostrap|inject|teardown|try|catch|throw|opts) ]] && continue
-                [[ ! "$FUNC_NAME" == "ydk:logger" ]] && continue
-                "$FUNC_NAME" activate >/dev/null 2>&1
-            }
-        done < <(ydk:functions | jq -r '.functions[]')
+        if command -v jq 1>/dev/null 2>/dev/null; then
+            while read -r FUNC_NAME; do
+                {
+                    [[ "$FUNC_NAME" =~ (activate|boostrap|inject|teardown|try|catch|throw|opts) ]] && continue
+                    [[ ! "$FUNC_NAME" == "ydk:logger" ]] && continue
+                    "$FUNC_NAME" activate >/dev/null 2>&1
+                }
+            done < <(ydk:functions | jq -r '.functions[]')
+        fi
         # ydk:logger success "Activated. Application Boostraped"
         YDK_BOOTSTRAPED=true && readonly YDK_BOOTSTRAPED
         return 0
@@ -205,7 +207,7 @@ ydk() {
     ydk:log() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
         local YDK_LOG_MESSAGE="${2:-""}"
-        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] || [[ "$YDK_BOOTSTRAPED" == true ]]; then
+        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] && [[ "$YDK_BOOTSTRAPED" == true ]] && [[ "$YDK_IS_INSTALL" == false ]]; then
             ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
         else
             local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
@@ -254,12 +256,13 @@ ydk() {
     }
     ydk:configure() {
         if [[ "$YDK_IS_INSTALL" == true ]]; then
+            ydk:log info "Installing ydk" 1>&2
             # if ! ydk:installer "$@"; then
             #     ydk:logger error "Failed to install ydk"
             #     # ydk:throw 253 "Failed to install ydk"
             #     # set -- "${YDK_POSITIONAL_ARGS[@]}"
             # fi
-            ydk:installer "$@"
+            ydk:installer "$@" 4>&1
             local YDK_INSTALL_STATUS=$?
             ydk:team welcome
             exit "$YDK_INSTALL_STATUS"

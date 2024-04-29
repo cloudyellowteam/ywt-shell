@@ -124,14 +124,17 @@ ydk:packer() {
             }
         } >>"$BUNDLE_TMP"
         local BUNDLE_FULL_PATH="$(jq -r '.realpath' <<<"$VALIDATION")/${BUNDLE_FILE_NAME}"
-        {
-            echo "$BUNDLE_TMP"
-            echo "$BUNDLE_ENTRYPOINT_NAME"
-            echo "$BUNDLE_FULL_PATH"
-            jq -c . <<<"$VALIDATION"
-            # cat "$BUNDLE_TMP"
-        } >&4
-        ydk:log info "Bundle ${BUNDLE_ENTRYPOINT_NAME^^} created. $BUNDLE_TMP"
+        # {
+        #     # echo "$BUNDLE_TMP"
+        #     # echo "$BUNDLE_ENTRYPOINT_NAME"
+        #     # echo "$BUNDLE_FULL_PATH"
+        #     jq -c . <<<"$VALIDATION"
+        #     # cat "$BUNDLE_TMP"
+        # } >&4
+        rm -f "$BUNDLE_FULL_PATH"
+        mv -f "$BUNDLE_TMP" "$BUNDLE_FULL_PATH"
+        chmod +x "$BUNDLE_FULL_PATH"
+        ydk:log info "Bundle ${BUNDLE_ENTRYPOINT_NAME^^} created. $BUNDLE_FULL_PATH"
 
         # ydk:log info "Testing bundle 'source $BUNDLE_TMP logger success test'"
         # echo
