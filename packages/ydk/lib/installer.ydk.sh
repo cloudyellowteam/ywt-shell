@@ -206,6 +206,21 @@ ydk:installer() {
         esac
     }
     install() {
+        # ! command -v jq >/dev/null 2>&1 && {
+        #     ydk:log "ERROR" "Failed to install jq1"
+        #     ! __installer:upm jq >/dev/null 2>&1 && {
+        #         ydk:log "ERROR" "Failed to install jq2"
+        #         return 1
+        #     }
+        # }
+        # ! command -v jq >/dev/null 2>&1 && {
+        #     ydk:throw 255 "ERR" "Failed to install jq3"
+        #     return 1
+        # }
+        # if ! command -v jq >/dev/null 2>&1 && ! __installer:upm jq 4>&1; then
+        #     ydk:log "ERROR" "Failed to install jq"
+        #     return 1
+        # fi
         local YDK_INSTALL_DEPS=(
             jq git parallel curl ncurses coreutils gcc g++ libgcc grep util-linux binutils findutils openssl
         )
@@ -219,7 +234,7 @@ ydk:installer() {
                 ydk:log "WARN" "Failed to install jq"
             fi
         }
-        ! ydk:require "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
+        ! ydk:require --throw "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
             ydk:log "ERROR" "Failed to install required packages"
             __installer:animation "stop" "Installing" "$ANIMATION_PID"
             ydk:throw 255 "ERR" "Failed to install required packages"
@@ -228,6 +243,7 @@ ydk:installer() {
         if ! ydk:assets download 4>&1 >/dev/null; then
             ydk:log "ERROR" "Failed to download assets"
         fi
+        ydk:upm installed
         sleep 1
         __installer:animation "stop" "Installing" "$ANIMATION_PID"
         return 0

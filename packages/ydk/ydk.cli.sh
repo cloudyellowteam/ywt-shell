@@ -61,9 +61,12 @@ ydk() {
         return 0
     }
     ydk:require() {
+        local THROW=false
+        [[ "${1,,}" =~ (true|false) ]] && THROW="${1,,}" && shift
+        [[ "${1,,}" =~ (--throw|-t) ]] && THROW=true && shift
         local RESULT=0
         for DEPENDENCY in "${@}"; do
-            ! echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && YDK_DEPENDENCIES+=("${DEPENDENCY}")
+            echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && continue
             if ! command -v "$DEPENDENCY" >/dev/null 2>&1; then
                 #[[ "${DEPENDENCY}" == "!"* ]]
                 YDK_DEPENDENCIES_MISSING+=("${DEPENDENCY}")
@@ -83,12 +86,12 @@ ydk() {
             echo -n "]"
             echo -n "}"
         })
-        [[ "$RESULT" -gt 0 ]] && {
+        [[ "$RESULT" -gt 0 ]] && [[ "$THROW" == true ]] && {
             ydk:log error "Missing required packages '${YDK_DEPENDENCIES_MISSING[*]}'. Please install"
             # command -v jq >/dev/null 2>&1 && {
             #     ydk:log error "$(jq -c . <<<"${DETAILS}")"
             # }
-            # ydk:throw 254 echo "Missing required packages $_"
+            ydk:throw 254 echo "Missing required packages $_"
         }
         echo "$DETAILS" >&4
         return "$RESULT"
@@ -207,7 +210,19 @@ ydk() {
     ydk:log() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
         local YDK_LOG_MESSAGE="${2:-""}"
-        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] && [[ "$YDK_BOOTSTRAPED" == true ]] && [[ "$YDK_IS_INSTALL" == false ]]; then
+        # [[ "$YDK_IS_INSTALL" == false ]] && [[ "$YDK_BOOTSTRAPED" == true ]] && {
+        #     if ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" && [[ "$YDK_IS_INSTALL" == false ]]; then
+        #         return $?
+        #     fi
+        # }
+        # {
+        #     local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+        #     echo -e "[${YDK_BRAND}] [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}"
+        # } 1>&2
+        # return 0
+        # && [[ "$YDK_IS_INSTALL" == false ]]
+        # && [[ "$YDK_BOOTSTRAPED" == true ]]
+        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] && [[ "$YDK_IS_INSTALL" == false ]] && [[ "$YDK_BOOTSTRAPED" == true ]]; then
             ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
         else
             local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")

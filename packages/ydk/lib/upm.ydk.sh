@@ -1,27 +1,19 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 # universal package manager vendor schema
-# {
-#    "name": "apt",
-#    "confirm": "-y/--yes",
-#    "install": "apt install $",
-#    "remove": "apt remove $",
-#    "upgrade": "apt install --only-upgrade $",
-#    "search": "apt search $",
-#    "info": "apt show $",
-#    "update_index": "apt update",
-#    "upgrade_all": "apt upgrade",
-#    "list_installed": "apt list -i/--installed"
-# }
 ydk:upm() {
     local YDK_LOGGER_CONTEXT="upm"
+    ydk:require --throw jq 4>/dev/null
     [[ -z "$YDK_UPM_VENDORS_FILE" ]] && local YDK_UPM_VENDORS_FILE="/workspace/rapd-shell/assets/upm.vendors.json" && [[ ! -f "$YDK_UPM_VENDORS_FILE" ]] && YDK_UPM_VENDORS_FILE="$(ydk:assets location "upm-vendors" 4>&1)"
     detect() {
+        ydk:require --throw uname awk tr sed 4>/dev/null
         local OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
         local OS_VENDOR=$({
             case $OS_NAME in
             linux)
-                local OS_VENDOR=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"')
+                local OS_VENDOR_NAME=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"' | sed 's/ linux//')
+                IFS=" " read -r -a OS_VENDOR_NAME <<<"$OS_VENDOR_NAME"
+                local OS_VENDOR=${OS_VENDOR_NAME[0]}
                 ;;
             darwin)
                 local OS_VENDOR="macos"
@@ -34,6 +26,7 @@ ydk:upm() {
                 ;;
             esac
             OS_VENDOR=${OS_VENDOR,,}
+            ydk:logger output "Detecting package managers for $OS_NAME/${OS_VENDOR}"
             echo -n "{"
             echo -n "\"os\":\"$OS_NAME\","
             echo -n "\"vendor\":\"$OS_VENDOR\","
@@ -125,48 +118,60 @@ ydk:upm() {
             ;;
         list_installed)
             # UPM_COMMAND is apk list -I/--installed, keep just one flag
-            UPM_COMMAND=${UPM_COMMAND%%\/*}            
+            UPM_COMMAND=${UPM_COMMAND%%\/*}
             ;;
         *) ;;
         esac
         # local UPM_COMMAND="$UPM_MANAGER_CMD $UPM_MANAGER_CONFIRM"
         ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION"
-        $UPM_COMMAND "$@"
-        return $?
+        # ydk:require --throw "$UPM_COMMAND" 4>/dev/null
+        $UPM_COMMAND "$@" >/dev/null 2>&1 &
+        local UPM_CMD_STATUS=$?
+        # sleep 40 &
+        local UPM_CMD_PID=$!
+        ydk:await spin "$UPM_CMD_PID" "Running $UPM_CMD_PID command" 1>&2
+        ydk:log "$([[ $UPM_CMD_STATUS -eq 0 ]] && echo "success" || echo "error")" "Command $UPM_MANAGER_CMD $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION exited with status $UPM_CMD_STATUS"
+        #ydk:await process "$!" "Running $! $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 1>&2
+        # local UPM_CMD_PID=$!
+        # ydk:await process "$UPM_CMD_PID" "Running $UPM_MANAGER_CMD $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 4>&1
+        return "$UPM_CMD_STATUS"
     }
     install() {
-        cmd install "$@"
+        cmd install "$@" >&4
         return $?
     }
     uninstall() {
-        cmd remove "$@"
+        cmd remove "$@" >&4
         return $?
     }
     upgrade() {
-        cmd upgrade "$@"
+        cmd upgrade "$@" >&4
         return $?
     }
     search() {
-        cmd search "$@"
+        cmd search "$@" >&4
         return $?
     }
     info() {
-        cmd info "$@"
+        cmd info "$@" >&4
         return $?
     }
     update() {
-        cmd update_index
+        cmd update_index >&4
         return $?
     }
     upgrade_all() {
-        cmd upgrade_all
+        cmd upgrade_all >&4
         return $?
     }
     installed() {
-        cmd list_installed
-        return $?
+        ydk:require --throw awk tail sort column 4>/dev/null
+        cmd list_installed | awk '{print $1}' | tail -n +2 | sort | column >&4
+        return 0
+        # local INSTALLED_CMD_STATUS=$?
+        # return "$INSTALLED_CMD_STATUS"
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 {

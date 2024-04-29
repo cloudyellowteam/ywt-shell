@@ -3,6 +3,22 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+```shell
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14
+# apk add --update > /dev/null && apk add --no-cache bash > /dev/null
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir kalilinux/kali-rolling
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir ubuntu:20.04
+
+clear; packages/ydk/ydk.cli.sh install
+clear; packages/ydk/ydk.cli.sh secops scanners install cloc
+clear; packages/ydk/ydk.cli.sh upm detect
+clear; packages/ydk/ydk.cli.sh upm installed
+clear; packages/ydk/ydk.cli.sh upm install cloc
+clear; packages/ydk/ydk.cli.sh upm uninstall cloc
+clear; packages/ydk/ydk.cli.sh upm $(! command -v cloc > /dev/null && echo "install" || echo "uninstall") cloc
+
+```
+
 
 > **2024.04.29**
 ```shell

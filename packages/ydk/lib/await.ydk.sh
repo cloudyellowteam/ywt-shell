@@ -32,7 +32,7 @@ ydk:await() {
             read -r -a SPINNERS_NAMES <<<"$(names 4>&1)"
             local SPINNER_INDEX=$((RANDOM % ${#SPINNERS_NAMES[@]}))
             SPINNER_INDEX=$((RANDOM % ${#SPINNERS_NAMES[@]}))
-            local SPINNER_NAME="weather" # "${SPINNERS_NAMES[$SPINNER_INDEX]}"
+            local SPINNER_NAME="${SPINNERS_NAMES[$SPINNER_INDEX]}"
             jq -cr \
                 --arg SPINNER_NAME "$SPINNER_NAME" \
                 "${YDK_AWAIT_SPECS[by_name]}" \
@@ -67,6 +67,16 @@ ydk:await() {
         done
         printf "\b\b\b\b" 1>&2
         return 0
+    }
+    process(){
+        local PROCESS_TARGET_PID=$1
+        local PROCESS_MESSAGE="${2:-}"
+        local PROCESS_SPINNER_PID
+        spin "$PROCESS_TARGET_PID" "$PROCESS_MESSAGE" 1>&2
+        PROCESS_SPINNER_PID=$!
+        wait "$PROCESS_TARGET_PID"
+        kill "$PROCESS_SPINNER_PID"
+        return $?
     }
     examples() {
         # loop into each name

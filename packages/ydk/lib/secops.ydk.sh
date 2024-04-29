@@ -43,9 +43,10 @@ ydk:secops() {
         ["auto-uninstall"]=false
         ["keep-output"]=false
         ["output-file"]="secops-output"
-    ) && [[ ! -f "${YDK_SECOPS_CONFIG[scanners]}" ]] && YDK_SECOPS_CONFIG[scanners]=$(ydk:assets location spinners 4>&1)
+    ) 
+    [[ ! -f "${YDK_SECOPS_CONFIG[scanners]}" ]] && YDK_SECOPS_CONFIG[scanners]=$(ydk:assets location scanners 4>&1)
     scanners() {
-        local SCANNERS_FILE="/workspace/rapd-shell/assets/scanners.json"
+        local SCANNERS_FILE="${YDK_SECOPS_CONFIG[scanners]}"
         [ ! -f "$SCANNERS_FILE" ] && echo "[]" >&4 && ydk:log error "No scanners found" && return 1
         list() {
             ydk:log info "$(jq -cr "${YDK_SECOPS_SPECS[count]}" "$SCANNERS_FILE") scanners available"
