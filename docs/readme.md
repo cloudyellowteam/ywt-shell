@@ -3,7 +3,23 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
-> **2024.04.26**
+
+> **2024.04.29**
+```shell
+clear; ./packages/ydk/ydk.cli.sh assets download
+clear; ./packages/ydk/ydk.cli.sh assets get spinners emojis
+
+# install on kali
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir kalilinux/kali-rolling bash -c "packages/ydk/ydk.cli.sh install && packages/ydk/ydk.cli.sh secops scanners install cloc"
+# install on ubuntu
+# apt-get update > /dev/null && apt-get install -y bash && 
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir ubuntu:20.04 bash -c "packages/ydk/ydk.cli.sh install && packages/ydk/ydk.cli.sh secops scanners install cloc"
+# install on alpine
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14  sh -c "apk add --update > /dev/null && apk add --no-cache bash > /dev/null && packages/ydk/ydk.cli.sh install && packages/ydk/ydk.cli.sh secops scanners install cloc"
+```
+
+
+> **2024.04.28**
 ```shell
 
 clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14

@@ -130,7 +130,7 @@ ydk:logger() {
                 #     local LOG_MESSAGE_END=${LOG_MESSAGE_SANETIZED: -$LOG_CHARS}
                 #     echo -n "${LOG_MESSAGE_START:-"Start"}...${LOG_MESSAGE_END:-"End"}"
                 # fi
-            )" && echo -n $'\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t'
+            )" && echo -n $'\t\t\t'
             echo -n "${ITALIC}${UNDERLINE}$(__logger:padright "[${LOG_CONTEXT^^}]" 5 4>&1)${NS}" # && echo -n $'\t'
             echo -n "["
             eval "echo -n \"\$${LOG_COLOR:-YELLOW}\""
@@ -141,7 +141,8 @@ ydk:logger() {
             echo -n "[${DARK_GRAY}$LOG_ETIME${NC}]"
 
             echo
-        } | column --table --separator $'\t')" 1>&2
+        })" 1>&2
+        # | column --table --separator $'\t'
         return 0
     }
     __logger:write() {
