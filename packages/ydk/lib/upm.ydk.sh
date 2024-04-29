@@ -15,6 +15,7 @@
 # }
 ydk:upm() {
     local YDK_LOGGER_CONTEXT="upm"
+    [[ -z "$YDK_UPM_VENDORS_FILE" ]] && local YDK_UPM_VENDORS_FILE="/workspace/rapd-shell/assets/upm.vendors.json" && [[ ! -f "$YDK_UPM_VENDORS_FILE" ]] && YDK_UPM_VENDORS_FILE="$(ydk:assets location "upm-vendors" 4>&1)"
     detect() {
         local OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
         local OS_VENDOR=$({
@@ -62,7 +63,7 @@ ydk:upm() {
             .[] | 
             select(.name == \"$MANAMGER_NAME\") |
             first(.)
-        " "/workspace/rapd-shell/assets/upm.vendors.json" >&4
+        " "${YDK_UPM_VENDORS_FILE}" >&4
     }
     cli() {
         local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"

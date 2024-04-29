@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:emojis() {
-    [[ -z "$YDK_EMOJIS_FILE" ]] && local YDK_EMOJIS_FILE="/workspace/rapd-shell/assets/emojis.json"
+    [[ -z "$YDK_EMOJIS_FILE" ]] && local YDK_EMOJIS_FILE="/workspace/rapd-shell/assets/emojis.json" && [[ ! -f "$YDK_EMOJIS_FILE" ]] && YDK_EMOJIS_FILE="$(ydk:assets location emojis 4>&1)"
     list() {
         # ydk:log info "$(jq -cr "${YDK_AWAIT_SPECS[count]}" "$YDK_AWAIT_SPINNERS_FILE") spinners available"
         local YDK_EMOJIS=$(jq -cr . "$YDK_EMOJIS_FILE" 2>/dev/null)

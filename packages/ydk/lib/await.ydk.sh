@@ -2,7 +2,7 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:await() {
     local YDK_LOGGER_CONTEXT="await"
-    [[ -z "$YDK_AWAIT_SPINNERS_FILE" ]] && local YDK_AWAIT_SPINNERS_FILE="/workspace/rapd-shell/assets/spinners.json"
+    [[ -z "$YDK_AWAIT_SPINNERS_FILE" ]] && local YDK_AWAIT_SPINNERS_FILE="/workspace/rapd-shell/assets/spinners.json" && [[ ! -f "$YDK_AWAIT_SPINNERS_FILE" ]] && YDK_AWAIT_SPINNERS_FILE="$(ydk:assets location spinners 4>&1)"
     [[ -z "$YDK_AWAIT_SPECS" ]] && declare -A YDK_AWAIT_SPECS=(
         ["all"]=".[]"
         ["count"]="keys | length"

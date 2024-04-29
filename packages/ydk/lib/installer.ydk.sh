@@ -221,9 +221,13 @@ ydk:installer() {
         }
         ! ydk:require "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
             ydk:log "ERROR" "Failed to install required packages"
+            __installer:animation "stop" "Installing" "$ANIMATION_PID"
             ydk:throw 255 "ERR" "Failed to install required packages"
         }
-        ydk:assets download 4>&1
+        ydk:log "INFO" "Packages installed, downloding assets"
+        if ! ydk:assets download 4>&1 >/dev/null; then
+            ydk:log "ERROR" "Failed to download assets"
+        fi
         sleep 1
         __installer:animation "stop" "Installing" "$ANIMATION_PID"
         return 0

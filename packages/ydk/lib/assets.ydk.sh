@@ -14,6 +14,12 @@ ydk:assets() {
         export YDK_ASSETS_PATH
         mkdir -p "${YDK_ASSETS_PATH}"
     }
+    location(){
+        local ASSET="${1}"
+        [[ -n "${YDK_ASSETS[${ASSET}]}" ]] && ASSET="${YDK_ASSETS[${ASSET}]}"
+        echo "${YDK_ASSETS_PATH}/${ASSET}" >&4
+        return 0
+    }
     # {
     #     jq . <<<"${YDK_TEAM_INFO}"
     #     echo "${YDK_REMOTE_URL}"
@@ -27,12 +33,12 @@ ydk:assets() {
             local ASSET_FILE="${YDK_ASSETS_PATH}/${ASSET}"
             local ASSET_TMP=$(ydk:temp "download")
             if [[ -f "${ASSET_FILE}" ]]; then
-                ydk:log "INFO" "Asset already exists: ${ASSET_FILE}"
-                echo "${ASSET_FILE}" >&4
+                ydk:log "debug" "Asset already exists: ${ASSET_FILE}"
+                ASSETS+=("${ASSET_FILE}")
                 # rm -f "${ASSET_FILE}" >/dev/null 2>&1
-                return 0                
+                continue           
             fi
-            ydk:log "INFO" "Downloading asset from ${ASSET_URL}"
+            ydk:log "debug" "Downloading asset from ${ASSET_URL}"
             if ! curl -f -SsL -o "${ASSET_TMP}" "${ASSET_URL}" 2>/dev/null; then
                 ydk:log "ERROR" "Failed to download asset from ${ASSET_URL}"
                 return 1

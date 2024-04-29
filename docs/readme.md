@@ -6,6 +6,7 @@
 
 > **2024.04.29**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh assets location spinners
 clear; ./packages/ydk/ydk.cli.sh assets download
 clear; ./packages/ydk/ydk.cli.sh assets get spinners emojis
 
