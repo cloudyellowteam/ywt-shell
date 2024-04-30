@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  Build:
+  Docker:
     runs-on: ubuntu-latest
     # container:
     #   image: alpine:latest
