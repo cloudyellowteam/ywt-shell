@@ -14,10 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Run a script
+    - name: Install YDK Shell SDK
       run: |
         apk add --update > /dev/null 
-        apk add --no-cache bash; 
+        apk add --no-cache bash > /dev/null 
         packages/ydk/ydk.cli.sh install
-    #- name: Build the Docker image
-    #  run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Build the Docker image
+      run: |
+        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
