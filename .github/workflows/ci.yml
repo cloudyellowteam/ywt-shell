@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container: ["ubuntu:latest", "alpine:latest", "kali/kali-rolling"]
+        container: ["ubuntu:latest", "alpine:latest", "kalilinux/kali-rolling"]
     container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
@@ -21,9 +21,11 @@ jobs:
       shell: bash
       run: |
         if [ "${{ matrix.container }}" == "alpine:latest" ]; then
-          apk add --update
-          apk add --no-cache bash
-        fi        
+          apk add --update curl gnupg
+        else
+          apt-get update
+          apt-get install -y curl gnupg
+        fi       
     - name: Build the Docker image
       run: |
        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
