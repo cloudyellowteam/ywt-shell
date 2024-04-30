@@ -26,7 +26,7 @@ jobs:
       run: |
         apt-get update
         apt-get install -y curl gnupg docker.io
-        service docker start
+        systemctl start docker
       if: matrix.container != 'alpine:latest'    
     - name: Build the Docker image
       run: |
