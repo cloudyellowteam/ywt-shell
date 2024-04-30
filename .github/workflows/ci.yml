@@ -10,6 +10,7 @@ jobs:
   pack:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Install YDK Shell SDK
         run: |
           packages/ydk/ydk.cli.sh install
