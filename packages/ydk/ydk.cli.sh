@@ -309,7 +309,7 @@ ydk() {
         mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}"
     }
     ydk:opts() {
-        local YDK_OPTS=$(ydk:argv walk "$@" | jq -r .)
+        local YDK_OPTS=$(ydk:argv walk "$@" 4>&1 | jq -r .)
         IFS=$'\n' read -r -d '' -a YDK_OPTS_ARGS <<<"$(jq -r '.__args[]' <<<"$YDK_OPTS")"
         set -- "${YDK_OPTS_ARGS[@]}"
         return 0

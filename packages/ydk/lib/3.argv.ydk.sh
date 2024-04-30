@@ -17,30 +17,33 @@ ydk:argv() {
         if jq -e . >/dev/null 2>&1 <<<"$VALUE"; then
             VALUE=$(jq -c . <<<"$VALUE")
         fi
-        echo -n "\"$KEY\": $VALUE"
+        echo -n "\"$KEY\": $VALUE" >&4
     }
     walk() {
-        local WALK_FIRST=true
-        echo -n "{"
-        while [[ $# -gt 0 ]]; do
-            local FLAG="$1"
-            [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
-            kv "$FLAG"
-            shift
-            echo -n ","
-            # [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
-            # echo -n ","
-        done #| sed -e 's/,$//'
-        echo -n "\"__args\": ["
-        WALK_FIRST=true
-        for YDK_POSITIONAL_ARGS in "${YDK_POSITIONAL_ARGS[@]}"; do
-            echo -n "\"$YDK_POSITIONAL_ARGS\""
-            [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
-        done
-        echo -n "]"
-        echo -n "}"
-        export YDK_POSITIONAL_ARGS
-        set -- "${YDK_POSITIONAL_ARGS[@]}"
+        {
+            local WALK_FIRST=true
+            echo -n "{"
+            while [[ $# -gt 0 ]]; do
+                local FLAG="$1"
+                [[ "$FLAG" != --* ]] && [[ "$FLAG" != -* ]] && YDK_POSITIONAL_ARGS+=("$1") && shift && continue
+                kv "$FLAG" 4>&1
+                shift
+                echo -n ","
+                # [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
+                # echo -n ","
+            done #| sed -e 's/,$//'
+            echo -n "\"__args\": ["
+            WALK_FIRST=true
+            for YDK_POSITIONAL_ARGS in "${YDK_POSITIONAL_ARGS[@]}"; do
+                echo -n "\"$YDK_POSITIONAL_ARGS\""
+                [[ "$WALK_FIRST" == true ]] && echo -n "," && WALK_FIRST=false
+            done
+            echo -n "]"
+            echo -n "}"
+            export YDK_POSITIONAL_ARGS
+            set -- "${YDK_POSITIONAL_ARGS[@]}"
+        } >&4
+
         return 0
     }
     values() {
