@@ -15,8 +15,6 @@ jobs:
     container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
-    - name: Setup Docker
-      uses: docker-practice/actions-setup-docker@master
     - name: Install Depencencies
       shell: bash
       run: |
@@ -25,7 +23,9 @@ jobs:
         else
           apt-get update
           apt-get install -y curl gnupg
-        fi       
+        fi  
+    - name: Setup Docker
+      uses: docker-practice/actions-setup-docker@master     
     - name: Build the Docker image
       run: |
        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
