@@ -8,18 +8,45 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    # container:
-    #   image: alpine:latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, alpine:latest, kali-linux]
+        include:
+          - os: ubuntu-latest
+            container: ""
+          - os: alpine:latest
+            container: "alpine:latest"
+          - os: kali-linux
+            container: "kalilinux/kali-rolling"
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
-    steps:
+    - name: Install YDK Shell SDK
+      run: |
+        apk add --update > /dev/null 
+        apk add --no-cache bash > /dev/null 
+      if: matrix.os == 'alpine:latest'
     - name: Build the Docker image
       run: |
        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
     - name: Install YDK Shell SDK
       run: |
-        apk add --update > /dev/null 
-        apk add --no-cache bash > /dev/null 
         packages/ydk/ydk.cli.sh install
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     # container:
+#     #   image: alpine:latest
+#     steps:
+#     - uses: actions/checkout@v4
+#     - name: Build the Docker image
+#       run: |
+#        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
+#     - name: Install YDK Shell SDK
+#       run: |
+#         apk add --update > /dev/null 
+#         apk add --no-cache bash > /dev/null 
+#         packages/ydk/ydk.cli.sh install
     
