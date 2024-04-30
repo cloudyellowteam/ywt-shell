@@ -15,17 +15,21 @@ jobs:
     container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
+    - name: Install Alpine Depencencies
+      shell: bash
+      run: |
+        apk add --update bash curl gnupg docker
+      if: matrix.container == 'alpine:latest'
     - name: Install Depencencies
       shell: bash
       run: |
-        if [ "${{ matrix.container }}" == "alpine:latest" ]; then
-          apk add --update curl gnupg
-        else
+        if [ "${{ matrix.container }}" != "alpine:latest" ]; then
           apt-get update
-          apt-get install -y curl gnupg
-        fi  
-    - name: Setup Docker
-      uses: docker-practice/actions-setup-docker@master     
+          apt-get install -y curl gnupg docker.io
+        then
+    - name: Start Docker service
+      run: |
+        service docker start
     - name: Build the Docker image
       run: |
        docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
