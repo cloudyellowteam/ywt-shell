@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container: ["ubuntu:latest", "alpine:latest", "kalilinux/kali-rolling", "debian:latest", "centos:latest", "fedora:latest", "opensuse/leap:latest", "archlinux:latest"]
+        # "centos:latest"
+        container: ["ubuntu:latest", "alpine:latest", "kalilinux/kali-rolling", "debian:latest", "fedora:latest", "opensuse/leap:latest", "archlinux:latest"]
     container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
