@@ -7,7 +7,16 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install YDK Shell SDK
+        run: |
+          packages/ydk/ydk.cli.sh install
+      - name: Packing YDK Shell SDK
+        run: |
+          packages/ydk/ydk.cli.sh packer pack "$(realpath ./packages/ydk/ydk.cli.sh)"
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
