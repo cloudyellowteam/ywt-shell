@@ -9,9 +9,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    - name: Build the Docker image
+     run: |
+       docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
+
     container:
       image: alpine:latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Install YDK Shell SDK
@@ -19,6 +22,4 @@ jobs:
         apk add --update > /dev/null 
         apk add --no-cache bash > /dev/null 
         packages/ydk/ydk.cli.sh install
-    #- name: Build the Docker image
-    #  run: |
-    #    docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
+    
