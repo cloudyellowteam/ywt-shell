@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Alpine Depencencies
-      shell: bash
+      shell: shell
       run: |
         apk add --update bash curl gnupg docker
       if: matrix.container == 'alpine:latest'
