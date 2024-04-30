@@ -15,6 +15,8 @@ jobs:
     container: ${{ matrix.container }}
     steps:
     - uses: actions/checkout@v4
+    - name: Setup Docker
+      uses: docker-practice/actions-setup-docker@master
     - name: Install Depencencies
       shell: bash
       run: |
