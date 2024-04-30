@@ -82,6 +82,9 @@ ydk:installer() {
         IFS=" " read -r -a PACKAGES <<<"$PACKAGES"
         ydk:log info "Installing (${#PACKAGES[@]}) packages using $PACKAGE_MANAGER"
         ydk:log debug "${PACKAGES[*]}"
+        ydk:await animation "start" "Installing with $PACKAGE_MANAGER" & # 1>&2
+        local ANIMATION_PID=$!
+        local INSTALL_STATUS=0
         {
             case "$PACKAGE_MANAGER" in
             apt-get)
@@ -140,70 +143,26 @@ ydk:installer() {
                 return 1
                 ;;
             esac
+            INSTALL_STATUS=$?
         } >/dev/null 2>&1
-        local INSTALL_STATUS=$?
+        sleep 0.1
+        [[ -n "$ANIMATION_PID" ]] && {
+            ydk:await animation "stop" "Installing" "$ANIMATION_PID" 
+            echo -en "\b\b\b\b\b\b" 1>&2
+            echo 1>&2
+        }
         [[ "$INSTALL_STATUS" -ne 0 ]] && {
             ydk:log "WARN" "Failed to install $* using $PACKAGE_MANAGER"
             return 1
         }
-        ydk:log "INFO" "Installed $* using $PACKAGE_MANAGER"
+        ydk:log "success" "Installed $* using $PACKAGE_MANAGER"
+        #echo 1 4>&1
         return 0
     }
     __installer:cursor:back() {
         local N=${1:-1}
         echo -en "\033[${N}D"
         # mac compatible, but goes back to the beginning of the line
-    }
-    __installer:animation() {
-        ICON="●" #  • ●
-        ARRAY_ANIMATION=(
-            "${BLUE}${ICON}${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}    "
-            " ${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}${BLUE}${ICON}   "
-            "  ${RED}${ICON}${MAGENTA}${ICON}${YELLOW}${ICON}${BLUE}${ICON}${GREEN}${ICON}  "
-            "   ${MAGENTA}${ICON}${BLUE}${ICON}${GREEN}${YELLOW}${ICON}${ICON}${RED}${ICON} "
-            "    ${BLUE}${ICON}${GREEN}${ICON}${RED}${ICON}${YELLOW}${ICON}${MAGENTA}${ICON}"
-        )
-        case $1 in
-        start)
-            ((column = COLUMNS - ${#2} - 8))
-            printf "%${column}s"
-            while true; do
-                for i in {0..4}; do
-                    # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
-                    printf "\b\r\033[2K${NC}${2} ${ARRAY_ANIMATION[i]}"
-                    sleep 0.12
-                done
-                # for i in {4..0}; do
-                #     # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
-                #     printf "\b\r\033[2K${NC}${2} ${ARRAY_ANIMATION[i]}"
-                #     sleep 0.12
-                # done
-                __installer:cursor:back 1
-                printf "\b\b\b\b\b\b" 1>&2
-            done
-            ;;
-        stop)
-            if [[ -z ${3} ]]; then
-                echo "Animation not running"
-                return 1
-            fi
-            kill "${3}" >/dev/null 2>&1
-            {
-                echo -en "\b${NC}  --> ["
-                if [[ $2 -eq 0 ]]; then
-                    echo -en " ${GREEN}Success${NC} "
-                else
-                    echo -en " ${RED}Error${NC} "
-                fi
-                echo -e "${NC}]"
-                printf "\b\b\b\b"
-            } 1>&2
-            ;;
-        *)
-            echo "invalid argument, try again with {start/stop}"
-            return 1
-            ;;
-        esac
     }
     install() {
         # ! command -v jq >/dev/null 2>&1 && {
@@ -225,27 +184,29 @@ ydk:installer() {
             jq git parallel curl ncurses coreutils gcc g++ libgcc grep util-linux binutils findutils openssl
         )
         ydk:log info "Installing into ${YDK_PATHS[bin]}. Change passing -b /your/path" #>&4
-        __installer:animation "start" "Installing" &
-        local ANIMATION_PID=$!
+        # ydk:await animation "start" "Installing" &
+        # local ANIMATION_PID=$!
         check:paths
         ! ydk:require "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
             ydk:log "INFO" "Installing required packages"
-            if ! __installer:upm "${YDK_INSTALL_DEPS[@]}" 4>&1; then
-                ydk:log "WARN" "Failed to install jq"
+            if ! __installer:upm "${YDK_INSTALL_DEPS[@]}" 2>/dev/null; then
+                ydk:log "error" "Failed to install ${YDK_INSTALL_DEPS[*]} using $PACKAGE_MANAGER"
+            else
+                ydk:log info "Packages installed"
             fi
         }
-        ! ydk:require --throw "${YDK_DEPENDENCIES[@]}" 4>/dev/null && {
-            ydk:log "ERROR" "Failed to install required packages"
-            __installer:animation "stop" "Installing" "$ANIMATION_PID"
-            ydk:throw 255 "ERR" "Failed to install required packages"
-        }
-        ydk:log "INFO" "Packages installed, downloding assets"
+        ydk:log info "Downloding assets"
+        # ! ydk:require --throw "${YDK_DEPENDENCIES[@]}" >/dev/null && {
+        #     ydk:log "ERROR" "Failed to install required packages"
+        #     ydk:throw 255 "ERR" "Failed to install required packages"
+        # }
         if ! ydk:assets download 4>&1 >/dev/null; then
             ydk:log "ERROR" "Failed to download assets"
         fi
-        ydk:upm installed
-        sleep 1
-        __installer:animation "stop" "Installing" "$ANIMATION_PID"
+        # local INSTALLED_PACKAGES=$(ydk:upm installed 4>&1)
+        ydk:upm installed 4>&1
+        # sleep 0.5
+        # ydk:await animation "stop" "Installing" "$ANIMATION_PID"
         return 0
     }
     __installer:opts() {

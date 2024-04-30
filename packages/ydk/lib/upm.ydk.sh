@@ -52,16 +52,15 @@ ydk:upm() {
     }
     vendor() {
         local MANAMGER_NAME=$1
-        jq -r "
+        jq -cr "
             .[] | 
             select(.name == \"$MANAMGER_NAME\") |
             first(.)
         " "${YDK_UPM_VENDORS_FILE}" >&4
     }
-    cli() {
+    __upm:cli() {
         local YDK_UPM_DETECT=$(detect 4>&1) && [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
-
         # YDK_UPM_DETECT="{}" && detect && read -r -u 4 YDK_UPM_DETECT && ydk:logger output "$YDK_UPM_DETECT" || return $?
         # [[ -z "$YDK_UPM_DETECT" ]] && ydk:throw 255 "No package manager detected"
         # [[ "$(jq -r '.os' <<<"$YDK_UPM_DETECT")" == "unknown" ]] && ydk:throw 255 "Unsupported OS"
@@ -96,12 +95,13 @@ ydk:upm() {
             }'
         })
         ydk:log info "Detected package manager $(jq -r '.manager.name' <<<"$UPM_MANAGER")"
-        jq . <<<"$UPM_MANAGER" >&4
+        jq -c . <<<"$UPM_MANAGER" >&4
+        return 0
     }
     cmd() {
         local UPM_MANAGER_CMD=$1 && [ -z "$UPM_MANAGER_CMD" ] && return 22
         shift
-        local YDK_UPM_CLI=$(cli 4>&1) && [[ -z "$YDK_UPM_CLI" ]] && return 255
+        local YDK_UPM_CLI=$(__upm:cli 4>&1) && [[ -z "$YDK_UPM_CLI" ]] && return 255
         local UPM_MANAGER=$(jq -r '.manager' <<<"$YDK_UPM_CLI") && [[ -z "$UPM_MANAGER" ]] && return 255
         local UPM_MANAGER_NAME=$(jq -r '.name' <<<"$UPM_MANAGER")
         # local UPM_MANAGER_PATH=$(jq -r '.path' <<<"$UPM_MANAGER")
@@ -123,18 +123,18 @@ ydk:upm() {
         *) ;;
         esac
         # local UPM_COMMAND="$UPM_MANAGER_CMD $UPM_MANAGER_CONFIRM"
-        ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION"
+        # ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 1>&2
         # ydk:require --throw "$UPM_COMMAND" 4>/dev/null
-        $UPM_COMMAND "$@" >/dev/null 2>&1 &
-        local UPM_CMD_STATUS=$?
-        # sleep 40 &
-        local UPM_CMD_PID=$!
-        ydk:await spin "$UPM_CMD_PID" "Running $UPM_CMD_PID command" 1>&2
-        ydk:log "$([[ $UPM_CMD_STATUS -eq 0 ]] && echo "success" || echo "error")" "Command $UPM_MANAGER_CMD $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION exited with status $UPM_CMD_STATUS"
+        $UPM_COMMAND "$@" 2>/dev/null >&4
+        # local UPM_CMD_STATUS=$?
+        # # sleep 40 &
+        # local UPM_CMD_PID=$!
+        # ydk:await spin "$UPM_CMD_PID" "Running $UPM_CMD_PID command" 1>&2
+        ydk:log "$([[ $UPM_CMD_STATUS -eq 0 ]] && echo "success" || echo "error")" "Command  $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION exited with status $UPM_CMD_STATUS" 1>&2
         #ydk:await process "$!" "Running $! $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 1>&2
         # local UPM_CMD_PID=$!
         # ydk:await process "$UPM_CMD_PID" "Running $UPM_MANAGER_CMD $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 4>&1
-        return "$UPM_CMD_STATUS"
+        return "${UPM_CMD_STATUS:-0}"
     }
     install() {
         cmd install "$@" >&4
@@ -165,7 +165,7 @@ ydk:upm() {
         return $?
     }
     installed() {
-        ydk:require --throw awk tail sort column 4>/dev/null
+        ydk:log info "Listing installed packages"
         cmd list_installed | awk '{print $1}' | tail -n +2 | sort | column >&4
         return 0
         # local INSTALLED_CMD_STATUS=$?

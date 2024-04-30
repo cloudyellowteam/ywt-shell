@@ -4,6 +4,7 @@
 # ydk prgma 4>&1
 # # ydk logger info test
 # exit 255
+
 YDK_CLI_ENTRYPOINT="${0}" && readonly YDK_CLI_ENTRYPOINT
 YDK_CLI_ARGS=("$@")
 export YDK_BRAND="YDK" && readonly YDK_BRAND
@@ -32,6 +33,32 @@ ydk() {
         elif [[ "${BASH_SOURCE[0]}" == "environment" ]]; then
             YDK_CLI_BINARY=true
         fi
+        # {
+        #     echo "BASH_ALIASES = (${#BASH_ALIASES[@]}) ${BASH_ALIASES[*]}"
+        #     echo "BASH_CMDS = (${#BASH_CMDS[@]}) ${BASH_CMDS[*]}"
+        #     echo "HISTFILE= ${HISTFILE}"
+        #     echo "HISTFILESIZE= ${HISTFILESIZE:-$HISTSIZE}"
+        #     echo "UID = ${UID}"
+        #     echo "EUID = ${EUID}"
+        #     echo "USER = ${USER}"
+        #     echo "LOGNAME = ${LOGNAME}"
+        #     echo "HOME = ${HOME}"
+        #     echo "PWD = ${PWD}"
+        #     echo "OLDPWD = ${OLDPWD}"
+        #     echo "SHELL = ${SHELL}"
+        #     echo "BASH = ${BASH}"
+        #     echo "BASH_VERSION = ${BASH_VERSION}"
+        #     echo "BASH_VERSINFO = ${BASH_VERSINFO[*]}"
+        #     echo "BASH_SOURCE = ${BASH_SOURCE[*]}"
+        #     echo "BASH_ARGV = (${#BASH_ARGV[@]}) ${BASH_ARGV[*]}"
+        #     echo "BASH_ARGC = (${#BASH_ARGC[@]}) ${BASH_ARGC[*]}"
+        #     echo "BASH_LINENO = (${#BASH_LINENO[@]}) ${BASH_LINENO[*]}"
+        #     echo "BASH_REMATCH = (${#BASH_REMATCH[@]}) ${BASH_REMATCH[*]}"
+        #     echo "BASH_SUBSHELL = ${BASH_SUBSHELL}"
+        #     echo "BASH_EXECUTION_STRING = ${BASH_EXECUTION_STRING}"
+        #     echo "PATH = ${PATH}"
+        #     echo "LINENO = ${LINENO}"
+        # }
         local YDK_CLI=$({
             echo -n "{"
             echo -n "\"brand\": \"${YDK_BRAND}\","
@@ -64,13 +91,13 @@ ydk() {
         local THROW=false
         [[ "${1,,}" =~ (true|false) ]] && THROW="${1,,}" && shift
         [[ "${1,,}" =~ (--throw|-t) ]] && THROW=true && shift
-        local RESULT=0
+        local MISSING=0
         for DEPENDENCY in "${@}"; do
-            echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && continue
+            # echo "${YDK_DEPENDENCIES[*]}" | grep -q "${DEPENDENCY}" >/dev/null 2>&1 && continue
             if ! command -v "$DEPENDENCY" >/dev/null 2>&1; then
                 #[[ "${DEPENDENCY}" == "!"* ]]
                 YDK_DEPENDENCIES_MISSING+=("${DEPENDENCY}")
-                RESULT=1
+                MISSING=1
             fi
         done
         # [ "${#YDK_DEPENDENCIES_MISSING[@]}" -eq 0 ] && return 0
@@ -86,15 +113,16 @@ ydk() {
             echo -n "]"
             echo -n "}"
         })
-        [[ "$RESULT" -gt 0 ]] && [[ "$THROW" == true ]] && {
+        [[ "$MISSING" -gt 0 ]] && {
             ydk:log error "Missing required packages '${YDK_DEPENDENCIES_MISSING[*]}'. Please install"
             # command -v jq >/dev/null 2>&1 && {
             #     ydk:log error "$(jq -c . <<<"${DETAILS}")"
             # }
-            ydk:throw 254 echo "Missing required packages $_"
+            [[ "$THROW" == true ]] && ydk:throw 254 "Missing ${#YDK_DEPENDENCIES[*]} required packages $_"
         }
         echo "$DETAILS" >&4
-        return "$RESULT"
+        # echo "Required [$MISSING] (${#YDK_DEPENDENCIES[*]}) packages: ${YDK_DEPENDENCIES[*]}" 1>&2
+        return "$MISSING"
     }
     ydk:help() {
         local YDK_USAGE_STATUS=$1
@@ -210,6 +238,23 @@ ydk() {
     ydk:log() {
         local YDK_LOG_LEVEL="${1:-"INFO"}"
         local YDK_LOG_MESSAGE="${2:-""}"
+        __log:show() {
+            local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+            echo -e "[${YDK_BRAND}] [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}" 1>&2
+        }
+        if ! command -v jq >/dev/null 2>&1; then
+            __log:show
+        elif ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 2>/dev/null; then
+            __log:show
+        fi
+        # ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 2>/dev/null && __log:show && return 0
+        # if ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 2>/dev/null; then
+        #     local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+        #     echo -e "[${YDK_BRAND}] [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}" 1>&2
+        # fi
+        unset -f __log:show
+        return 0
+
         # [[ "$YDK_IS_INSTALL" == false ]] && [[ "$YDK_BOOTSTRAPED" == true ]] && {
         #     if ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" && [[ "$YDK_IS_INSTALL" == false ]]; then
         #         return $?
@@ -222,15 +267,15 @@ ydk() {
         # return 0
         # && [[ "$YDK_IS_INSTALL" == false ]]
         # && [[ "$YDK_BOOTSTRAPED" == true ]]
-        if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] && [[ "$YDK_IS_INSTALL" == false ]] && [[ "$YDK_BOOTSTRAPED" == true ]]; then
-            ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
-        else
-            local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-            {
-                echo -e "${YELLOW}[${YDK_BRAND}]${NC} [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}"
-            } 1>&2
-        fi
-        return 0
+        # if [[ "$(type -f "ydk:logger" 2>/dev/null)" == function ]] && [[ "$YDK_IS_INSTALL" == false ]] && [[ "$YDK_BOOTSTRAPED" == true ]]; then
+        #     ydk:logger "$@" # "${YDK_LOG_LEVEL,,}" "${YDK_LOG_MESSAGE}"
+        # else
+        #     local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
+        #     {
+        #         echo -e "${YELLOW}[${YDK_BRAND}]${NC} [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}"
+        #     } 1>&2
+        # fi
+        # return 0
     }
     ydk:catch() {
         local YDK_CATH_STATUS="${1:-$?}"
@@ -255,7 +300,7 @@ ydk() {
         # else
         #     ydk:help "$YDK_THROW_STATUS" "$2" "${@:3}"
         # fi
-        ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE}"
+        ydk:teardown "${YDK_THROW_STATUS}" "${YDK_THROW_MESSAGE} ($-) [$_]"
         # kill -s "${YDK_TERM}" $$ 2>/dev/null
         exit "$YDK_THROW_STATUS"
     }

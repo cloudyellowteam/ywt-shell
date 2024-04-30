@@ -43,6 +43,58 @@ ydk:await() {
         ydk:try "$@"
         return $?
     }
+    animation() {
+        ICON="●" #  • ●
+        ARRAY_ANIMATION=(
+            "${BLUE}${ICON}${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}    "
+            " ${GREEN}${ICON}${YELLOW}${ICON}${RED}${ICON}${MAGENTA}${ICON}${BLUE}${ICON}   "
+            "  ${RED}${ICON}${MAGENTA}${ICON}${YELLOW}${ICON}${BLUE}${ICON}${GREEN}${ICON}  "
+            "   ${MAGENTA}${ICON}${BLUE}${ICON}${GREEN}${YELLOW}${ICON}${ICON}${RED}${ICON} "
+            "    ${BLUE}${ICON}${GREEN}${ICON}${RED}${ICON}${YELLOW}${ICON}${MAGENTA}${ICON}"
+        )
+        case $1 in
+        start)
+            ((column = COLUMNS - ${#2} - 8))
+            printf "%${column}s"
+            while true; do
+                for i in {0..4}; do
+                    # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
+                    printf "\b\r\033[2K${ARRAY_ANIMATION[i]} ${NC}${2}"
+                    sleep 0.12
+                done
+                for i in {4..0}; do
+                    # printf "\b\r\033[2K%s %s" "${NC}${2}" "${ARRAY_ANIMATION[i]}"
+                    printf "\b\r\033[2K${ARRAY_ANIMATION[i]} ${NC}${2}"
+                    sleep 0.12
+                done
+                __installer:cursor:back 1
+                printf "\b\b\b\b\b\b" 1>&2
+            done
+            ;;
+        stop)
+            if [[ -z ${3} ]]; then
+                echo "Animation not running"
+                return 1
+            fi
+            kill "${3}" >/dev/null 2>&1
+            {
+                echo -en "\b${NC}  --> ["
+                if [[ $2 -eq 0 ]]; then
+                    echo -en " ${GREEN}Success${NC} "
+                else
+                    echo -en " ${RED}Error${NC} "
+                fi
+                echo -e "${NC}]"
+                printf "\b\b\b\b"
+            } 1>&2
+            ;;
+        *)
+            echo "invalid argument, try again with {start/stop}"
+            return 1
+            ;;
+        esac
+        return 0
+    }
     spin() {
         local SPINNER_TARGET_PID=$1 && [[ -z "$SPINNER_TARGET_PID" ]] && SPINNER_TARGET_PID=$$
         local SPINNER_MESSAGE="${2:-}"
@@ -50,7 +102,7 @@ ydk:await() {
         local SPINNER_NAME=$(jq -r '.name' <<<"$SPINNER" 2>/dev/null)
         read -r -a SPINNER_FRAMES <<<"$({
             jq -r '.frames | .[]' <<<"$SPINNER" | tr '\n' ' '
-        } 2>/dev/null )" 2>/dev/null
+        } 2>/dev/null)" 2>/dev/null
         local SPINNER_INTERVAL=$(jq -r '.interval' <<<"$SPINNER" 2>/dev/null)
         local SPINNER_LENGTH=${#SPINNER_FRAMES[@]}
         local SPINNER_INDEX=0
@@ -68,16 +120,6 @@ ydk:await() {
         printf "\b\b\b\b" 1>&2
         return 0
     }
-    process(){
-        local PROCESS_TARGET_PID=$1
-        local PROCESS_MESSAGE="${2:-}"
-        local PROCESS_SPINNER_PID
-        spin "$PROCESS_TARGET_PID" "$PROCESS_MESSAGE" 1>&2
-        PROCESS_SPINNER_PID=$!
-        wait "$PROCESS_TARGET_PID"
-        kill "$PROCESS_SPINNER_PID"
-        return $?
-    }
     examples() {
         # loop into each name
         local COMMANDS=()
@@ -91,7 +133,6 @@ ydk:await() {
         ydk:async "${COMMANDS[@]}" 4>&1 #| jq '.'
         return $?
     }
-
     ydk:try "$@"
     return $?
 }

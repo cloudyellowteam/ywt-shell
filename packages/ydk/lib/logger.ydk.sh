@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:logger() {
+    ! command -v jq >/dev/null 2>&1 && return 254
     __logger:enabled() {
         local LOG_LEVEL=${1:-info}
         local LOG_LEVEL_IDX=-1

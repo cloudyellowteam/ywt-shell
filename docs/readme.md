@@ -3,9 +3,17 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+
+> **2024.04.30**
 ```shell
+
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir kalilinux/kali-rolling bash -c 'clear; packages/ydk/ydk.cli.sh install'
+
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir ubuntu:20.04 bash -c 'clear; packages/ydk/ydk.cli.sh install'
+
+clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14 sh -c 'apk add --update > /dev/null && apk add --no-cache bash; clear; packages/ydk/ydk.cli.sh install' 
+
 clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir alpine:3.14
-# apk add --update > /dev/null && apk add --no-cache bash > /dev/null
 clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir kalilinux/kali-rolling
 clear; docker run --rm -it -v $(pwd):/ywt-workdir -w /ywt-workdir ubuntu:20.04
 
