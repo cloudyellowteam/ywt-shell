@@ -18,19 +18,17 @@ jobs:
     - name: Install Alpine Depencencies
       shell: sh
       run: |
-        apk add --update bash curl gnupg docker
-        dockerd &
+        apk add --update bash
       if: matrix.container == 'alpine:latest'
-    - name: Install Depencencies
-      shell: bash
-      run: |
-        apt-get update
-        apt-get install -y curl gnupg docker.io
-        systemctl start docker
-      if: matrix.container != 'alpine:latest'    
-    - name: Build the Docker image
-      run: |
-       docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
+    # - name: Install Depencencies
+    #   shell: bash
+    #   run: |
+    #     apt-get update
+    #     apt-get install -y curl gnupg docker.io
+    #   if: matrix.container != 'alpine:latest'    
+    # - name: Build the Docker image
+    #   run: |
+    #    docker build . --no-cache --file docker/ywt-shell/Dockerfile.alpine --tag ydk-shell:$(date +%s)
     - name: Install YDK Shell SDK
       run: |
         packages/ydk/ydk.cli.sh install
