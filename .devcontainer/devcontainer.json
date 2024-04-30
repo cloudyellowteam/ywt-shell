@@ -23,7 +23,8 @@
 				"foxundermoon.shell-format",
 				"bmalehorn.shell-syntax",
 				"rogalmic.bash-debug",
-				"humao.rest-client"
+				"humao.rest-client",
+				"github.vscode-github-actions"
 			]
 		}
 	}
