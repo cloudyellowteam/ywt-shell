@@ -16,6 +16,8 @@ jobs:
     - uses: actions/checkout@v4
     - name: Run a script
       run: |
-        ls -lsa 
+        apk add --update > /dev/null 
+        apk add --no-cache bash; 
+        packages/ydk/ydk.cli.sh install
     #- name: Build the Docker image
     #  run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
