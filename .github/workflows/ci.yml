@@ -72,6 +72,7 @@ jobs:
         run: |
           packages/ydk/ydk.cli.sh packer pack "$(realpath ./packages/ydk/ydk.cli.sh)"
       - name: Commit SDK and Tag
+        working-directory: ${{ github.workspace }}
         run: |
             git add /packages/ydk/ydk.sh
             git commit -m "YDK Shell SDK. Build ${{ github.run_number }}"
