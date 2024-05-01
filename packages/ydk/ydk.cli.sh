@@ -87,6 +87,15 @@ ydk() {
         ydk:log "info" ":shorts: ${YDK_PACKAGE_NAME}@${YDK_VERSION} $([[ "${YDK_CLI_BINARY}" == true ]] && echo "app" || echo "sdk")"
         return 0
     }
+    ydk:etime() {
+        {
+            if grep -q 'Alpine' /etc/os-release; then
+                ps -o etime= "$$" | awk -F "[:]" '{ print ($1 * 60) + $2 }' | head -n 1
+            else
+                ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
+            fi
+        } >&4
+    }
     ydk:require() {
         local THROW=false
         [[ "${1,,}" =~ (true|false) ]] && THROW="${1,,}" && shift
@@ -316,7 +325,7 @@ ydk() {
     }
     ydk:configure() {
         if [[ "$YDK_IS_INSTALL" == true ]]; then
-            ydk:log info "Installing ydk" 
+            ydk:log info "Installing ydk"
             # if ! ydk:installer "$@"; then
             #     ydk:logger error "Failed to install ydk"
             #     # ydk:throw 253 "Failed to install ydk"

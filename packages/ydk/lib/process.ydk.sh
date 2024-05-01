@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:process() {
-    etime() {
-        {
-            if grep -q 'Alpine' /etc/os-release; then
-                ps -o etime= "$$" | awk -F "[:]" '{ print ($1 * 60) + $2 }' | head -n 1
-            else
-                ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
-            fi
-        } >&4
-    }
-
     inspect() {
         jq -cn \
             --arg pid "$$" \

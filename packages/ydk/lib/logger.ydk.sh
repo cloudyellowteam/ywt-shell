@@ -166,7 +166,7 @@ ydk:logger() {
             echo -n "\"context\": \"${YDK_LOGGER_CONTEXT:-ydk}\","
             echo -n "\"pid\": $$,"
             echo -n "\"ppid\": $PPID,"
-            echo -n "\"etime\": \"$(ydk:process etime 4>&1)\","
+            echo -n "\"etime\": \"$(ydk:etime 4>&1)\","
             echo -n "\"cli\": \"${YDK_CLI_NAME:-}\","
             echo -n "\"name\": \"${YDK_CLI_NAME:-}\","
             echo -n "\"message\": "
