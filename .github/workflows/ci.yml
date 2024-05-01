@@ -23,6 +23,11 @@ jobs:
       - name: Packing YDK Shell SDK
         run: |
           packages/ydk/ydk.cli.sh packer pack "$(realpath ./packages/ydk/ydk.cli.sh)"
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4.3.3
+        with:
+          name: ydk.sh
+          path: ${{ github.workspace }}/rapd-shell/ywt-shell/packages/ydk/ydk.sh
   Docker:
     runs-on: ubuntu-latest    
     steps:      
