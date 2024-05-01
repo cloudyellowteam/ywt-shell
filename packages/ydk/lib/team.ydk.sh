@@ -86,7 +86,7 @@ ydk:team() {
         echo "# Build message: $(jq -r .message <<<"$YDK_RELEASE_INFO")"
         return 0
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 {

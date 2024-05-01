@@ -3,35 +3,39 @@
 ydk:strings() {
     trim() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
-        echo "$STR" | awk '{$1=$1};1'
+        echo "$STR" | awk '{$1=$1};1' | sed 's/^[[:space:]]*//g' | sed 's/[[:space:]]*$//g' >&4
+        return 0
     }
     contains() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local SUB="$2"
         echo "$STR" | grep -- "$SUB" >/dev/null 2>&1
+        return $?
     }
     endswith() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local SUB="$2"
         echo "$STR" | grep -- "$SUB\$" >/dev/null 2>&1
+        return $?
     }
     startswith() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local SUB="$2"
         echo "$STR" | grep -- "^$SUB" >/dev/null 2>&1
+        return $?
     }
     lowercase() {
-        tr '[:upper:]' '[:lower:]'
+        tr '[:upper:]' '[:lower:]' >&4
     }
     uppercase() {
-        tr '[:lower:]' '[:upper:]'
+        tr '[:lower:]' '[:upper:]' >&4
     }
     capitalize() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
-        echo "$STR" | sed 's/\b\(.\)/\u\1/g'
+        echo "$STR" | sed 's/\b\(.\)/\u\1/g' >&4
     }
     reverse() {
-        rev
+        rev "$@" >&4
     }
     count_char() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
@@ -39,19 +43,19 @@ ydk:strings() {
         local COUNT="${#STR}"
         local STRIPPED="${STR//"$CHAR"/}"
         local COUNT_STRIPPED="${#STRIPPED}"
-        echo $((COUNT - COUNT_STRIPPED))
+        echo $((COUNT - COUNT_STRIPPED)) >&4
     }
     padleft(){
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local LENGTH="$2"
         local CHAR="${3:- }"
-        printf "%-${LENGTH}s" "$STR" | tr ' ' "$CHAR"
+        printf "%-${LENGTH}s" "$STR" | tr ' ' "$CHAR" >&4
     }
     padright(){
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
         local LENGTH="$2"
         local CHAR="${3:- }"
-        printf "%${LENGTH}s" "$STR" | tr ' ' "$CHAR"
+        printf "%${LENGTH}s" "$STR" | tr ' ' "$CHAR" >&4
     }
     
     mask() {
@@ -65,7 +69,7 @@ ydk:strings() {
             [ "$i" -eq $((LENGTH - 1)) ] && MASKED+="${STR:i:1}" && continue
             MASKED+="${MASK:i%MASK_LEN:1}"
         done
-        echo "$MASKED"
+        echo "$MASKED" >&4
     }
     sanetize() {
         local STR="$1" && [ -z "$STR" ] && STR="$(cat)" && [ -z "$STR" ] && return 1
@@ -79,7 +83,7 @@ ydk:strings() {
                 sed 's/\x1b\[[0-9;]*m//g'
         } >&4
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 #!/usr/bin/env bash

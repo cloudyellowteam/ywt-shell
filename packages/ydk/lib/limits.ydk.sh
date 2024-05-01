@@ -3,7 +3,7 @@
 ydk:limits() {
     current() {
         # Display Current Limits
-        ulimit -a
+        ulimit -a | awk '{print $1 " " $3}' | grep -v "unlimited" | awk '{print $1 " " $2}' | sed -e 's/ /: /' >&4
     }
     set() {
         ulimit -Sn 1024 # Set soft limit
@@ -49,8 +49,8 @@ ydk:limits() {
         ulimit -x 0
         ulimit -T 0
         ulimit -I 3
-    }
-    ydk:try "$@"
+    } >&4
+    ydk:try "$@" 4>&1
     return $?
 }
 

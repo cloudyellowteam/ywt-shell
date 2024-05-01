@@ -138,7 +138,7 @@ ydk() {
                     ydk:log "info" " ${YDK_USAGE_COMMAND}"
                 done
             }
-        } 1>&2
+        } 1>&2 # 1>&2
         return "$YDK_USAGE_STATUS"
     }
     ydk:inject() {
@@ -187,7 +187,7 @@ ydk() {
                     [[ ! "$FUNC_NAME" == "ydk:logger" ]] && continue
                     "$FUNC_NAME" activate >/dev/null 2>&1
                 }
-            done < <(ydk:functions | jq -r '.functions[]')
+            done < <(ydk:functions 4>&1 | jq -r '.functions[]')
         fi
         # ydk:logger success "Activated. Application Boostraped"
         YDK_BOOTSTRAPED=true && readonly YDK_BOOTSTRAPED
@@ -240,7 +240,7 @@ ydk() {
         local YDK_LOG_MESSAGE="${2:-""}"
         __log:show() {
             local YDK_LOG_TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
-            echo -e "[${YDK_BRAND}] [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}" 1>&2
+            echo -e "[${YDK_BRAND}] [$$] [$YDK_LOG_TIMESTAMP] ${YDK_LOG_LEVEL^^} ${YDK_LOG_MESSAGE}" >&1
         }
         if ! command -v jq >/dev/null 2>&1; then
             __log:show
@@ -306,7 +306,7 @@ ydk() {
     }
     ydk:temp() {
         local FILE_SUFFIX="${1}" && [[ -n "$FILE_SUFFIX" ]] && FILE_SUFFIX="${FILE_SUFFIX}"
-        mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}"
+        mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}" >&4
     }
     ydk:opts() {
         local YDK_OPTS=$(ydk:argv walk "$@" 4>&1 | jq -r .)
@@ -316,7 +316,7 @@ ydk() {
     }
     ydk:configure() {
         if [[ "$YDK_IS_INSTALL" == true ]]; then
-            ydk:log info "Installing ydk" 1>&2
+            ydk:log info "Installing ydk" 
             # if ! ydk:installer "$@"; then
             #     ydk:logger error "Failed to install ydk"
             #     # ydk:throw 253 "Failed to install ydk"
@@ -343,7 +343,7 @@ ydk() {
     ydk:prgma
     ydk:team welcome
     # ydk:analytics ga collect >/dev/null 2>&1
-    ydk:try "$@" || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
+    ydk:try "$@" 4>&1 || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
     # echo "{\"return\": ${YDK_STATUS}}"
     # ydk:teardown "${YDK_STATUS}" "Script exited"
     exec 4>&-

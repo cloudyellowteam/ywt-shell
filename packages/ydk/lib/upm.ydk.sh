@@ -123,15 +123,15 @@ ydk:upm() {
         *) ;;
         esac
         # local UPM_COMMAND="$UPM_MANAGER_CMD $UPM_MANAGER_CONFIRM"
-        # ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 1>&2
+        # ydk:log debug "Running ($UPM_MANAGER_CMD) $UPM_COMMAND $* with manager $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" >&1
         # ydk:require --throw "$UPM_COMMAND" 4>/dev/null
         $UPM_COMMAND "$@" 2>/dev/null >&4
         # local UPM_CMD_STATUS=$?
         # # sleep 40 &
         # local UPM_CMD_PID=$!
-        # ydk:await spin "$UPM_CMD_PID" "Running $UPM_CMD_PID command" 1>&2
-        ydk:log "$([[ $UPM_CMD_STATUS -eq 0 ]] && echo "success" || echo "error")" "Command  $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION exited with status $UPM_CMD_STATUS" 1>&2
-        #ydk:await process "$!" "Running $! $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 1>&2
+        # ydk:await spin "$UPM_CMD_PID" "Running $UPM_CMD_PID command" >&1
+        ydk:log "$([[ $UPM_CMD_STATUS -eq 0 ]] && echo "success" || echo "error")" "Command  $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION exited with status $UPM_CMD_STATUS" >&1
+        #ydk:await process "$!" "Running $! $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" >&1
         # local UPM_CMD_PID=$!
         # ydk:await process "$UPM_CMD_PID" "Running $UPM_MANAGER_CMD $* with $UPM_MANAGER_NAME:$UPM_MANAGER_VERSION" 4>&1
         return "${UPM_CMD_STATUS:-0}"

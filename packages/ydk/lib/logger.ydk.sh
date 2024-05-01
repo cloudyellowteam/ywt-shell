@@ -61,8 +61,8 @@ ydk:logger() {
                 local LOG_FILE_ROTATE=$(dirname "$LOG_FILE")/$(basename "$LOG_FILE" .log)-$(date +"%Y%m%d%H%M%S").log
                 mv "$LOG_FILE" "$LOG_FILE_ROTATE"
                 echo -n >"$LOG_FILE"
-                echo "$LOG_MAXSIZE = $(stat -c %s "$LOG_FILE")" 1>&2
-                echo "Rotated log file $LOG_FILE to $LOG_FILE_ROTATE" 1>&2
+                echo "$LOG_MAXSIZE = $(stat -c %s "$LOG_FILE")" >&1
+                echo "Rotated log file $LOG_FILE to $LOG_FILE_ROTATE" >&1
             fi
         fi
         jq -c . <<<"$LOG_JSON" >>"$LOG_FILE"
@@ -89,7 +89,7 @@ ydk:logger() {
         local LOGGER_OPTS=$2
         local LOG_JSON=$3
         if ! jq -c . <<<"$LOG_JSON" 2>/dev/null 1>/dev/null; then
-            echo -e "$LOG_JSON" 1>&2
+            echo -e "$LOG_JSON" >&1
             return 0
         fi
         if grep -qE ":[a-z_]+:" <<<"$LOG_MESSAGE"; then
@@ -140,9 +140,8 @@ ydk:logger() {
             echo -n "[${YELLOW}${LOG_PID}${NC}]"     # && echo -n $'\t'
             echo -n "[${BLUE}$LOG_TIMESTAMP${NC}]" # && echo -n $'\t'
             echo -n "[${DARK_GRAY}$LOG_ETIME${NC}]"
-
             echo
-        })" 1>&2
+        })" >&1 # >&1
         # | column --table --separator $'\t'
         return 0
     }
@@ -167,7 +166,7 @@ ydk:logger() {
             echo -n "\"context\": \"${YDK_LOGGER_CONTEXT:-ydk}\","
             echo -n "\"pid\": $$,"
             echo -n "\"ppid\": $PPID,"
-            echo -n "\"etime\": \"$(ydk:process etime)\","
+            echo -n "\"etime\": \"$(ydk:process etime 4>&1)\","
             echo -n "\"cli\": \"${YDK_CLI_NAME:-}\","
             echo -n "\"name\": \"${YDK_CLI_NAME:-}\","
             echo -n "\"message\": "
@@ -257,7 +256,7 @@ ydk:logger() {
 
     }
     activate() {
-        echo "logger activated" 1>&2
+        echo "logger activated" >&1
         # return 233
     }
     local LOGGER_OPTS=$(defaults 4>&1)
@@ -290,13 +289,13 @@ ydk:logger() {
             ;;
         esac
     done
-    # echo -n "[${#LOGGER_ARGS}]" 1>&2
+    # echo -n "[${#LOGGER_ARGS}]" >&1
     set -- "${LOGGER_ARGS[@]}" && unset LOGGER_ARGS
-    # echo -n "[${#}]" 1>&2
+    # echo -n "[${#}]" >&1
     local LOG_LEVEL_OR_ACTION=${1} && shift
     local LOG_LINES=()
     [[ -p /dev/stdin ]] && while read -r LINE; do LOG_LINES+=("$LINE"); done <&0
-    # echo -n "[${#}][${#LOG_LINES}]" 1>&2
+    # echo -n "[${#}][${#LOG_LINES}]" >&1
     if __logger:is:level "$LOG_LEVEL_OR_ACTION"; then
         __logger:write "${LOGGER_OPTS}" "$LOG_LEVEL_OR_ACTION" "$@" "${LOG_LINES[@]}" 4>&1
         return $?
@@ -304,7 +303,7 @@ ydk:logger() {
         ydk:try "$LOG_LEVEL_OR_ACTION" "$@" 4>&1
         return $?
     fi
-    # __logger:message "${LOG_LINES[@]}" 4>&1 1>&2
+    # __logger:message "${LOG_LINES[@]}" 4>&1 >&1
     # __logger:json "$(__logger:message "${LOG_LINES[@]}" 4>&1)"
     # return 0
 }
@@ -496,13 +495,13 @@ ydk:logger() {
 #                 sed -E 's/\{\{\.([^}]+)\}\}/.\1/g' |
 #                 sed -E 's/\| ascii_upcase/| ascii_upcase/g'
 #         })
-#         echo -ne "${YELLOW}[${YDK_BRAND^^}]${NC}" 1>&2
+#         echo -ne "${YELLOW}[${YDK_BRAND^^}]${NC}" >&1
 #         local LOG_FORMATTED=$(
 #             jq -r '
 #                 . | " '"$LOG_FORMAT"'" | gsub("\\n"; "\n")
 #             ' <<<"$LOG_JSON"
 #         )
-#         echo -e "$LOG_FORMATTED" 1>&2
+#         echo -e "$LOG_FORMATTED" >&1
 #         return 0
 
 #     }
@@ -515,8 +514,8 @@ ydk:logger() {
 #         # echo -e "$LOG_CONTENT"
 #         # # if [[ "$(jq -r '.level' <<<"$LOG_JSON" 2>/dev/null)" == "output" ]]; then
 #         # local LOG_CONTENT=$(jq -r '.message' <<<"$LOG_JSON")
-#         # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ " 1>&2
-#         # echo -e "$LOG_CONTENT" 1>&2
+#         # echo -ne "${YELLOW}[${YDK_CLI_NAME^^}]${NC} $$ " >&1
+#         # echo -e "$LOG_CONTENT" >&1
 #         # if jq -e . >/dev/null 2>&1 <<<"$LOG_CONTENT"; then
 #         #     jq -c . <<<"$LOG_CONTENT"
 #         # else

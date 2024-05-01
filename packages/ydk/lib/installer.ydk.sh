@@ -35,11 +35,11 @@ ydk:installer() {
         [[ "${YDK_PATH:0:1}" == "!" ]] && {
             YDK_PATH="${YDK_PATH:1}"
             # ydk:log "INFO" " - Removing path: $YDK_PATH"
-            rm -rf "${YDK_PATH:1}"
+            rm -rf "${YDK_PATH:1}" 2>/dev/null
         }
         [[ ! -d "$YDK_PATH" ]] && {
             # ydk:log "INFO" " - Create path: $YDK_PATH"
-            mkdir -p "$YDK_PATH"
+            mkdir -p "$YDK_PATH" 2>/dev/null
         }
         # ydk:log "INFO" " - Path exists: $YDK_PATH"
         return 0
@@ -56,7 +56,7 @@ ydk:installer() {
         local YDK_STATE_FILE="${YDK_PATHS["var"]}/state.json"
         local YDK_STATE=$(jq -c . <"$YDK_STATE_FILE" 2>/dev/null)
         [[ -z "$YDK_STATE" ]] && echo -n "{}" && return 1
-        echo -n "$YDK_STATE"
+        echo -n "$YDK_STATE" >&4
         return 0
     }
     __installer:pkgmgr() {
@@ -82,7 +82,7 @@ ydk:installer() {
         IFS=" " read -r -a PACKAGES <<<"$PACKAGES"
         ydk:log info "Installing (${#PACKAGES[@]}) packages using $PACKAGE_MANAGER"
         ydk:log debug "${PACKAGES[*]}"
-        ydk:await animation "start" "Installing with $PACKAGE_MANAGER" & # 1>&2
+        ydk:await animation "start" "Installing with $PACKAGE_MANAGER" & # >&1
         local ANIMATION_PID=$!
         local INSTALL_STATUS=0
         {
@@ -148,8 +148,8 @@ ydk:installer() {
         sleep 0.1
         [[ -n "$ANIMATION_PID" ]] && {
             ydk:await animation "stop" "Installing" "$ANIMATION_PID" 
-            echo -en "\b\b\b\b\b\b" 1>&2
-            echo 1>&2
+            echo -en "\b\b\b\b\b\b" >&1
+            echo >&1
         }
         [[ "$INSTALL_STATUS" -ne 0 ]] && {
             ydk:log "WARN" "Failed to install $* using $PACKAGE_MANAGER"
@@ -158,11 +158,6 @@ ydk:installer() {
         ydk:log "success" "Installed $* using $PACKAGE_MANAGER"
         #echo 1 4>&1
         return 0
-    }
-    __installer:cursor:back() {
-        local N=${1:-1}
-        echo -en "\033[${N}D"
-        # mac compatible, but goes back to the beginning of the line
     }
     install() {
         # ! command -v jq >/dev/null 2>&1 && {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:versions() {
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 

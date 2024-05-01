@@ -2,15 +2,17 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:errors() {
     messages() {
-        echo -n "{"
-        echo -n "\"errors\": {"
-        for YDK_ERROR_CODE in "${!YDK_ERRORS_MESSAGES[@]}"; do
-            local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_ERROR_CODE]}"
-            echo -n "\"$YDK_ERROR_CODE\": \"$YDK_ERROR_MESSAGE\","
-        done | sed -e 's/,$//'
-        echo -n "}"
-        echo -n "}"
-        echo
+        {
+            echo -n "{"
+            echo -n "\"errors\": {"
+            for YDK_ERROR_CODE in "${!YDK_ERRORS_MESSAGES[@]}"; do
+                local YDK_ERROR_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_ERROR_CODE]}"
+                echo -n "\"$YDK_ERROR_CODE\": \"$YDK_ERROR_MESSAGE\","
+            done | sed -e 's/,$//'
+            echo -n "}"
+            echo -n "}"
+            echo
+        } >&4
         return 0
     }
     message() {
@@ -24,7 +26,7 @@ ydk:errors() {
         # echo -n "}"; echo
         return "$YDK_ERROR_CODE"
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 {
@@ -353,10 +355,10 @@ ydk:errors() {
 # }
 #!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317
-# 
+#
 # # 255 __require depenency
 # errors() {
-# 
+#
 #     code() {
 #         local code=${1:?} && [ -z "$code" ] && echo "Invalid error code" | logger error && return 1
 #         local message=${2:?} && [ -z "$message" ] && echo "Invalid error message" | logger error && return 1

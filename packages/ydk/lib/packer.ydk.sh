@@ -73,13 +73,13 @@ ydk:packer() {
         return 0
     }
     pack() {
-        ydk:log info "Bundling source file"
         local VALIDATION=$(packer:validate:src-file "$1" 4>&1)
         local PACK_DEFAUTLS=$(ydk:packer defaults 4>&1)
+        ydk:log info "Bundling source file"        
         # jq . <<<"$VALIDATION" >&4
-        # jq  . <<<"$PACK_DEFAUTLS" 1>&2
+        # jq  . <<<"$PACK_DEFAUTLS" >&1
         local BUNDLE_SRC=$(jq -r '.src' <<<"$VALIDATION")
-        local BUNDLE_TMP=$(ydk:temp "bundle")
+        local BUNDLE_TMP=$(ydk:temp "bundle" 4>&1)
         echo "#!/bin/bash" >"$BUNDLE_TMP"
         local BUNDLE_ENTRYPOINT_NAME=$(mktemp -u -t "ywt:XXXXXXXXXX") && BUNDLE_ENTRYPOINT_NAME="${BUNDLE_ENTRYPOINT_NAME##*/}"
         {
@@ -140,7 +140,7 @@ ydk:packer() {
         # echo
         # chmod +x "$BUNDLE_TMP"
         # # [[ "$BUNDLE_IS_SDK" == false ]] && {
-        #     if ! bash -c "$BUNDLE_TMP logger success \"YDK Package is ready\"" 1>&2; then
+        #     if ! bash -c "$BUNDLE_TMP logger success \"YDK Package is ready\"" >&1; then
         #         ydk:log error "Bundle is not valid"
         #     else
         #         ydk:log success "Bundle is valid"

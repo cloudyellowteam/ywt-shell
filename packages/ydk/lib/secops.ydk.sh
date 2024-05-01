@@ -138,7 +138,7 @@ ydk:secops() {
                 return 1
             fi
         }
-        ydk:try "$@"
+        ydk:try "$@" 4>&1
         return $?
     }
     secops:cli:entrypoint() {
@@ -304,7 +304,7 @@ ydk:secops() {
         [[ "${SCANNER_COMMAND[0]}" == "null" ]] && return 22
         local SCANNER_CMD=${SCANNER_COMMAND[0]}
         local SCANNER_CMD_ARGS=("${SCANNER_COMMAND[@]:1}")
-        local SCANNER_CLI_OUTPUT=$(ydk:temp "secops-cli-output")
+        local SCANNER_CLI_OUTPUT=$(ydk:temp "secops-cli-output" 4>&1)
         ydk:log info "Running scanner $SCANNER_CMD ${SCANNER_CMD_ARGS[*]}"
         local SCANNER_CLI_START_AT=$(date +%s)
         $SCANNER_CMD "${SCANNER_CMD_ARGS[@]}" 2>/dev/null 1>"$SCANNER_CLI_OUTPUT"
@@ -639,7 +639,7 @@ ydk:secops() {
             return 22
         fi
         local SECOPS_PLAN_SCANNERS=$(jq -c "." < <(scanners list 4>&1) 2>/dev/null)
-        local SECOPS_PLAN_FILE=$(ydk:temp "secops-plan")
+        local SECOPS_PLAN_FILE=$(ydk:temp "secops-plan" 4>&1)
         local SECOPS_PLAN="{}"
         ydk:log info "SecOps Plan ${SECOPS_PLAN_FILE}"
         # jq -c '{}' >"$SECOPS_PLAN"
@@ -661,8 +661,8 @@ ydk:secops() {
                     .
                 ' <<<"$SECOPS_PLAN_SCANNERS" 2>/dev/null
             )
-            echo "$ASSET_TYPE / $SECOPS_PLAN_SCANNER_APIS" 1>&2
-            # jq -c '.' <<<"$ASSET" 1>&2
+            echo "$ASSET_TYPE / $SECOPS_PLAN_SCANNER_APIS" >&1
+            # jq -c '.' <<<"$ASSET" >&1
             # break
         done < <(jq -c ".[]" "$ASSETS" 2>/dev/null)
         # while read -r SCANNER && [ -n "$SCANNER" ]; do
@@ -670,7 +670,7 @@ ydk:secops() {
         #     local SCANNER_ID=$(jq -r '.id' <<<"$SCANNER" 2>/dev/null) && [ -z "$SCANNER_ID" ] && continue
         #     local SCANNER_NAME=$(jq -r '.name' <<<"$SCANNER" 2>/dev/null) && [ -z "$SCANNER_NAME" ] && continue
         #     local SCANNER_INSTALLED=false && command -v "$SCANNER_NAME" 2>/dev/null 1>/dev/null && SCANNER_INSTALLED=true
-        #     ydk:log debug "Scanner ${SCANNER_NAME} is installed ${SCANNER_INSTALLED}" 1>&2
+        #     ydk:log debug "Scanner ${SCANNER_NAME} is installed ${SCANNER_INSTALLED}" >&1
         #     [[ "$SCANNER_INSTALLED" = false ]] && continue
         # done < <(jq -c ".[]" < <(scanners list 4>&1) 2>/dev/null)
         jq -c . <<<"$SECOPS_PLAN" >"$SECOPS_PLAN_FILE"
@@ -712,7 +712,7 @@ ydk:secops() {
 }
 {
     ydk:secops:result:cloc() {
-        echo "ydk:secops:result:cloc $# $*" 1>&2 # >&4
+        echo "ydk:secops:result:cloc $# $*" >&1 # >&4
         return 0
     }
 }

@@ -52,7 +52,7 @@ ydk:fifo() {
             [ -e /proc/$$/fd/"$1" ] && return 0 || return 1
             lsof -p $$ | grep " $1" && return 0 || return 1
         }
-        ydk:try "$@"
+        ydk:try "$@" 4>&1
         return $?
     }
     exists() {
@@ -86,7 +86,7 @@ ydk:fifo() {
         [ -z "$1" ] && return 1
         lsof "$1" && return 0 || return 1
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 

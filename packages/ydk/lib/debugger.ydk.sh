@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:debugger() {
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 # debugger() {
@@ -11,7 +11,7 @@ ydk:debugger() {
 #         (tail -f "$FIFO") && wait && kill "$!"
 #     }
 #     _verbose() {
-#         echo "$1" 1>&2
+#         echo "$1" >&1
 #     }
 #     if __nnf "$@"; then return 0; fi
 #     usage "debugger" "$?" "debugger" "$@" && return 1

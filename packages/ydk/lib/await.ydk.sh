@@ -12,7 +12,7 @@ ydk:await() {
     ) && readonly YDK_AWAIT_SPECS
     __cursor:back() {
         local N=${1:-1}
-        echo -en "\033[${N}D"
+        echo -en "\033[${N}D" >&1
         # mac compatible, but goes back to the beginning of the line
     }
     spinners() {
@@ -40,7 +40,7 @@ ydk:await() {
             return 0
         }
         trap "tput cnorm" EXIT INT TERM
-        ydk:try "$@"
+        ydk:try "$@" 4>&1
         return $?
     }
     animation() {
@@ -67,13 +67,13 @@ ydk:await() {
                     printf "\b\r\033[2K${ARRAY_ANIMATION[i]} ${NC}${2}"
                     sleep 0.12
                 done
-                __installer:cursor:back 1
-                printf "\b\b\b\b\b\b" 1>&2
+                __cursor:back 1
+                printf "\b\b\b\b\b\b" >&1
             done
             ;;
         stop)
             if [[ -z ${3} ]]; then
-                echo "Animation not running"
+                ydk:log error "Animation not running"
                 return 1
             fi
             kill "${3}" >/dev/null 2>&1
@@ -86,10 +86,10 @@ ydk:await() {
                 fi
                 echo -e "${NC}]"
                 printf "\b\b\b\b"
-            } 1>&2
+            } >&1
             ;;
         *)
-            echo "invalid argument, try again with {start/stop}"
+            ydk:log error "invalid argument, try again with {start/stop}"
             return 1
             ;;
         esac
@@ -111,13 +111,13 @@ ydk:await() {
         while ps a | awk '{print $1}' | grep -q "$SPINNER_TARGET_PID"; do
             local FRAME=${SPINNER_FRAMES[$SPINNER_INDEX]}
             # [${SPINNER_NAME}]
-            printf " %s  %s\r" "$FRAME" "$SPINNER_MESSAGE" 1>&2
+            printf " %s  %s\r" "$FRAME" "$SPINNER_MESSAGE" >&1
             SPINNER_INDEX=$(((SPINNER_INDEX + 1) % SPINNER_LENGTH))
             sleep "$((SPINNER_INTERVAL / 500))"
             __cursor:back 1
-            printf "\b\b\b\b\b\b" 1>&2
+            printf "\b\b\b\b\b\b" >&1
         done
-        printf "\b\b\b\b" 1>&2
+        printf "\b\b\b\b" >&1
         return 0
     }
     examples() {
@@ -130,9 +130,9 @@ ydk:await() {
             COMMANDS+=("sleep $(((SPINNER_INDEX + 1) * 2)); echo \"$MESSAGE\"")
             SPINNER_INDEX=$((SPINNER_INDEX + 1))
         done
-        ydk:async "${COMMANDS[@]}" 4>&1 #| jq '.'
+        ydk:async "${COMMANDS[@]}" 4>&1 >&4
         return $?
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }

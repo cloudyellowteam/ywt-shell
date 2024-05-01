@@ -23,23 +23,23 @@ ydk:checksum() {
             return 1
             ;;
         esac
-        ${HASH_CMD} "${FILE}" | awk '{print $1}'
+        ${HASH_CMD} "${FILE}" | awk '{print $1}' >&4
         return $?
     }
     generate() {
         local FILE=${1} && [ ! -f "$FILE" ] && echo "File not found: $FILE" && return 1
         local HASH=${2:-"sha256"}
-        hash "${HASH}" "${FILE}"
+        hash "${HASH}" "${FILE}" 4>&1 >&4
     }
     verify(){
         local FILE=${1} && [ ! -f "$FILE" ] && echo "File not found: $FILE" && return 1
         local HASH=${2} && [ -z "$HASH" ] && echo "Hash not found" && return 1
         local HASH_TYPE=${3:-"sha256"}
-        local FILE_HASH=$(hash "${HASH_TYPE}" "${FILE}")
+        local FILE_HASH=$(hash "${HASH_TYPE}" "${FILE}" 4>&1)
         [ "$FILE_HASH" == "$HASH" ] && return 0
-        echo "Hash mismatch: $FILE_HASH != $HASH"
+        ydk:log warn "Hash mismatch: $FILE_HASH != $HASH"
         return 1        
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }

@@ -1,16 +1,18 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:colors() {
-    inspect(){
-        local COLORS=("${!YDK_COLORS[@]}")
-        for COLOR in "${COLORS[@]}"; do
-            echo -n "${COLOR}: "
-            # echo -ne "${YDK_COLORS[$COLOR]}${COLOR}${NC}${NBG} / "
-            ydk:colors:"${COLOR,,}" " ${COLOR} " && echo
-        done
-    
+    inspect() {
+        {
+            local COLORS=("${!YDK_COLORS[@]}")
+            for COLOR in "${COLORS[@]}"; do
+                echo -n "${COLOR}: "
+                # echo -ne "${YDK_COLORS[$COLOR]}${COLOR}${NC}${NBG} / "
+                ydk:colors:"${COLOR,,}" " ${COLOR} " 4>&1 >&1
+                echo
+            done
+        } >&4
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 {
@@ -47,14 +49,14 @@ ydk:colors() {
             [BRIGHT_GRAY]="\033[1;37m"
             [WHITE]="\033[0;37m"
             [WHITE_BG]="\033[107m"
-            [BRIGHT_WHITE]="\033[1;37m"            
+            [BRIGHT_WHITE]="\033[1;37m"
         ) && readonly YDK_COLORS
         [[ -n "$NO_COLOR" ]] && [[ "$NO_COLOR" == 1 || "$NO_COLOR" == true ]] && return 0
         for COLOR in "${!YDK_COLORS[@]}"; do
             COLOR_CODE="${YDK_COLORS[$COLOR]}"
             # export "${COLOR^^}=${COLOR_CODE}"
             declare -g "${COLOR^^}=${COLOR_CODE}"
-            eval "ydk:colors:${COLOR,,}() { echo -en \"${COLOR_CODE}\${*}${NC}${NBG}\"; }"
+            eval "ydk:colors:${COLOR,,}() { echo -en \"${COLOR_CODE}\${*}${NC}${NBG}\" >&1; }"
             export -f "ydk:colors:${COLOR,,}"
             #echo "ydk:colors:${COLOR,,}"
             # "ydk:colors:${COLOR,,}" Cloud Yellow Team && echo
@@ -63,7 +65,7 @@ ydk:colors() {
 }
 #!/usr/bin/env bash
 # # shellcheck disable=SC2044,SC2155,SC2317
-# 
+#
 # colors() {
 #     YWT_LOG_CONTEXT="colors"
 #     rainbow() {
@@ -98,26 +100,26 @@ ydk:colors() {
 #         [[ $KIND == "bg" || $KIND == "bg" ]] && COLOR=$((COLOR + 10))
 #         local TEXT=${2} # && while read -r LINE; do echo -e "$LINE"; done <<<"$TEXT"
 #         echo -e "\e[${!VAR}${TEXT}\e[0m${NC}"
-#         return 0        
+#         return 0
 #     }
 #     hyperlink() {
 #         local OSC=$'\e]'
 #         local BEL=$'\a'
 #         local SEP=';'
 #         local PARAM_SEP=':'
-#         local EQ='='        
+#         local EQ='='
 #         local URI=$1
 #         local TEXT=$2
 #         local PARAMS=$3
-# 
+#
 #         local PARAM_STR=""
 #         for PARAM in "${!PARAMS[@]}"; do
 #             PARAM_STR+="${PARAM}${EQ}${PARAMS[$param]}${PARAM_SEP}"
 #         done
-# 
+#
 #         # Remove the trailing PARAM_SEP
 #         PARAM_STR=${PARAM_STR%"$PARAM_SEP"}
-# 
+#
 #         printf "%s8%s%s%s%s%s%s%s8%s%s%s" "$OSC" "$SEP" "$PARAM_STR" "$SEP" "$URI" "$BEL" "$TEXT" "$OSC" "$SEP" "$SEP" "$BEL"
 #         echo -e "${NC}${NSTL}${NBG}"
 #         # local TEXT=${1}
@@ -164,4 +166,4 @@ ydk:colors() {
 # export BRIGHT_WHITE=$'\033[1;37m' && [ "$NO_COLOR" == true ] && BRIGHT_WHITE="" && readonly BRIGHT_WHITE
 # export NC=$'\033[0m' && [ "$NO_COLOR" == true ] && NC="" && readonly NC
 # export NBG=$'\033[49m' && [ "$NO_COLOR" == true ] && NBG="" && readonly NBG
-# 
+#

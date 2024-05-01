@@ -163,7 +163,7 @@ ydk:argv() {
         return 0
     }
     YDK_POSITIONAL_ARGS=()
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     local ARGV_STATUS=$?
     export YDK_POSITIONAL_ARGS
     set -- "${YDK_POSITIONAL_ARGS[@]}"

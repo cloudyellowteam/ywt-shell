@@ -31,7 +31,7 @@ ydk:assets() {
             [[ -n "${YDK_ASSETS[${ASSET}]}" ]] && ASSET="${YDK_ASSETS[${ASSET}]}"
             local ASSET_URL="${YDK_REMOTE_URL}/assets/${ASSET}"
             local ASSET_FILE="${YDK_ASSETS_PATH}/${ASSET}"
-            local ASSET_TMP=$(ydk:temp "download")
+            local ASSET_TMP=$(ydk:temp "download" 4>&1)
             if [[ -f "${ASSET_FILE}" ]]; then
                 ydk:log "debug" "Asset already exists: ${ASSET_FILE}"
                 ASSETS+=("${ASSET_FILE}")

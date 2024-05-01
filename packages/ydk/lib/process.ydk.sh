@@ -2,17 +2,19 @@
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:process() {
     etime() {
-        if grep -q 'Alpine' /etc/os-release; then
-            ps -o etime= "$$" | awk -F "[:]" '{ print ($1 * 60) + $2 }' | head -n 1
-        else
-            ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
-        fi
-    }   
-    
-    inspect(){
+        {
+            if grep -q 'Alpine' /etc/os-release; then
+                ps -o etime= "$$" | awk -F "[:]" '{ print ($1 * 60) + $2 }' | head -n 1
+            else
+                ps -o etime= -p "$$" | sed -e 's/^[[:space:]]*//' | sed -e 's/\://' | head -n 1
+            fi
+        } >&4
+    }
+
+    inspect() {
         jq -cn \
             --arg pid "$$" \
-            --arg etime "$(etime)" \
+            --arg etime "$(etime 4>&1)" \
             --argjson cli "$(ydk:cli)" \
             --argjson package "{}" \
             '{ 
@@ -20,9 +22,9 @@ ydk:process() {
                 etime: $etime,
                 cli: $cli,
                 package: $package
-            }'
+            }' >&4
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 #!/usr/bin/env bash
@@ -38,7 +40,7 @@ ydk:process() {
 #         local FILE="$YWT_CMD_FILE"
 #         echo "{
 #             \"pid\": \"$YWT_CMD_PROCESS\",
-#             \"file\": \"$FILE\",        
+#             \"file\": \"$FILE\",
 #             \"args\": \"$YWT_CMD_ARGS\",
 #             \"args_len\": \"$YWT_CMD_ARGS_LEN\",
 #             \"name\": \"$YWT_CMD_NAME\",

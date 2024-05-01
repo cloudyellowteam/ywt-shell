@@ -5,28 +5,27 @@ ydk:screen() {
     [[ -z "$YDK_SCREEN_REQUIRE_COLS" ]] && local YDK_SCREEN_REQUIRE_COLS=101 && readonly YDK_SCREEN_REQUIRE_COLS
     [[ -z "$YDK_SCREEN_REQUIRE_ROWS" ]] && local YDK_SCREEN_REQUIRE_ROWS=35 && readonly YDK_SCREEN_REQUIRE_ROWS
     size() {
-        if command -v stty &>/dev/null; then
-            {
+        {
+            if command -v stty &>/dev/null; then
                 echo -n "{"
                 stty size | {
                     read -r rows cols
-                    echo -n "\"rows\":$rows,\"cols\":$cols"
+                    echo -n "\"from\":\"stty\",\"rows\":$rows,\"cols\":$cols"
                 }
                 echo -n "}"
-            } | jq -c >&4
-        elif command -v tput &>/dev/null; then
-            {
+            elif command -v tput &>/dev/null; then
                 echo -n "{"
-                echo -n "\"rows\":$(tput lines),\"cols\":$(tput cols)"
+                echo -n "\"from\":\"tput\",\"rows\":$(tput lines),\"cols\":$(tput cols)"
                 echo -n "}"
-            } | jq -c >&4
-            # tput lines
-            #  tput cols
-        else
-            echo -n "{"
-            echo -n "\"rows\":$YDK_SCREEN_REQUIRE_ROWS,\"cols\":$YDK_SCREEN_REQUIRE_COLS"
-            echo -n "}"
-        fi
+            elif [[ -n "$COLUMNS" && -n "$LINES" ]]; then
+                echo -n "{\"from\":\"env\",\"rows\":$LINES,\"cols\":$COLUMNS}"
+            else
+                echo -n "{"
+                echo -n "\"\"from\":\"requirement\",rows\":$YDK_SCREEN_REQUIRE_ROWS,\"cols\":$YDK_SCREEN_REQUIRE_COLS"
+                echo -n "}"
+            fi
+        } | jq -c >&4
+
     }
     defaults() {
         {
@@ -55,25 +54,25 @@ ydk:screen() {
             local TEXT_LENGHT=${#LINE}
             local SPACES=$((CURRENT_WIDTH - TEXT_LENGHT))
             if [ "$SPACES" -le 0 ]; then
-                echo -e "$LINE"
+                echo -e "$LINE" >&1
             else
                 case "$ALIGNMENT" in
                 left)
-                    printf "%-${SPACES}s%s\n" "$LINE" ""
+                    printf "%-${SPACES}s%s\n" "$LINE" "" >&1
                     ;;
                 right)
-                    printf "%${SPACES}s%s\n" "" "$LINE"
+                    printf "%${SPACES}s%s\n" "" "$LINE" >&1
                     ;;
                 center)
                     local PADDING=$((SPACES / 2))
-                    printf "%${PADDING}s$LINE%${PADDING}s\n" "" ""
+                    printf "%${PADDING}s$LINE%${PADDING}s\n" "" "" >&1
                     ;;
                 *)
-                    echo -e "$LINE"
+                    echo -e "$LINE" >&1
                     ;;
                 esac
             fi
-        done        
+        done
         return 0
     }
     ydk:try "$@" 4>&1
