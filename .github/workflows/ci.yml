@@ -75,7 +75,7 @@ jobs:
         run: |
             git add /packages/ydk/ydk.sh
             git commit -m "YDK Shell SDK. Build ${{ github.run_number }}"
-            git tag -a "v1.0.0" -m "YDK Shell SDK. Build ${{ github.run_number }}"
+            git tag -a "0.0.0-dev-0" -m "YDK Shell SDK. Build ${{ github.run_number }}"
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4.3.3
         with:
