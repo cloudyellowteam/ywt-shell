@@ -17,6 +17,54 @@ jobs:
         run: |
           apk add --update bash
       - uses: actions/checkout@v4
+      - name: Show Variables
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+          echo "GITHUB_ACTOR: $GITHUB_ACTOR"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+          echo "GITHUB_WORKFLOW: $GITHUB_WORKFLOW"
+          echo "GITHUB_ACTION: $GITHUB_ACTION"
+          echo "GITHUB_EVENT_PATH: $GITHUB_EVENT_PATH"
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_SERVER_URL: $GITHUB_SERVER_URL"
+          echo "GITHUB_API_URL: $GITHUB_API_URL"
+          echo "GITHUB_GRAPHQL_URL: $GITHUB_GRAPHQL_URL"
+          echo "RUNNER_OS: $RUNNER_OS"
+          echo "RUNNER_TEMP: $RUNNER_TEMP"
+          echo "RUNNER_TOOL_CACHE: $RUNNER_TOOL_CACHE"
+          echo "RUNNER_WORKSPACE: $RUNNER_WORKSPACE"
+          echo "ACTIONS_RUNTIME_URL: $ACTIONS_RUNTIME_URL"
+          echo "ACTIONS_RUNTIME_TOKEN: $ACTIONS_RUNTIME_TOKEN"
+          echo "ACTIONS_CACHE_URL: $ACTIONS_CACHE_URL"
+          echo "ACTIONS_RUNTIME_API_URL: $ACTIONS_RUNTIME_API_URL"
+          echo "GITHUB_ACTIONS: $GITHUB_ACTIONS"
+          echo "GITHUB_ACTION: $GITHUB_ACTION"
+          echo "GITHUB_ACTOR: $GITHUB_ACTOR"
+          echo "GITHUB_REPOSITORY: $GITHUB_REPOSITORY"
+          echo "GITHUB_EVENT_NAME: $GITHUB_EVENT_NAME"
+          echo "GITHUB_EVENT_PATH: $GITHUB_EVENT_PATH"
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "GITHUB_SHA: $GITHUB_SHA"
+          echo "GITHUB_REF: $GITHUB_REF"
+          echo "GITHUB_HEAD_REF: $GITHUB_HEAD_REF"
+          echo "GITHUB_BASE_REF: $GITHUB_BASE_REF"
+          echo "GITHUB_SERVER_URL: $GITHUB_SERVER_URL"
+          echo "GITHUB_API_URL: $GITHUB_API_URL"
+          echo "GITHUB_GRAPHQL_URL: $GITHUB_GRAPHQL_URL"
+          echo "RUNNER_OS: $RUNNER_OS"
+          echo "RUNNER_TEMP: $RUNNER_TEMP"
+          echo "RUNNER_TOOL_CACHE: $RUNNER_TOOL_CACHE"
+          echo "RUNNER_WORKSPACE: $RUNNER_WORKSPACE"
+          echo "ACTIONS_RUNTIME_URL: $ACTIONS_RUNTIME_URL"          
       - name: Install YDK Shell SDK
         run: |
           packages/ydk/ydk.cli.sh install
@@ -27,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4.3.3
         with:
           name: ydk.sh
-          path: ${{ github.workspace }}/rapd-shell/ywt-shell/packages/ydk/ydk.sh
+          path: ${{ github.workspace }}/packages/ydk/ydk.sh
   Docker:
     runs-on: ubuntu-latest    
     steps:      
