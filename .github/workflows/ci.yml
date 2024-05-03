@@ -10,12 +10,12 @@ jobs:
   Build:
     runs-on: ubuntu-latest
     container:
-      image: alpine:latest
+      image: ubuntu:latest
     steps:
-      - name: Install Alpine Depencencies
-        shell: sh
-        run: |
-          apk add --update bash
+      # - name: Install Alpine Depencencies
+      #   shell: sh
+      #   run: |
+      #     apk add --update bash
       - uses: actions/checkout@v4
       - name: Show Variables
         run: |

@@ -41,7 +41,7 @@ ydk:upm() {
             echo -n "}"
             echo -n "}"
         } ) # | jq -c .
-        ydk:logger output "Detecting package managers for $OS_NAME" >&1
+        ydk:log output "Detecting package managers for $OS_NAME" #>&1
         ydk:logger output < <(
             jq -rc '
                 "\(.os)/\(.vendor). \(.managers | length) package managers detected. \(.managers | keys | join(" "))"

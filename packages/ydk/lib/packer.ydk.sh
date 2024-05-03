@@ -81,7 +81,23 @@ ydk:packer() {
                     return 0
                 } && return 0
             else
-                ydk:throw 127 "Compiler is not installed"
+                # If the above installation method seems like too much work, then just download a compiled binary package from release page and copy the shc binary to /usr/bin and shc.1 file to /usr/share/man/man1.
+                # local SHC_ZIP="https://github.com/neurobin/shc/archive/refs/tags/4.0.3.tar.gz"
+                # local SHC_TMP=$(ydk:temp "shc" 4>&1)
+                # local SHC_DIR=$(ydk:temp "shc" 4>&1)
+                # local SHC_BIN="/usr/bin/shc"
+                # curl -sSL "$SHC_ZIP" -o "$SHC_TMP" && {
+                #     tar -xzf "$SHC_TMP" -C "$SHC_DIR" --strip-components=1
+                #     cd "$SHC_DIR" && make install
+                #     if [[ -f "$SHC_BIN" ]]; then
+                #         ydk:log success "Compiler installed"
+                #         return 0
+                #     else
+                #         ydk:log error "Compiler not installed"
+                #         return 1
+                #     fi
+                # }
+                ydk:throw 127 "Not package manager found to intall compiler"
             fi
             return 1
         fi

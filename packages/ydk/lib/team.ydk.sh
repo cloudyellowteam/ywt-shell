@@ -57,8 +57,8 @@ ydk:team() {
     }
     welcome() {
         local YDK_TEAM_INFO=$(info 4>&1)
-        ydk:logger success "$(jq -rc '.info.team + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"
-        ydk:logger info "Need a help? Visit ${YDK_LINKS[docs]} :book:"
+        ydk:log success "$(jq -rc '.info.team + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"
+        ydk:log info "Need a help? Visit ${YDK_LINKS[docs]} :book:"
         return 0
         # local YWT_PACKAGE=$(package)
         # local NAME && NAME=$(jq -r '.name' <<<"$YWT_PACKAGE") && readonly NAME
