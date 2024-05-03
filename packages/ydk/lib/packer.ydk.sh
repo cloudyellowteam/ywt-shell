@@ -113,8 +113,8 @@ ydk:packer() {
                 ;;
             esac
         done
-
-        shc -e "${EXPIRES_AT}" \
+    
+        shc -v -e "${EXPIRES_AT}" \
             -m "${EXPIRES_MESSAGE}" \
             "${SHC_ARGS[@]}" >&4
 
@@ -142,7 +142,7 @@ ydk:packer() {
     bundle() {
         local VALIDATION=$(packer:validate:src-file "$1" 4>&1)
         local PACK_DEFAUTLS=$(ydk:packer defaults 4>&1)
-        ydk:log info "Bundling source file"
+        ydk:log info "Bundling source file" 
         # jq . <<<"$VALIDATION" >&4
         # jq  . <<<"$PACK_DEFAUTLS" >&1
         local BUNDLE_SRC=$(jq -r '.src' <<<"$VALIDATION")
@@ -211,6 +211,7 @@ ydk:packer() {
         else
             ydk:log "success" "Checksum verification passed"
         fi
+        echo "$BUNDLE_FULL_PATH" >&4
         return 0
         # ydk:log info "Testing bundle 'source $BUNDLE_TMP logger success test'"
         # echo
@@ -246,7 +247,7 @@ ydk:packer() {
         __packer:compiler -r \
             -f "${FILE}" \
             -e "${EXPIRES_AT}" \
-            -o "${FILE_DIR}/${FILENAME}.bin" >&4
+            -o "${FILE_DIR}/${FILENAME}.bin" 4>&1 >&4
         local BUILD_STATUS=$?
         if [[ $BUILD_STATUS -eq 0 ]]; then
             ydk:log "success" "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
@@ -256,6 +257,21 @@ ydk:packer() {
             ydk:log "Error" "File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
             return 1
         fi
+    }
+    build() {
+        ydk:log info "Building bundle"
+        local FILE=$1 && [[ ! -f "$FILE" ]] && ydk:throw 22 "Invalid file ${FILE}" && return 1
+        local EXPIRES_AT="${2:-$YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+        ydk:log info "Packing"
+        local BUNDLE=$(bundle "$FILE" 4>&1)
+        [[ -z "$BUNDLE" ]] && ydk:throw 22 "Invalid bundle" && return 1
+        ydk:log info "Compiling $BUNDLE"
+        if ! compile "$BUNDLE" "$EXPIRES_AT" 4>&1; then
+            ydk:throw 22 "Invalid compile"
+            return 1
+        fi
+        ydk:log success "Build completed"
+        return 0        
     }
     ydk:try "$@" 4>&1
     return $?

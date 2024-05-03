@@ -256,7 +256,7 @@ ydk() {
         }
         if ! command -v jq >/dev/null 2>&1; then
             __log:show
-        elif ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 2>/dev/null; then
+        elif ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 1>&2 2>/dev/null; then
             __log:show
         fi
         # ! ydk:logger "$YDK_LOG_LEVEL" "$YDK_LOG_MESSAGE" 2>/dev/null && __log:show && return 0
