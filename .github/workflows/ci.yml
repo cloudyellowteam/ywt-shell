@@ -8,6 +8,9 @@ on:
 
 jobs:
   Build:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
     container:
       image: ubuntu:latest
@@ -71,12 +74,17 @@ jobs:
       - name: Build YDK Shell SDK
         run: |
           packages/ydk/ydk.cli.sh packer build "$(realpath ./packages/ydk/ydk.cli.sh)" "31/12/2999"
-      # - name: Commit SDK and Tag
-      #   working-directory: ${{ github.workspace }}
-      #   run: |
-      #       git add /packages/ydk/ydk.sh
-      #       git commit -m "YDK Shell SDK. Build ${{ github.run_number }}"
-      #       git tag -a "0.0.0-dev-0" -m "YDK Shell SDK. Build ${{ github.run_number }}"
+      - name: Commit SDK and Tag
+        working-directory: ${{ github.workspace }}
+        if: false
+        run: |
+            git add /packages/ydk/ydk.sh
+            git commit -m "YDK Shell SDK. Build ${{ github.run_number }}"
+            git tag -a "0.0.0-dev-0" -m "YDK Shell SDK. Build ${{ github.run_number }}"
+      - name: Attest artifact
+        uses: github-early-access/generate-build-provenance@main
+        with:
+          subject-path: '${{ github.workspace }}/packages/ydk'
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4.3.3
         with:
