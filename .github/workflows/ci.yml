@@ -121,7 +121,7 @@ jobs:
         packages/ydk/ydk.cli.sh install
     - name: Packing YDK Shell SDK
       run: |
-        packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
+        packages/ydk/ydk.cli.sh team info
 
 # - name: Install Depencencies
 #   shell: bash
