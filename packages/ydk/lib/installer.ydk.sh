@@ -314,6 +314,7 @@ ydk:installer() {
         ["home"]="${YDK_CONFIG_PATH_HOME:-"$HOME/ywteam/${YDK_PACKAGE_NAME}"}"
         ["share"]="${YDK_CONFIG_PATH_SHARE:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}"}"
         ["doc"]="${YDK_CONFIG_PATH_DOC:-"/usr/share/ywteam/${YDK_PACKAGE_NAME}/doc"}"
+        ["tests"]="!/usr/share/ywteam/${YDK_PACKAGE_NAME}/tests"
         # ["bin"]="/usr/local/bin/ywteam/${YDK_PACKAGE_NAME}"
         # ["lib"]="/usr/local/lib/ywteam/${YDK_PACKAGE_NAME}"
         # ["etc"]="/etc/ywteam/${YDK_PACKAGE_NAME}"
