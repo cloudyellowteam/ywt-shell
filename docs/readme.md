@@ -6,6 +6,7 @@
 
 > **2024.05.3**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh packer compile ./packages/ydk/ydk.sh 31/12/2999
 clear; ./packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
 
 ```

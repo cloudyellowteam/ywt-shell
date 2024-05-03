@@ -80,19 +80,19 @@ ydk:packer() {
                     ydk:log success "Compiler installed"
                     return 0
                 } && return 0
-            else 
+            else
                 ydk:throw 127 "Compiler is not installed"
-            fi            
+            fi
             return 1
         fi
         local EXPIRES_AT="${YDK_BUILDER_DEFAULTS_EXPIRES_AT}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
         if [[ ! $EXPIRES_AT =~ ^([0-9]{2})/([0-9]{2})/([0-9]{4})$ ]]; then
-            echo "Invalid date format: $EXPIRES_AT. Use dd/mm/yyyy."
+            ydk:throw 22 "Invalid date format: $EXPIRES_AT. Use dd/mm/yyyy."
             return 1
         fi
         IFS='/' read -r EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR <<<"$EXPIRES_AT"
         if ! date -d "$EXPIRES_AT_YEAR-$EXPIRES_AT_MONTH-$EXPIRES_AT_DAY" "+%Y-%m-%d" &>/dev/null; then
-            echo "Error: Invalid date ${EXPIRES_AT}"
+            ydk:throw 22 "Invalid date: $EXPIRES_AT"
             return 1
         fi
         unset EXPIRES_AT_DAY EXPIRES_AT_MONTH EXPIRES_AT_YEAR
@@ -113,9 +113,11 @@ ydk:packer() {
                 ;;
             esac
         done
+
         shc -e "${EXPIRES_AT}" \
             -m "${EXPIRES_MESSAGE}" \
-            "${SHC_ARGS[@]}"
+            "${SHC_ARGS[@]}" >&4
+
         return $?
 
         # -e %s  Expiration date in dd/mm/yyyy format [none]
@@ -232,6 +234,28 @@ ydk:packer() {
         # }
         # # rm -f "$BUNDLE_TMP"
         # return 0
+    }
+    compile() {
+        local FILE=$1 && [[ ! -f "$FILE" ]] && echo "$FILE is not a valid file" && return 0
+        local EXPIRES_AT="${2}" && [ -z "$EXPIRES_AT" ] && EXPIRES_AT="31/12/2999"
+        local FILE_DIR=$(dirname -- "$FILE") && readonly FILE_DIR
+        local FILENAME && FILENAME=$(basename -- "$FILE") && FILENAME="${FILENAME%.*}" && FILENAME="${FILENAME%.*}" && [ -z "$FILENAME" ] && echo "Invalid file name: $FILE" && return 1
+        ydk:log "info" "Compiling $FILE, expires at $EXPIRES_AT"
+        [[ -f "${FILE_DIR}/${FILENAME}.bin" ]] && rm -f "${FILE_DIR}/${FILENAME}.bin"
+        [[ -f "${FILE_DIR}/${FILENAME}.sh.x.c" ]] && rm -f "${FILE_DIR}/${FILENAME}.sh.x.c"
+        __packer:compiler -r \
+            -f "${FILE}" \
+            -e "${EXPIRES_AT}" \
+            -o "${FILE_DIR}/${FILENAME}.bin" >&4
+        local BUILD_STATUS=$?
+        if [[ $BUILD_STATUS -eq 0 ]]; then
+            ydk:log "success" "File compiled successfully: ${FILE_DIR}/${FILENAME}.bin"
+            ydk:log "info" "Run ${FILE_DIR}/${FILENAME}.bin process inspect | jq ."
+            return "$BUILD_STATUS"
+        else
+            ydk:log "Error" "File compilation failed: ${FILE_DIR}/${FILENAME}.bin"
+            return 1
+        fi
     }
     ydk:try "$@" 4>&1
     return $?

@@ -5,3 +5,6 @@ tests/unit.*
 **/*.bin
 **/*.x.c
 **/*.checksum
+!packages/ydk/ydk.bin
+!packages/ydk/ydk.sh.x.c
+!packages/ydk/ydk.sh.checksum
