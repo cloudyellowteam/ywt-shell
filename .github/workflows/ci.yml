@@ -86,15 +86,12 @@ jobs:
         uses: github-early-access/generate-build-provenance@main
         with:
           subject-path: '${{ github.workspace }}/packages/ydk'
+        if: false
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4.3.3
         with:
           name: ydk.sh
-          path: |
-            ${{ github.workspace }}/packages/ydk/ydk.sh
-            ${{ github.workspace }}/packages/ydk/ydk.bin
-            ${{ github.workspace }}/packages/ydk/ydk.sh.x.c
-            ${{ github.workspace }}/packages/ydk/ydk.sh.checksum
+          path: ${{ github.workspace }}/packages/ydk/ydk.sh ${{ github.workspace }}/packages/ydk/ydk.bin ${{ github.workspace }}/packages/ydk/ydk.sh.x.c ${{ github.workspace }}/packages/ydk/ydk.sh.checksum
 
   Docker:
     runs-on: ubuntu-latest    
