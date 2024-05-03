@@ -38,7 +38,7 @@ ydk:checksum() {
         local FILE_HASH=$(hash "${HASH_TYPE}" "${FILE}" 4>&1)
         [ "$FILE_HASH" == "$HASH" ] && return 0
         ydk:log warn "Hash mismatch: $FILE_HASH != $HASH"
-        return 1        
+        return 1       
     }
     ydk:try "$@" 4>&1
     return $?

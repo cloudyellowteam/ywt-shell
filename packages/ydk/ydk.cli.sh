@@ -203,6 +203,7 @@ ydk() {
         return 0
     }
     ydk:teardown() {
+        YDK_LOGGER_CONTEXT="teardown"
         local YDK_EXIT_CODE="${1:-$?}"
         local YDK_EXIT_MESSAGES=(
             "${2:-"exit with: ${YDK_EXIT_CODE}"}"
@@ -230,7 +231,9 @@ ydk() {
             fi
         })
         # local YDK_EXIT_LEVEL=$(jq -r '.level' <<<"${YDK_EXIT_JSON}")
+        [[ -p "${YDK_FIFO}" ]] && exec 4>&- && rm -f "${YDK_FIFO}"
         rm -f ${YDK_FIFO}
+        # exec 4>&-; rm -f '"${YDK_FIFO}"
         # ydk:log "info" "$YDK_EXIT_JSON"
         [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_THROW_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_THROW_STATUS]}. ${YDK_THROW_MESSAGE}"
         ydk:log "$YDK_EXIT_LEVEL" "($YDK_EXIT_CODE) ${YDK_EXIT_MESSAGES[*]}"
@@ -287,10 +290,14 @@ ydk() {
         # return 0
     }
     ydk:catch() {
+        local YDK_CATCH_OLD_LOGGER_CONTEXT="${YDK_LOGGER_CONTEXT}"
+        YDK_LOGGER_CONTEXT="catch"
         local YDK_CATH_STATUS="${1:-$?}"
         local YDK_CATH_MESSAGE="${2:-"catch with: ${YDK_CATH_STATUS}"}"
         # [[ -n "$YDK_ERRORS_MESSAGES" ]] && YDK_CATH_MESSAGE="${YDK_ERRORS_MESSAGES[$YDK_CATH_STATUS]}. ${YDK_CATH_MESSAGE}"
         ydk:log error "($YDK_CATH_STATUS) ${YDK_CATH_MESSAGE} ($_)"
+        YDK_LOGGER_CONTEXT="${YDK_CATCH_OLD_LOGGER_CONTEXT}"
+        unset YDK_CATCH_OLD_LOGGER_CONTEXT
         return "${YDK_CATH_STATUS}"
     }
     ydk:throw() {
@@ -338,12 +345,12 @@ ydk() {
         fi
         return 0
     }
-    trap 'ydk:catch $? "An unexpected error occurred"' ERR INT TERM
-    trap 'ydk:teardown $? "Script exited"' EXIT
     local YDK_FIFO="/tmp/ydk.fifo" && readonly YDK_FIFO
     [[ ! -p "${YDK_FIFO}" ]] && mkfifo "${YDK_FIFO}"
     exec 4<>"${YDK_FIFO}" # exec 4<&- | # exec 4>&1 | # exec 4<&0
-    trap 'exec 4>&-; rm -f '"${YDK_FIFO}"'' EXIT
+    # trap 'exec 4>&-; rm -f '"${YDK_FIFO}"'' EXIT
+    trap 'ydk:throw $? "An unexpected error occurred"' ERR INT TERM
+    trap 'ydk:teardown $? "Script exited"' EXIT
     if ! ydk:boostrap 2>&1; then
         ydk:throw 255 "Failed to boostrap ydk"
     fi
@@ -355,8 +362,9 @@ ydk() {
     ydk:try "$@" 4>&1 || YDK_STATUS=$? && YDK_STATUS=${YDK_STATUS:-0}
     # echo "{\"return\": ${YDK_STATUS}}"
     # ydk:teardown "${YDK_STATUS}" "Script exited"
-    exec 4>&-
-    rm -f "${YDK_FIFO}"
+    # trap 1>&2 # >&4
+    # exec 4>&-
+    # rm -f "${YDK_FIFO}"
     return "${YDK_STATUS}"
     # [ "$YDK_STATUS" -ne 0 ] && ydk:throw "$YDK_STATUS" "Usage: ydk $*"
     # return "${YDK_STATUS:-0}"

@@ -25,8 +25,7 @@ ydk:upm() {
                 local OS_VENDOR="unknown"
                 ;;
             esac
-            OS_VENDOR=${OS_VENDOR,,}
-            ydk:logger output "Detecting package managers for $OS_NAME/${OS_VENDOR}"
+            OS_VENDOR=${OS_VENDOR,,}            
             echo -n "{"
             echo -n "\"os\":\"$OS_NAME\","
             echo -n "\"vendor\":\"$OS_VENDOR\","
@@ -41,12 +40,14 @@ ydk:upm() {
             done | sed 's/,$//'
             echo -n "}"
             echo -n "}"
-        } | jq -c .)
+        } ) # | jq -c .
+        ydk:logger output "Detecting package managers for $OS_NAME" >&1
         ydk:logger output < <(
             jq -rc '
                 "\(.os)/\(.vendor). \(.managers | length) package managers detected. \(.managers | keys | join(" "))"
             ' <<<"${OS_VENDOR}"
         )
+        # echo "fdafa ${OS_VENDOR}" >&4
         jq -c . <<<"${OS_VENDOR}" >&4
         return 0
     }

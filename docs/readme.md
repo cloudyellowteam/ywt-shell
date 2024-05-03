@@ -4,6 +4,19 @@
   git config --global user.name "Raphael C Rego"
 ```
 
+> **2024.05.3**
+```shell
+clear; ./packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
+
+```
+
+> **2024.05.2**
+```shell
+clear; ./packages/ydk/ydk.cli.sh packer pack ./packages/ydk/ydk.cli.sh
+clear; packages/ydk/ydk.sh screen size 
+clear; ./packages/ydk/ydk.cli.sh upm detect
+```
+
 > **2024.04.30**
 ```shell
 

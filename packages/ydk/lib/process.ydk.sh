@@ -4,7 +4,7 @@ ydk:process() {
     inspect() {
         jq -cn \
             --arg pid "$$" \
-            --arg etime "$(etime 4>&1)" \
+            --arg etime "$(ydk:etime 4>&1)" \
             --argjson cli "$(ydk:cli)" \
             --argjson package "{}" \
             '{ 
