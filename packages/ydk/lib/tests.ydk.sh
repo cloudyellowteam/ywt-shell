@@ -60,7 +60,8 @@ ydk:tests() {
                 \tload \"helpers/bats-assert/load.bash\"
                 \tload \"helpers/bats-file/load.bash\"
                 \tif ! type -t ydk >/dev/null; then
-                \t    local YDK_SHELL_SDK=\"${TEST_ENTRYPOINT}\"
+                \t    # local YDK_SHELL_SDK=\"${TEST_ENTRYPOINT}\"
+                \t    local YDK_SHELL_SDK=\"/workspace/rapd-shell/packages/ydk/ydk.sh\"
                 \t    source \"\${YDK_SHELL_SDK}\" >&3
                 \tfi
                 }
@@ -90,23 +91,40 @@ ydk:tests() {
         # filter-tags           <comma-separated-tag-list> Only run tests that match all the tags in the list (&&). You can negate a tag via prepending '!'. Specifying this flag multiple times allows for logical or (||): `--filter-tags A,B --filter-tags A,!C` matches tags (A && B) || (A && !C)
         # --trace              Print test commands as they are executed (like `set -x`)
         # --verbose-run        Make `run` print `$output` by default
-        local TEST_RESULT=$(
-            # bats "${ARGS[@]}" "${TESTS_DIR}"/*.bats 2>&1
-            bats --recursive \
-                --no-tempdir-cleanup \
-                --output "${TMP_DIR:-"/tmp"}" \
-                --show-output-of-passing-tests \
-                --print-output-on-failure \
-                --jobs 100 \
-                --timing \
-                --tap \
-                --formatter pretty \
-                "${@}" \
-                "${TESTS_DIR}"/*.bats 1>&2 # >&4
+        local BATS_ARGS=(
+            --recursive
+            --no-tempdir-cleanup
+            --output "${TMP_DIR:-"/tmp"}"
+            --show-output-of-passing-tests
+            --print-output-on-failure
+            --jobs 100
+            --timing
+            --tap
+            --formatter pretty
         )
-        local TEST_EXIT_CODE=$?
-        ydk:log "$([[ ${TEST_EXIT_CODE} -eq 0 ]] && echo "success" || echo "error")" "Test exit code: ${TEST_EXIT_CODE}"
-        ydk:log output "Test result: ${TEST_RESULT}"
+        # echo "Bats args: bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats" 1>&2
+        #
+        local YDK_TESTS_RESULT_FILE=$(ydk:temp "ydk-tests-result" ".log" 4>&1)
+        {
+            sh -c "bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats >\"${YDK_TESTS_RESULT_FILE}\" 1>&2" 2>&1
+            echo $? >>"${YDK_TESTS_RESULT_FILE}"
+        } &
+        local YDK_TESTS_PID=$!
+        ydk:await spin "${YDK_TESTS_PID}" "Running tests"
+        unset YDK_TESTS_PID
+        local TEST_EXIT_CODE=$(tail -n 1 "${YDK_TESTS_RESULT_FILE}")
+        local TEST_RESULT=$(head -n -1 "${YDK_TESTS_RESULT_FILE}")
+        rm -f "${YDK_TESTS_RESULT_FILE}"
+
+        return "${TEST_EXIT_CODE}"
+
+        # local TEST_RESULT=$(sh -c "bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats" 2>&1)
+        # local TEST_EXIT_CODE=$?
+        # ydk:log "$([[ ${TEST_EXIT_CODE} -eq 0 ]] && echo "success" || echo "error")" \
+        #     "Test exit code: ${TEST_EXIT_CODE}"
+        # ydk:log output "Test result: ${TEST_RESULT}"
+        # echo "${TEST_RESULT}" >&4
+        # return "${TEST_EXIT_CODE}"
     }
     generate() {
         local YDK_TESTS_SETUP_FILE="$(__tests:generate:setup 4>&1)"
@@ -179,7 +197,10 @@ ydk:tests() {
             [ ! -d "${TEST_HELPER_DIR}/bats-assert" ] && ydk:log info "Getting bats-assert" && git clone https://github.com/bats-core/bats-assert.git "${TEST_HELPER_DIR}/bats-assert" &>/dev/null
             [ ! -d "${TEST_HELPER_DIR}/bats-support" ] && ydk:log info "Getting bats-support" && git clone https://github.com/bats-core/bats-support.git "${TEST_HELPER_DIR}/bats-support" &>/dev/null
             [ ! -d "${TEST_HELPER_DIR}/bats-file" ] && ydk:log info "Getting bats-file" && git clone https://github.com/bats-core/bats-file.git "${TEST_HELPER_DIR}/bats-file" &>/dev/null
-        }
+        } &
+        local YDK_TEST_SETUP_PID=$!
+        ydk:await spin "${YDK_TEST_SETUP_PID}" "Setting up tests"
+        unset YDK_TEST_SETUP_PID
         rm -fr "${TEST_HELPER_DIR}/**/.git"
         if ! command -v bats >/dev/null 2>&1; then
             ydk:log info "installing bats"
@@ -222,6 +243,7 @@ ydk:tests() {
         local ELAPSED_TIME=$((END_TIME - START_TIME))
         # ydk:log info "Test exit code: ${TEST_EXIT_CODE}"
         # ydk:log info "Test result:"
+        rm -f "${TESTS_DIR}/*.bats"
         ydk:log output "${TEST_RESULT}"
         local FAILURES=$(grep -Eo "0 failures" <<<"${TEST_RESULT}")
         if [ "${TEST_EXIT_CODE}" -eq 0 ] && [ -n "${FAILURES}" ]; then

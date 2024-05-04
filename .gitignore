@@ -8,3 +8,4 @@ tests/unit.*
 !packages/ydk/ydk.bin
 !packages/ydk/ydk.sh.x.c
 !packages/ydk/ydk.sh.checksum
+core.*

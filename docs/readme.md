@@ -4,6 +4,22 @@
   git config --global user.name "Raphael C Rego"
 ```
 
+> **2024.05.4**
+```shell
+clear; bats --recursive \
+    --no-tempdir-cleanup \
+    --output "${TMP_DIR:-"/tmp"}" \
+    --show-output-of-passing-tests \
+    --print-output-on-failure \
+    --jobs 100 \
+    --timing \
+    --tap \
+    --formatter pretty \
+    --filter-tags "ydk" \
+    /usr/share/ywteam/ydk-shell/tests/*.bats
+
+```
+
 > **2024.05.3**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh tests unit ydk

@@ -12,6 +12,49 @@ ydk:colors() {
             done
         } >&4
     }
+    random() {
+        local TEXT=${1} && shift
+        local COLORS_RANDOM_INDEX=$((RANDOM % ${#YDK_COLORS[@]}))
+        local COLOR_RANDOM="${YDK_COLORS[$COLORS_RANDOM_INDEX]}"
+        echo -ne "${COLOR_RANDOM}${TEXT}${NC}${NBG}" >&4
+        # echo -n "${COLOR_RANDOM}" >&4
+    }
+    rainbow() {
+        local TEXT=${1} && shift
+        local COLORS=("${@}") && [ ${#COLORS[@]} -eq 0 ] && COLORS=("${YDK_COLORS[@]}")
+        # local COLOR_COUNT=${#YDK_COLORS[@]}
+        local TEXT_LENGTH=${#TEXT}
+        # local INDEX=0
+        {
+            for ((i = 0; i < TEXT_LENGTH; i++)); do
+                local CHAR=${TEXT:$i:1}
+                local CHAR_TRIM=$(echo -n "$CHAR" | tr -d '[:space:]')
+                if [[ -n "$CHAR_TRIM" ]]; then
+                    local RANDOM_COLOR=$((RANDOM % ${#COLORS[@]}))
+                    local COLOR_CODE=${COLORS[$RANDOM_COLOR]}
+                    # echo -en "$RANDOM_COLOR/${COLOR_CODE}"
+                    echo -en "${COLOR_CODE}${CHAR}${NC}${NBG}"
+                    # local COLOR_CODE=${COLORS[$INDEX]}
+                    # echo -en "${COLOR_CODE}${CHAR}${NC}${NBG}"
+                    # INDEX=$((INDEX + 1))
+                    # [[ $INDEX -ge $COLOR_COUNT ]] && INDEX=0
+                    continue
+                fi
+                echo -n "$CHAR"
+                # random "${CHAR}" 4>&1
+                # get random color from the list
+                # local COLOR=$(random "${CHAR}" 4>&1)
+                # echo -ne "${COLOR}${CHAR}${NC}${NBG}"
+                # local COLOR=${COLORS[$INDEX]}
+                # echo -n "${YDK_COLORS[$COLOR]}${CHAR}${NC}${NBG}"
+                # local COLOR_CODE=$(colorize "$COLOR" "$CHAR")
+                # echo -n "$COLOR_CODE"
+
+            done
+            echo
+        } >&4
+        return 0
+    }
     ydk:try "$@" 4>&1
     return $?
 }
