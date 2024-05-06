@@ -168,8 +168,9 @@ ydk:tests() {
                     #!/usr/bin/env bats
                     # 🩳 ydk-shell@0.0.0-dev-0 sdk
                     # Source File: ${TEST}
-                    # bats file_tags=ydk, ${TEST_NAME_SANTEZIED,,}
                     # https://bats-core.readthedocs.io/en/stable/writing-tests.html#tagging-tests
+                    # bats file_tags=ydk, ${TEST_NAME_SANTEZIED,,}
+                    # First test generated at $(date)
                     # bats test_tags=ydk, ${TEST_NAME_SANTEZIED,,}, initial
                     @test \"${TEST_NAME_SANTEZIED,,} should be called\" {
                     \trun ydk ${TEST_NAME_SANTEZIED,,}
@@ -188,6 +189,7 @@ ydk:tests() {
                 echo -e "
                     # 🩳 ydk-shell@0.0.0-dev-0 sdk
                     # Source File: ${TEST}
+                    # Generated at: $(date)
                     setup() {
                     \tload \"helpers/setup.sh\" && ydk:test:setup
                     \tFEATURE_DIR=\"\$(cd \"\$(dirname \"\$BATS_TEST_FILENAME\")\" \t>/dev/null 2>&1 && pwd)\"
