@@ -169,6 +169,7 @@ ydk:tests() {
                     # 🩳 ydk-shell@0.0.0-dev-0 sdk
                     # Source File: ${TEST}
                     # bats file_tags=ydk, ${TEST_NAME_SANTEZIED,,}
+                    # https://bats-core.readthedocs.io/en/stable/writing-tests.html#tagging-tests
                     # bats test_tags=ydk, ${TEST_NAME_SANTEZIED,,}, initial
                     @test \"${TEST_NAME_SANTEZIED,,} should be called\" {
                     \trun ydk ${TEST_NAME_SANTEZIED,,}
@@ -183,12 +184,10 @@ ydk:tests() {
             }
             local UNIT_TEST_TEMP_FILE=$(ydk:temp "${TEST_NAME_SANTEZIED,,}" ".bats" 4>&1)
             {
+                cat "${YDK_FIST_TEST}"
                 echo -e "
-                    #!/usr/bin/env bats
                     # 🩳 ydk-shell@0.0.0-dev-0 sdk
                     # Source File: ${TEST}
-                    # bats file_tags=ydk, ${TEST_NAME_SANTEZIED,,}
-                    # bats test_tags=ydk, ${TEST_NAME_SANTEZIED,,}, initial
                     setup() {
                     \tload \"helpers/setup.sh\" && ydk:test:setup
                     \tFEATURE_DIR=\"\$(cd \"\$(dirname \"\$BATS_TEST_FILENAME\")\" \t>/dev/null 2>&1 && pwd)\"
@@ -200,7 +199,7 @@ ydk:tests() {
                     \tload \"helpers/setup.sh\" && ydk:test:teardown
                     }
                 " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
-                cat "${YDK_FIST_TEST}"
+                
             } >"${UNIT_TEST_TEMP_FILE}"
             echo "Generated test ${UNIT_TEST_TEMP_FILE}"
         done
