@@ -108,7 +108,7 @@ ydk:tests() {
         {
             sh -c "
                 {
-                    bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats 2>/dev/null # >\"${YDK_TESTS_RESULT_FILE}\" # 1>&2
+                    bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.$$.bats 2>/dev/null # >\"${YDK_TESTS_RESULT_FILE}\" # 1>&2
                     echo \$?
                 } 2>&1
             " 2>/dev/null |
@@ -183,7 +183,7 @@ ydk:tests() {
                 " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
                 } >"${YDK_FIST_TEST}"
             }
-            local UNIT_TEST_TEMP_FILE=$(ydk:temp ".${TEST_NAME_SANTEZIED,,}.bats" 4>&1)
+            local UNIT_TEST_TEMP_FILE=$(ydk:temp "${TEST_NAME_SANTEZIED,,}.bats" 4>&1)
             {
                 cat "${YDK_FIST_TEST}"
                 echo -e "
