@@ -156,15 +156,15 @@ ydk:tests() {
         local TESTS_GENERATED=0
         ydk:log info "${#PACKAGE_TESTS} tests found"
         for TEST in "${PACKAGE_TESTS[@]}"; do
-            local TEST_NAME=$(basename "${TEST}")
-            local TEST_NAME_SANTEZIED=${TEST_NAME/.*/}
-            local TEST_DEST="${TEST}.bats"
-            [[ -f "${TEST_DEST}" ]] && continue
-            echo "Generating test for ${TEST_DEST}"            
-            local TEST_FILE_NAME=$(basename "${TEST_DEST}") #&& TEST_FILE_NAME="unit.${TEST_FILE_NAME}.bats"
-            # TEST_DEST="${TESTS_DIR}/${TEST_FILE_NAME}"
-            {
-                echo -e "
+            local TEST_FILE_NAME=$(basename "${TEST}" | sed 's/^[0-9]*\.//')
+            local TEST_NAME_SANTEZIED=${TEST_FILE_NAME//.ydk.sh/}
+            local TEST_PATH=$(dirname "${TEST}")
+            local YDK_FIST_TEST="${TEST_PATH}/${TEST_NAME_SANTEZIED}.ydk.bats"
+            [[ ! -f "${YDK_FIST_TEST}" ]] && {
+                TESTS_GENERATED=$((TESTS_GENERATED + 1))
+                echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}"
+                {
+                    echo -e "
                     #!/usr/bin/env bats
                     # 🩳 ydk-shell@0.0.0-dev-0 sdk
                     # Source File: ${TEST}
@@ -178,6 +178,17 @@ ydk:tests() {
                     \tassert_output --partial \"ydk-shell@\"
                     \tassert_output --partial \"Usage: ydk\"                    
                     }
+                " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
+                } >"${YDK_FIST_TEST}"
+            }
+            local UNIT_TEST_TEMP_FILE=$(ydk:temp "${TEST_NAME_SANTEZIED,,}" ".bats" 4>&1)
+            {
+                echo -e "
+                    #!/usr/bin/env bats
+                    # 🩳 ydk-shell@0.0.0-dev-0 sdk
+                    # Source File: ${TEST}
+                    # bats file_tags=ydk, ${TEST_NAME_SANTEZIED,,}
+                    # bats test_tags=ydk, ${TEST_NAME_SANTEZIED,,}, initial
                     setup() {
                     \tload \"helpers/setup.sh\" && ydk:test:setup
                     \tFEATURE_DIR=\"\$(cd \"\$(dirname \"\$BATS_TEST_FILENAME\")\" \t>/dev/null 2>&1 && pwd)\"
@@ -189,8 +200,9 @@ ydk:tests() {
                     \tload \"helpers/setup.sh\" && ydk:test:teardown
                     }
                 " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
-            } >"${TEST_DEST}"
-            [[ -f "${TEST_DEST}" ]] && TESTS_GENERATED=$((TESTS_GENERATED + 1))
+                cat "${YDK_FIST_TEST}"
+            } >"${UNIT_TEST_TEMP_FILE}"
+            echo "Generated test ${UNIT_TEST_TEMP_FILE}"
         done
         ydk:log info "${TESTS_GENERATED} Tests generated"
         return 0
