@@ -32,21 +32,21 @@ ydk:tests() {
                 \t\t[command]=\"\${YELLOW}\${BATS_RUN_COMMAND}\${NC}\"
                 \t\t[status]=\"\${BATS_RUN_STATUS:-\${status}}\"
                 \t\t[name]=\"\${BATS_TEST_NAME}\"
-                \t\t[description]=\"\${BATS_TEST_DESCRIPTION}\"
-                \t\t[number]=\"\${BATS_TEST_NUMBER}\"
-                \t\t[dir]=\"\${BATS_TEST_DIRNAME}\"
-                \t\t[names]=\"\${BATS_TEST_NAMES}\"
-                \t\t[prefix]=\"\${BATS_TEST_NAME_PREFIX}\"
-                \t\t[retries]=\"\${BATS_TEST_RETRIES}\"
-                \t\t[timeout]=\"\${BATS_TEST_TIMEOUT}\"
-                \t\t[suite_number]=\"\${BATS_SUITE_TEST_NUMBER}\"
-                \t\t[tmpdir]=\"\${BATS_TMPDIR}\"
-                \t\t[run_tmpdir]=\"\${BATS_RUN_TMPDIR}\"
-                \t\t[file_extension]=\"\${BATS_FILE_EXTENSION}\"
-                \t\t[suite_tmpdir]=\"\${BATS_SUITE_TMPDIR}\"
-                \t\t[file_tmpdir]=\"\${BATS_FILE_TMPDIR}\"
-                \t\t[test_tmpdir]=\"\${BATS_TEST_TMPDIR}\"
-                \t\t[version]=\"\${BATS_VERSION}\"
+                \t\t# [description]=\"\${BATS_TEST_DESCRIPTION}\"
+                \t\t# [number]=\"\${BATS_TEST_NUMBER}\"
+                \t\t# [dir]=\"\${BATS_TEST_DIRNAME}\"
+                \t\t# [names]=\"\${BATS_TEST_NAMES}\"
+                \t\t# [prefix]=\"\${BATS_TEST_NAME_PREFIX}\"
+                \t\t# [retries]=\"\${BATS_TEST_RETRIES}\"
+                \t\t# [timeout]=\"\${BATS_TEST_TIMEOUT}\"
+                \t\t# [suite_number]=\"\${BATS_SUITE_TEST_NUMBER}\"
+                \t\t# [tmpdir]=\"\${BATS_TMPDIR}\"
+                \t\t# [run_tmpdir]=\"\${BATS_RUN_TMPDIR}\"
+                \t\t# [file_extension]=\"\${BATS_FILE_EXTENSION}\"
+                \t\t# [suite_tmpdir]=\"\${BATS_SUITE_TMPDIR}\"
+                \t\t# [file_tmpdir]=\"\${BATS_FILE_TMPDIR}\"
+                \t\t# [test_tmpdir]=\"\${BATS_TEST_TMPDIR}\"
+                \t\t# [version]=\"\${BATS_VERSION}\"
                 \t)
                 \tfor KEY in \"\${!YDK_TEST_RESULTS[@]}\"; do
                 \t    echo -e \"\${YELLOW}\${KEY^^}\${NC}: \${YDK_TEST_RESULTS[\${KEY}]}\" >&3
@@ -102,13 +102,13 @@ ydk:tests() {
             --tap
             --formatter pretty
         )
-        # echo "Bats args: bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats" 1>&2
+        # echo "Bats args: bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.$$.*.bats" 1>&2
         #
         local YDK_TESTS_RESULT_FILE=$(ydk:temp "ydk-tests-result" ".log" 4>&1)
         {
             sh -c "
                 {
-                    bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.$$.bats 2>/dev/null # >\"${YDK_TESTS_RESULT_FILE}\" # 1>&2
+                    bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.$$.*.bats 2>/dev/null # >\"${YDK_TESTS_RESULT_FILE}\" # 1>&2
                     echo \$?
                 } 2>&1
             " 2>/dev/null |
@@ -154,14 +154,14 @@ ydk:tests() {
         )
         readarray -t PACKAGE_TESTS <<<"${PACKAGE_TESTS}"
         local TESTS_GENERATED=0
-        ydk:log info "${#PACKAGE_TESTS} tests found"
+        ydk:log info "Generating tests for ${#PACKAGE_TESTS[@]} packages"
         for TEST in "${PACKAGE_TESTS[@]}"; do
             local TEST_FILE_NAME=$(basename "${TEST}" | sed 's/^[0-9]*\.//')
             local TEST_NAME_SANTEZIED=${TEST_FILE_NAME//.ydk.sh/}
             local TEST_PATH=$(dirname "${TEST}")
             local YDK_FIST_TEST="${TEST_PATH}/${TEST_NAME_SANTEZIED}.ydk.bats"
             [[ ! -f "${YDK_FIST_TEST}" ]] && {                
-                # echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}"
+                # echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}" 1>&2
                 {
                     echo -e "
                     #!/usr/bin/env bats
@@ -183,6 +183,8 @@ ydk:tests() {
                 } >"${YDK_FIST_TEST}"
             }
             local UNIT_TEST_TEMP_FILE=$(ydk:temp "${TEST_NAME_SANTEZIED,,}.bats" 4>&1)
+            local UNIT_TEST_TEMP_FILE_NAME=$(basename "${UNIT_TEST_TEMP_FILE}")
+            UNIT_TEST_TEMP_FILE="${TESTS_DIR}/${UNIT_TEST_TEMP_FILE_NAME}"
             {
                 cat "${YDK_FIST_TEST}"
                 echo -e "
@@ -203,7 +205,7 @@ ydk:tests() {
                 
             } >"${UNIT_TEST_TEMP_FILE}"
             TESTS_GENERATED=$((TESTS_GENERATED + 1))
-            # echo "Generated test ${UNIT_TEST_TEMP_FILE}"
+            # echo "Generated test ${UNIT_TEST_TEMP_FILE}" 1>&2
         done
         ydk:log info "${TESTS_GENERATED} Tests generated"
         return 0
@@ -237,7 +239,7 @@ ydk:tests() {
         bats --version | ydk:log debug
     }
     unit() {
-        setup true
+        setup false
         generate
         local VERBOSE=false
         local TRACE=false
@@ -269,7 +271,7 @@ ydk:tests() {
         local ELAPSED_TIME=$((END_TIME - START_TIME))
         # ydk:log info "Test exit code: ${TEST_EXIT_CODE}"
         # ydk:log info "Test result:"
-        rm -f "${TESTS_DIR}/*.bats"
+        rm -f "${TESTS_DIR}"/*.bats
         ydk:log output "Test result below"
         echo -e "${TEST_RESULT}" | sed ':a;N;$!ba;s/\n/\n\t/g' 1>&2
         local FAILURES=$(grep -Eo "0 failures" <<<"${TEST_RESULT}")
