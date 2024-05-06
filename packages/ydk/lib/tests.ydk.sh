@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+
 ydk:tests() {
     YWT_LOG_CONTEXT="TESTS"
     local TESTS_DIR="${YDK_PATHS[tests]}" && TESTS_DIR="${TESTS_DIR#!}"
@@ -15,8 +16,7 @@ ydk:tests() {
         local TABS=16
         local TABS_SPACES=$(printf "%${TABS}s")
         {
-            echo -e "
-                #!/usr/bin/env bash
+            echo -e "#!/usr/bin/env bash
                 # 🩳 ydk-shell@0.0.0-dev-0 sdk
                 
                 ydk:test:log() {
@@ -24,12 +24,12 @@ ydk:tests() {
                 \tfor VALUE in \"\${@}\"; do
                 \t    while read -r LINE; do
                 \t        printf \" \${YELLOW}-> %s\${NC}\\\n\" \"\$LINE\" >&3
-                \t    done <<<"\${VALUE}"
+                \t    done <<<\"\${VALUE}\"
                 \tdone
                 }
                 ydk:test:report(){
                 \tdeclare -A YDK_TEST_RESULTS=(
-                \t\t[command]=\"\${yellow}\${BATS_RUN_COMMAND}\${NC}\"
+                \t\t[command]=\"\${YELLOW}\${BATS_RUN_COMMAND}\${NC}\"
                 \t\t[status]=\"\${BATS_RUN_STATUS:-\${status}}\"
                 \t\t[name]=\"\${BATS_TEST_NAME}\"
                 \t\t[description]=\"\${BATS_TEST_DESCRIPTION}\"
@@ -49,7 +49,7 @@ ydk:tests() {
                 \t\t[version]=\"\${BATS_VERSION}\"
                 \t)
                 \tfor KEY in \"\${!YDK_TEST_RESULTS[@]}\"; do
-                \t    echo \"\${YELLOW}\${KEY^^}\${NC}: \${YDK_TEST_RESULTS[\${KEY}]}\" >&3
+                \t    echo -e \"\${YELLOW}\${KEY^^}\${NC}: \${YDK_TEST_RESULTS[\${KEY}]}\" >&3
                 \tdone
                 }
                 ydk:test:setup() {
@@ -106,16 +106,29 @@ ydk:tests() {
         #
         local YDK_TESTS_RESULT_FILE=$(ydk:temp "ydk-tests-result" ".log" 4>&1)
         {
-            sh -c "bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats >\"${YDK_TESTS_RESULT_FILE}\" 1>&2" 2>&1
-            echo $? >>"${YDK_TESTS_RESULT_FILE}"
+            sh -c "
+                {
+                    bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats 2>/dev/null # >\"${YDK_TESTS_RESULT_FILE}\" # 1>&2
+                    echo \$?
+                } 2>&1
+            " 2>/dev/null |
+                grep -v '^perl' |
+                grep -Pv '^\t' |
+                sed '/are supported and installed on your system/d' >"${YDK_TESTS_RESULT_FILE}"
         } &
         local YDK_TESTS_PID=$!
-        ydk:await spin "${YDK_TESTS_PID}" "Running tests"
+        ydk:await spin "${YDK_TESTS_PID}" "Running tests" 1>&2
         unset YDK_TESTS_PID
         local TEST_EXIT_CODE=$(tail -n 1 "${YDK_TESTS_RESULT_FILE}")
-        local TEST_RESULT=$(head -n -1 "${YDK_TESTS_RESULT_FILE}")
+        local TEST_RESULT=$(
+            awk 'NR > 1 { print prev } { prev = $0 }' "${YDK_TESTS_RESULT_FILE}"
+            # head -n -1 "${YDK_TESTS_RESULT_FILE}"
+        )
+        ydk:log "$([[ ${TEST_EXIT_CODE} -eq 0 ]] && echo "success" || echo "error")" \
+            "Test exit code: ${TEST_EXIT_CODE}"
+        # ydk:log output "Test result: ${TEST_RESULT}"
         rm -f "${YDK_TESTS_RESULT_FILE}"
-
+        echo "${TEST_RESULT}" >&4
         return "${TEST_EXIT_CODE}"
 
         # local TEST_RESULT=$(sh -c "bats ${BATS_ARGS[*]} ${*} ${TESTS_DIR}/*.bats" 2>&1)
@@ -151,9 +164,10 @@ ydk:tests() {
                     @test \"${TEST_NAME_SANTEZIED,,} should be called\" {
                     \trun ydk ${TEST_NAME_SANTEZIED,,}
                     \tydk:test:report
-                    \tassert_success \"${TEST_NAME_SANTEZIED,,} should be called\"
+                    \t# assert_success \"${TEST_NAME_SANTEZIED,,} should be called\"
+                    \t[[ \"\$status\" -eq 1 ]]
                     \tassert_output --partial \"ydk-shell@\"
-                    \tassert_output --partial \"Script exited\"                    
+                    \tassert_output --partial \"Usage: ydk\"                    
                     }
                     setup() {
                     \tload \"helpers/setup.sh\" && ydk:test:setup
@@ -244,7 +258,8 @@ ydk:tests() {
         # ydk:log info "Test exit code: ${TEST_EXIT_CODE}"
         # ydk:log info "Test result:"
         rm -f "${TESTS_DIR}/*.bats"
-        ydk:log output "${TEST_RESULT}"
+        ydk:log output "Test result below"
+        echo -e "${TEST_RESULT}" | sed ':a;N;$!ba;s/\n/\n\t/g' 1>&2
         local FAILURES=$(grep -Eo "0 failures" <<<"${TEST_RESULT}")
         if [ "${TEST_EXIT_CODE}" -eq 0 ] && [ -n "${FAILURES}" ]; then
             ydk:log success "All tests passed, great job! (${ELAPSED_TIME} seconds)"

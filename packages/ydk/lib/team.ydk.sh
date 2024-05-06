@@ -55,6 +55,10 @@ ydk:team() {
         echo "$YDK_OUTPUT" >&4
         return 0
     }
+    banner() {
+        # fonts: block, card, Doom, Isometric1-4, Bloody, Ghoulish, Larry 3D, Abraxis-Big
+        [[ -f "assets/team.txt" ]] && echo -e "${YELLOW}$(cat 'assets/team.txt')${NC}" >&4
+    }
     welcome() {
         local YDK_TEAM_INFO=$(info 4>&1)
         ydk:log success "$(jq -rc '.info.team + " | " + .info.name + " | " + .info.description + " | " + .info.homepage' <<<"$YDK_TEAM_INFO" 2>/dev/null)"

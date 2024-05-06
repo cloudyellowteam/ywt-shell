@@ -14,6 +14,18 @@ ydk:process() {
                 package: $package
             }' >&4
     }
+    withSudo(){
+        pgrep -u root | while read -r pid; do
+            echo -n "Checking process $pid... "
+            ps -p "$pid" -o pid,ppid,cmd
+            if grep -aq SUDO_USER= /proc/"$pid"/environ 2>/dev/null; then
+                ps -p "$pid" -o pid,ppid,cmd
+                ydk:debug "Process $pid is running as root"
+            fi
+            echo "done"
+        done
+        echo "done" >&4
+    }
     ydk:try "$@" 4>&1
     return $?
 }

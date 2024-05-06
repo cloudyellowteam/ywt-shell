@@ -468,9 +468,7 @@ ydk() {
         ydk:throw 255 "Failed to boostrap ydk"
     fi
     ydk:configure "$@"
-    ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 254 "Failed to load dependencies"
-    [[ -f "assets/team.txt" ]] && echo -e "${YELLOW}$(cat 'assets/team.txt')${NC}" 1>&2
-    # fonts: block, card, Doom, Isometric1-4, Bloody, Ghoulish, Larry 3D, Abraxis-Big
+    ! ydk:require "${YDK_DEPENDENCIES[@]}" && ydk:throw 254 "Failed to load dependencies"    
     ydk:prgma
     ydk:team welcome
     # ydk:analytics ga collect >/dev/null 2>&1
