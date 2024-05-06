@@ -434,7 +434,7 @@ ydk() {
         exit "$YDK_THROW_STATUS"
     }
     ydk:temp() {
-        local FILE_SUFFIX="${1}" && [[ -n "$FILE_SUFFIX" ]] && FILE_SUFFIX="${FILE_SUFFIX}"
+        local FILE_SUFFIX="${1}" && [[ -z "$FILE_SUFFIX" ]] && FILE_SUFFIX="tmp"
         mktemp -u -t "${YDK_BRAND,,}.XXXXXXXX" -p "/tmp/ywteam/${YDK_PACKAGE_NAME,,}" --suffix=".$$.${FILE_SUFFIX,,}" >&4
     }
     ydk:opts() {
