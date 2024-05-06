@@ -146,14 +146,23 @@ ydk:tests() {
         local TESTS=()
         local TABS=20
         local TABS_SPACES=$(printf "%${TABS}s")
-        # list all *.ydk.sh files in the TEST_ENTRYPOINT directory
-        while IFS= read -r -d '' TEST; do
+        local PACKAGE_TESTS=$(
+            find "$(dirname "${TEST_ENTRYPOINT}")" \
+                -type f -name "*.ydk.sh" \
+                -not -name "$(basename "${TEST_ENTRYPOINT}")" \
+                -not -path "${TESTS_DIR}/*" | sort
+        )
+        readarray -t PACKAGE_TESTS <<<"${PACKAGE_TESTS}"
+        local TESTS_GENERATED=0
+        ydk:log info "${#PACKAGE_TESTS} tests found"
+        for TEST in "${PACKAGE_TESTS[@]}"; do
             local TEST_NAME=$(basename "${TEST}")
             local TEST_NAME_SANTEZIED=${TEST_NAME/.*/}
-            local TEST_DEST=$(mktemp -u -t XXXXXXXX --suffix=".${TEST_NAME}" --tmpdir="${TESTS_DIR}")
-            local TEST_FILE_NAME=$(basename "${TEST_DEST}") && TEST_FILE_NAME="unit.${TEST_FILE_NAME}.bats"
-            TEST_DEST="${TESTS_DIR}/${TEST_FILE_NAME}"
-            # cp -f "${TEST}" "${TEST_DEST}"
+            local TEST_DEST="${TEST}.bats"
+            [[ -f "${TEST_DEST}" ]] && continue
+            echo "Generating test for ${TEST_DEST}"            
+            local TEST_FILE_NAME=$(basename "${TEST_DEST}") #&& TEST_FILE_NAME="unit.${TEST_FILE_NAME}.bats"
+            # TEST_DEST="${TESTS_DIR}/${TEST_FILE_NAME}"
             {
                 echo -e "
                     #!/usr/bin/env bats
@@ -179,22 +188,12 @@ ydk:tests() {
                     teardown() {
                     \tload \"helpers/setup.sh\" && ydk:test:teardown
                     }
-                "
-            } | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//' >"${TEST_DEST}"
-            # cat "$TEST_DEST"
-            # rm -f "${TEST_DEST}"
-            break
-            TESTS+=("${TEST_DEST}")
-        done < <(
-            find "$(dirname "${TEST_ENTRYPOINT}")" \
-                -type f -name "*.ydk.sh" \
-                -not -name "${TEST_NAME}" \
-                -not -path "${TESTS_DIR}/*" \
-                -print0
-        )
-        # echo "${TESTS[@]}" 1>&2
+                " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
+            } >"${TEST_DEST}"
+            [[ -f "${TEST_DEST}" ]] && TESTS_GENERATED=$((TESTS_GENERATED + 1))
+        done
+        ydk:log info "${TESTS_GENERATED} Tests generated"
         return 0
-
     }
     cleanup() {
         ydk:log info "Cleaning up tests"
