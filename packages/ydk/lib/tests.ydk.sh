@@ -160,9 +160,8 @@ ydk:tests() {
             local TEST_NAME_SANTEZIED=${TEST_FILE_NAME//.ydk.sh/}
             local TEST_PATH=$(dirname "${TEST}")
             local YDK_FIST_TEST="${TEST_PATH}/${TEST_NAME_SANTEZIED}.ydk.bats"
-            [[ ! -f "${YDK_FIST_TEST}" ]] && {
-                TESTS_GENERATED=$((TESTS_GENERATED + 1))
-                echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}"
+            [[ ! -f "${YDK_FIST_TEST}" ]] && {                
+                # echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}"
                 {
                     echo -e "
                     #!/usr/bin/env bats
@@ -203,7 +202,8 @@ ydk:tests() {
                 " | sed -e "s/^${TABS_SPACES}*//g" -e 's/[[:space:]]*$//'
                 
             } >"${UNIT_TEST_TEMP_FILE}"
-            echo "Generated test ${UNIT_TEST_TEMP_FILE}"
+            TESTS_GENERATED=$((TESTS_GENERATED + 1))
+            # echo "Generated test ${UNIT_TEST_TEMP_FILE}"
         done
         ydk:log info "${TESTS_GENERATED} Tests generated"
         return 0
