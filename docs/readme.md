@@ -3,6 +3,15 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+
+
+
+> **2024.05.7**
+```shell
+clear; ./packages/ydk/ydk.cli.sh tests unit ydk
+```
+
+
 > **2024.05.6**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh packer build ./packages/ydk/ydk.cli.sh 31/12/2999; \

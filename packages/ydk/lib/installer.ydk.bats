@@ -10,8 +10,8 @@
 	run ydk installer
 	ydk:test:report
 	# assert_success "installer should be called"
-	[[ "$status" -eq 1 ]]
+	[[ "$status" -eq 252 ]]
 	assert_output --partial "ydk-shell@"
-	assert_output --partial "Usage: ydk"
+	assert_output --partial "Need a help"
 }
 

@@ -9,9 +9,9 @@
 @test "usage should be called" {
 	run ydk usage
 	ydk:test:report
-	# assert_success "usage should be called"
-	[[ "$status" -eq 1 ]]
+	assert_success "usage should be called"
+	[[ "$status" -eq 0 ]]
 	assert_output --partial "ydk-shell@"
-	assert_output --partial "Usage: ydk"
+	assert_output --partial "Need a help"
 }
 

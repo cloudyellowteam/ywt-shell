@@ -10,8 +10,8 @@
 	run ydk limits
 	ydk:test:report
 	# assert_success "limits should be called"
-	[[ "$status" -eq 1 ]]
+	[[ "$status" -eq 153 ]]
 	assert_output --partial "ydk-shell@"
-	assert_output --partial "Usage: ydk"
+	assert_output --partial "Need a help"
 }
 

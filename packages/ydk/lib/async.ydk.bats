@@ -7,11 +7,14 @@
 # First test generated at Mon May  6 22:24:36 UTC 2024
 # bats test_tags=ydk, async, initial
 @test "async should be called" {
-	run ydk async
+	run ydk async "sleep 1; echo Task 1 completed" "sleep 2; echo Task 2 completed; exit 1"  "sleep 1; echo Task 3 completed"
 	ydk:test:report
-	# assert_success "async should be called"
-	[[ "$status" -eq 1 ]]
+	assert_success "async should be called"
+	[[ "$status" -eq 0 ]]
 	assert_output --partial "ydk-shell@"
-	assert_output --partial "Usage: ydk"
+	assert_output --partial "Waiting for 3 commands to finish"
+	assert_output --partial "sleep 1 of 3"
+	assert_output --partial "sleep 2 of 3"
+	assert_output --partial "sleep 3 of 3"
 }
 
