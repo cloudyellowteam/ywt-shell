@@ -1,5 +1,37 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
+
+# @name YDK
+# @section YDK Packages
+# @file ydk/lib/1.is.ydk.sh
+# @brief YDK is a library that provides a set of functions to validate different types of data.
+# @description A long description of the library.
+# Second line of the project description.
+
+
+
+# @description My super function.
+# Not thread-safe.
+#
+# @example
+#    echo "test: $(say-hello World)"
+#
+#
+# @option -h | --help Display help.
+# @option -v<value> | --value=<value> Set a value.
+#
+# @arg $1 string A value to print
+#
+# @stdout Output 'Hello $1'.
+#   It hopes you say Hello back.
+# @stderr Output 'Oups !' on error.
+#   It did it again.
+#
+# @exitcode 0 If successful.
+# @exitcode 1 If an empty string passed.
+#
+# @see validate()
+# @see [shdoc](https://github.com/reconquest/shdoc).
 ydk:is() {
     case "$1" in
     fifo-exists)

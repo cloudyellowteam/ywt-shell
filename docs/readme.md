@@ -8,6 +8,7 @@
 
 > **2024.05.7**
 ```shell
+clear; ./packages/ydk/ydk.cli.sh docs generate
 clear; ./packages/ydk/ydk.cli.sh tests unit ydk
 ```
 

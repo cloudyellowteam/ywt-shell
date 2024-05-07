@@ -283,7 +283,7 @@ ydk:tests() {
             return 1
         fi
     }
-    ydk:try "$@"
+    ydk:try "$@" 4>&1
     return $?
 }
 

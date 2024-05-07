@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bats
 # 🩳 ydk-shell@0.0.0-dev-0 sdk
 # Source File: /workspace/rapd-shell/packages/ydk/lib/1.is.ydk.sh
