@@ -156,10 +156,11 @@ ydk:tests() {
         local TESTS_GENERATED=0
         ydk:log info "Generating tests for ${#PACKAGE_TESTS[@]} packages"
         for TEST in "${PACKAGE_TESTS[@]}"; do
-            local TEST_FILE_NAME=$(basename "${TEST}" | sed 's/^[0-9]*\.//')
-            local TEST_NAME_SANTEZIED=${TEST_FILE_NAME//.ydk.sh/}
+            local TEST_FILE_NAME=$(basename "${TEST}")
+            local TEST_NAME_SANTEZIED=$(sed 's/^[0-9]*\.//' <<<"${TEST_FILE_NAME}")
+            TEST_NAME_SANTEZIED=${TEST_NAME_SANTEZIED//.ydk.sh/}
             local TEST_PATH=$(dirname "${TEST}")
-            local YDK_FIST_TEST="${TEST_PATH}/${TEST_NAME_SANTEZIED}.ydk.bats"
+            local YDK_FIST_TEST="${TEST_PATH}/${TEST_FILE_NAME//.ydk.sh/}.ydk.bats"
             [[ ! -f "${YDK_FIST_TEST}" ]] && {                
                 # echo "Generating fist ${TESTS_GENERATED} test for ${YDK_FIST_TEST}" 1>&2
                 {
