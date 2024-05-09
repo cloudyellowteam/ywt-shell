@@ -3,7 +3,5 @@
         "*.sh": "${capture}.c, ${capture}, ${capture}.bats",
         "*.ywt.sh": "${capture}.c, ${capture}, ${capture}.bats"
     },
-    "github-actions.workflows.pinned.workflows": [
-        ".github/workflows/ci.yml"
-    ]
+    "github-actions.workflows.pinned.workflows": []
 }

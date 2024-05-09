@@ -8,8 +8,6 @@
 # @description A long description of the library.
 # Second line of the project description.
 
-
-
 # @description My super function.
 # Not thread-safe.
 #
@@ -47,7 +45,7 @@ ydk:is() {
         [ -p "$2" ] && lsof "$2" && return 0
         ;;
     descriptor-exists)
-            "$2" ] && return 0
+        "$2" ] && return 0
         ;;
     descriptor-readable)
         [ -r /proc/$$/fd/"$2" ] && return 0
@@ -60,7 +58,7 @@ ydk:is() {
         ;;
     exists)
         [ -e "$2" ] && return 0
-        ;;        
+        ;;
     not-defined)
         [ -z "$2" ] && return 0
         [ "$2" == "null" ] && return 0
@@ -108,6 +106,34 @@ ydk:is() {
         ;;
     json)
         jq -e . <<<"$2" >/dev/null 2>&1 && return 0
+        ;;
+    sarif)
+        if [ -f "$2" ]; then
+            jq -c '
+                .version
+                | select(. == "2.1.0")
+                | .runs
+                | select(. != null)
+                | .[]
+                | .tool
+                | select(. != null)
+                | .driver
+                | select(. != null)
+            ' "$2" 2>/dev/null 1>/dev/null            
+        else 
+            jq -c '
+                .version
+                | select(. == "2.1.0")
+                | .runs
+                | select(. != null)
+                | .[]
+                | .tool
+                | select(. != null)
+                | .driver
+                | select(. != null)
+            ' <<<"$2" 2>/dev/null 1>/dev/null
+        fi
+        return $?
         ;;
     fnc | function)
         type -t "$2" >/dev/null 2>&1 && return 0

@@ -13,10 +13,17 @@ ydk:colors() {
         } >&4
     }
     random() {
-        local TEXT=${1} && shift
-        local COLORS_RANDOM_INDEX=$((RANDOM % ${#YDK_COLORS[@]}))
-        local COLOR_RANDOM="${YDK_COLORS[$COLORS_RANDOM_INDEX]}"
-        echo -ne "${COLOR_RANDOM}${TEXT}${NC}${NBG}" >&4
+        # local TEXT=${1} && shift
+        local RANDOM_COLOR=$((RANDOM % ${#YDK_COLORS_NAMES[@]}))
+        local RANDOM_COLOR="${YDK_COLORS_NAMES[RANDOM_COLOR]}"
+        local RANDOM_COLOR="${YDK_COLORS[$RANDOM_COLOR]}"
+        if [[ -n "$1" ]]; then
+            echo -ne "${RANDOM_COLOR}${TEXT}${NC}${NBG}" >&4
+        else
+            echo -en "${RANDOM_COLOR}" >&4
+        fi
+        # local COLORS_RANDOM_INDEX=$((RANDOM % ${#YDK_COLORS[@]}))
+        # local COLOR_RANDOM="${YDK_COLORS[$COLORS_RANDOM_INDEX]}"
         # echo -n "${COLOR_RANDOM}" >&4
     }
     rainbow() {
@@ -94,6 +101,9 @@ ydk:colors() {
             [WHITE_BG]="\033[107m"
             [BRIGHT_WHITE]="\033[1;37m"
         ) && readonly YDK_COLORS
+        declare -g -a YDK_COLORS_NAMES=(
+            "NC" "NBG" "BLACK" "BLACK_BG" "BRIGHT_BLACK" "BRIGHT_BLACK_BG" "DARK_GRAY" "DARK_GRAY_BG" "RED" "RED_BG" "BRIGHT_RED" "GREEN" "GREEN_BG" "BRIGHT_GREEN" "YELLOW" "YELLOW_BG" "BRIGHT_YELLOW" "BLUE" "BLUE_BG" "BRIGHT_BLUE" "PURPLE" "PURPLE_BG" "BRIGHT_PURPLE" "CYAN" "CYAN_BG" "BRIGHT_CYAN" "GRAY" "GRAY_BG" "BRIGHT_GRAY" "WHITE" "WHITE_BG" "BRIGHT_WHITE"
+        ) && readonly YDK_COLORS_NAMES && export YDK_COLORS_NAMES
         [[ -n "$NO_COLOR" ]] && [[ "$NO_COLOR" == 1 || "$NO_COLOR" == true ]] && return 0
         for COLOR in "${!YDK_COLORS[@]}"; do
             COLOR_CODE="${YDK_COLORS[$COLOR]}"

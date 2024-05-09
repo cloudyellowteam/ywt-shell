@@ -1,21 +1,922 @@
 [
     {
+        "id": "5fac1b9b-84ac-4218-bb01-559dae0f977c",
+        "name": "safety",
+        "description": "Safety checks your installed dependencies for known security vulnerabilities.",
+        "url": "https://pyup.io/safety/",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Check installed dependencies for known vulnerabilities",
+            "Integration with CI/CD",
+            "Integration with GitHub, GitLab, Bitbucket, and Azure DevOps"
+        ],
+        "cli": {
+            "cmd": "safety",
+            "args": [
+                "check",
+                "--json"
+            ],
+            "install": [
+                "pip install safety"
+            ],
+            "uninstall": [
+                "pip uninstall safety"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of safety"
+            },
+            "check": {
+                "args": [
+                    "--file",
+                    "{{.file}}"
+                ],
+                "help": "Check a requirements file for vulnerabilities"
+            }
+        },
+        "flags": {
+            "file": {
+                "description": "Requirements file to check",
+                "type": "string",
+                "required": true,
+                "default": "requirements.txt",
+                "argv": "--file",
+                "env": "SAFETY_FILE"
+            }
+        },
+        "packages": {
+            "pip": "safety",
+            "brew": "safety",
+            "apt": "safety",
+            "docker": "pyupio/safety:latest"
+        }
+    },
+    {
+        "id": "2f559a6e-d867-4356-9cc2-a8107a707692",
+        "name": "yarn-audit",
+        "description": "Yarn audit is a command-line tool that scans your project for vulnerabilities and generates a report that includes a list of vulnerabilities and their severity.",
+        "url": "https://yarnpkg.com/features/security",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Scan project for vulnerabilities",
+            "Generate report with list of vulnerabilities",
+            "Severity level for each vulnerability",
+            "Integration with CI/CD",
+            "Integration with GitHub, GitLab, Bitbucket, and Azure DevOps"
+        ],
+        "cli": {
+            "cmd": "yarn",
+            "args": [
+                "audit",
+                "--json"
+            ],
+            "install": [
+                "npm install -g yarn"
+            ],
+            "uninstall": [
+                "npm uninstall -g yarn"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of yarn-audit"
+            },
+            "audit": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Scan a project for vulnerabilities"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Project to scan",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "YARN_AUDIT_TARGET"
+            }
+        },
+        "packages": {
+            "npm": "yarn",
+            "brew": "yarn",
+            "apt": "yarn",
+            "docker": "node:latest"
+        }
+    },
+    {
+        "id": "67929984-a497-4310-87f5-2b3e7b43b577",
+        "name": "npm-audit",
+        "description": "npm audit is a command-line tool that scans your project for vulnerabilities and generates a report that includes a list of vulnerabilities and their severity.",
+        "url": "https://docs.npmjs.com/cli/v7/commands/npm-audit",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Scan project for vulnerabilities",
+            "Generate report with list of vulnerabilities",
+            "Severity level for each vulnerability",
+            "Integration with CI/CD",
+            "Integration with GitHub, GitLab, Bitbucket, and Azure DevOps"
+        ],
+        "cli": {
+            "cmd": "npm",
+            "args": [
+                "audit",
+                "--json"
+            ],
+            "install": [
+                "npm install -g npm"
+            ],
+            "uninstall": [
+                "npm uninstall -g npm"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of npm-audit"
+            },
+            "audit": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Scan a project for vulnerabilities"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Project to scan",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "NPM_AUDIT_TARGET"
+            }
+        },
+        "packages": {
+            "npm": "npm",
+            "brew": "npm",
+            "apt": "npm",
+            "docker": "node:latest"
+        }
+    }
+    {
+        "id": "37dc7156-87d4-4342-a6a1-cb82fccc4cd9",
+        "name": "nancy",
+        "description": "Nancy is a tool used to check for vulnerabilities in your Golang dependencies, powered by Sonatype OSS Index.",
+        "url": "https://github.com/sonatype-nexus-community/nancy",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Check for vulnerabilities in Golang dependencies",
+            "Powered by Sonatype OSS Index",
+            "Integration with CI/CD",
+            "Integration with GitHub, GitLab, Bitbucket, and Azure DevOps"
+        ],
+        "cli": {
+            "cmd": "nancy",
+            "args": [
+                "--json"
+            ],
+            "install": [
+                "curl -sfL https://raw.githubusercontent.com/sonatype-nexus-community/nancy/master/scripts/install.sh | sh"
+            ],
+            "uninstall": [
+                "rm -rf /usr/local/bin/nancy"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of nancy"
+            },
+            "check": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Check for vulnerabilities in Golang dependencies"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Directory to check",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "NANCY_TARGET"
+            }
+        },
+        "packages": {
+            "brew": "nancy",
+            "npm": "nancy",
+            "apt": "nancy",
+            "docker": "sonatype/nancy:latest"
+        }
+    },
+    {
+        "id": "2ca8f100-cbae-41ac-a466-a10f1de4a4ac",
+        "name": "semgrep",
+        "description": "Semgrep is a lightweight static analysis tool that excels at finding bugs in source code. It natively supports many languages and can be extended to support more.",
+        "url": "https://semgrep.dev/",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Lightweight static analysis tool",
+            "Find bugs in source code",
+            "Supports many languages",
+            "Can be extended to support more",
+            "Integration with CI/CD",
+            "Integration with GitHub, GitLab, Bitbucket, and Azure DevOps"
+        ],
+        "cli": {
+            "cmd": "semgrep",
+            "args": [
+                "--json",
+                "--config",
+                "{{.config}}"
+            ],
+            "install": [
+                "curl -sL https://semgrep.dev/install.sh | bash"
+            ],
+            "uninstall": [
+                "rm -rf /usr/local/bin/semgrep"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of semgrep"
+            },
+            "scan": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Scan a directory"
+            }
+        },
+        "flags": {
+            "config": {
+                "description": "Semgrep configuration file",
+                "type": "string",
+                "required": true,
+                "default": ".semgrep.yml",
+                "argv": "--config",
+                "env": "SEMGREP_CONFIG"
+            },
+            "target": {
+                "description": "Directory to scan",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "SEMGREP_TARGET"
+            }
+        },
+        "packages": {
+            "brew": "semgrep",
+            "npm": "semgrep",
+            "apt": "semgrep",
+            "docker": "returntocorp/semgrep:latest"
+        }
+    },
+    {
+        "id": "4893d7f3-631a-44f1-ad2f-7b6f8b1cce3f",
+        "name": "snyk",
+        "description": "Snyk helps you find, fix and monitor known vulnerabilities in Node.js, Ruby, Java, Python, and other open source dependencies.",
+        "url": "https://snyk.io/",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Find known vulnerabilities in open source dependencies",
+            "Fix vulnerabilities with automated pull requests",
+            "Monitor dependencies for new vulnerabilities",
+            "Integrate with GitHub, GitLab, Bitbucket, and Azure DevOps",
+            "Supports Node.js, Ruby, Java, Python, and other languages"
+        ],
+        "cli": {
+            "cmd": "snyk",
+            "args": [
+                "test",
+                "--json"
+            ],
+            "install": [
+                "npm install -g snyk"
+            ],
+            "uninstall": [
+                "npm uninstall -g snyk"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of snyk"
+            },
+            "test": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Test a project for vulnerabilities"
+            },
+            "monitor": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Monitor a project for new vulnerabilities"
+            },
+            "protect": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Protect a project with automated pull requests"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Project to test",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "SNYK_TARGET"
+            }
+        },
+        "packages": {
+            "npm": "snyk",
+            "brew": "snyk",
+            "apt": "snyk",
+            "docker": "snyk/snyk:latest"
+        }
+    },
+    {
+        "id": "606ab503-c027-4fab-8e84-bb3b6a82c187",
+        "name": "gitleaks",
+        "description": "Gitleaks is a fast, light-weight, portable, and open-source secret scanner for git repositories, files, and directories. With over 15 million docker downloads, 15k GitHub stars, 7 million GitHub Downloads, thousands of weekly clones, and over 700k homebrew installs, gitleaks is the most trusted secret scanner among security professionals, enterprises, and developers. Gitleaks is maintained by Zach Rice.",
+        "url": "https://gitleaks.io/",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Fast, light-weight, portable",
+            "Open-source secret scanner",
+            "Scan git repositories, files, and directories",
+            "Trusted by security professionals, enterprises, and developers",
+            "Maintained by Zach Rice"
+        ],
+        "cli": {
+            "cmd": "gitleaks",
+            "args": [
+                "--repo-path",
+                "{{.repo}}"
+            ],
+            "install": [
+                "curl -sSfL https://raw.githubusercontent.com/zricethezav/gitleaks/master/scripts/install.sh | bash"
+            ],
+            "uninstall": [
+                "rm -rf /usr/local/bin/gitleaks"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of gitleaks"
+            },
+            "scan": {
+                "args": [
+                    "--repo-path",
+                    "{{.repo}}"
+                ],
+                "help": "Scan a git repository"
+            }
+        },
+        "flags": {
+            "repo": {
+                "description": "Git repository to scan",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--repo-path",
+                "env": "GITLEAKS_REPO"
+            }
+        },
+        "packages": {
+            "brew": "gitleaks",
+            "npm": "gitleaks",
+            "apt": "gitleaks",
+            "docker": "zricethezav/gitleaks:latest"
+        }
+    },
+    {
+        "id": "36da2f2c-eff0-456a-abc9-4897c4b44086",
+        "name": "bandit",
+        "description": "Bandit is a tool designed to find common security issues in Python code.",
+        "url": "https://github.com/PyCQA/bandit",
+        "hooks": [
+            "pre-commit"
+        ],
+        "features": [
+            "Security issues in Python code",
+            "Static analysis",
+            "Customizable",
+            "Configurable",
+            "Extensible",
+            "Integration with CI/CD"
+        ],
+        "cli": {
+            "cmd": "bandit",
+            "args": [
+                "--recursive",
+                "--format",
+                "json"
+            ],
+            "install": [
+                "pip install bandit"
+            ],
+            "uninstall": [
+                "pip uninstall bandit"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of bandit"
+            },
+            "scan": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Scan a directory"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Directory to scan",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "BANDIT_TARGET"
+            }
+        },
+        "packages": {
+            "pip": "bandit",
+            "brew": "bandit",
+            "apt": "bandit",
+            "docker": "ghcr.io/pycqa/bandit/bandit"
+        }
+    },
+    {
+        "id": "9090c411-fad3-4f6e-9541-0ef44977e115",
+        "name": "osv",
+        "description": "A distributed vulnerability database for Open Source",
+        "url": "https://github.com/google/osv-scanner",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "Vulnerability database",
+            "Triage service",
+            "Container image scanning",
+            "Kubernetes scanning",
+            "GitHub Action",
+            "CI/CD integration"
+        ],
+        "cli": {
+            "cmd": "osv",
+            "args": [
+                "scan",
+                "--json"
+            ],
+            "install": [
+                "curl -sSfL https://storage.googleapis.com/osv-toolkit/install.sh | sh"
+            ],
+            "uninstall": [
+                "rm -rf ~/.osv"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of osv"
+            },
+            "scan": {
+                "args": [
+                    "--image",
+                    "{{.image}}"
+                ],
+                "help": "Scan a container image"
+            },
+            "k8s": {
+                "args": [
+                    "--k8s",
+                    "{{.k8s}}"
+                ],
+                "help": "Scan a Kubernetes resource"
+            },
+            "github": {
+                "args": [
+                    "--github",
+                    "{{.repo}}"
+                ],
+                "help": "Scan a GitHub repository"
+            }
+        },
+        "flags": {
+            "image": {
+                "description": "Container image to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--image",
+                "env": "OSV_IMAGE"
+            },
+            "k8s": {
+                "description": "Kubernetes resource to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--k8s",
+                "env": "OSV_K8S"
+            },
+            "repo": {
+                "description": "GitHub repository to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--github",
+                "env": "OSV_GITHUB"
+            }
+        },
+        "packages": {
+            "brew": "osv",
+            "npm": "osv",
+            "apt": "osv",
+            "docker": "gcr.io/osv-toolkit/osv:latest"
+        }
+    },
+    {
+        "id": "60c2264f-c792-4758-a734-da971055b1b3",
+        "name": "trufflehog",
+        "description": "Searches through git repositories for secrets, digging deep into commit history and branches",
+        "url": "https://github.com/trufflesecurity/trufflehog",
+        "hooks": [
+            "pre-commit"
+        ],
+        "features": [
+            "Searches through git repositories for secrets",
+            "Digs deep into commit history and branches",
+            "Scan a repo for only verified secrets",
+            "Scan a GitHub Org for only verified secrets",
+            "Scan a GitHub Repo for only verified keys and get JSON output",
+            "Scan a GitHub Repo + its Issues and Pull Requests",
+            "Scan an S3 bucket for verified keys",
+            "Scan S3 buckets using IAM Roles",
+            "Scan a Github Repo using SSH authentication in docker",
+            "Scan individual files or directories",
+            "Scan GCS buckets for verified secrets",
+            "Scan a Docker image for verified secrets",
+            "Scan a Postman workspace"
+        ],
+        "cli": {
+            "cmd": "trufflehog",
+            "args": [
+                "--regex",
+                "--entropy=False",
+                "--json",
+                "--max_depth",
+                "50",
+                "--rules",
+                "regexes.json"
+            ],
+            "install": [
+                "curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin"
+            ],
+            "uninstall": [
+                "rm /usr/local/bin/trufflehog"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of trufflehog"
+            },
+            "scan": {
+                "args": [
+                    "--repo",
+                    "{{.repo}}"
+                ],
+                "help": "Scan a git repository"
+            },
+            "scan-github-org": {
+                "args": [
+                    "--github-org",
+                    "{{.org}}"
+                ],
+                "help": "Scan a GitHub organization"
+            },
+            "scan-github-repo": {
+                "args": [
+                    "--github-repo",
+                    "{{.repo}}"
+                ],
+                "help": "Scan a GitHub repository"
+            },
+            "scan-s3": {
+                "args": [
+                    "--s3",
+                    "{{.bucket}}"
+                ],
+                "help": "Scan an S3 bucket"
+            },
+            "scan-gcs": {
+                "args": [
+                    "--gcs",
+                    "{{.bucket}}"
+                ],
+                "help": "Scan a GCS bucket"
+            },
+            "scan-docker": {
+                "args": [
+                    "--docker",
+                    "{{.image}}"
+                ],
+                "help": "Scan a Docker image"
+            },
+            "scan-postman": {
+                "args": [
+                    "--postman",
+                    "{{.workspace}}"
+                ],
+                "help": "Scan a Postman workspace"
+            }
+        },
+        "flags": {
+            "repo": {
+                "description": "Git repository to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--repo",
+                "env": "TRUFFLEHOG_REPO"
+            },
+            "org": {
+                "description": "GitHub organization to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--github-org",
+                "env": "TRUFFLEHOG_GITHUB_ORG"
+            },
+            "bucket": {
+                "description": "S3 bucket to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--s3",
+                "env": "TRUFFLEHOG_S3"
+            },
+            "image": {
+                "description": "Docker image to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--docker",
+                "env": "TRUFFLEHOG_DOCKER"
+            },
+            "workspace": {
+                "description": "Postman workspace to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--postman",
+                "env": "TRUFFLEHOG_POSTMAN"
+            }
+        },
+        "packages": {
+            "brew": "trufflehog",
+            "npm": "trufflehog",
+            "apt": "trufflehog",
+            "docker": "trufflesecurity/trufflehog:latest"
+        }
+    },
+    {
+        "id": "0418864b-f999-4ab2-b27e-48acce622513",
+        "name": "trivy",
+        "description": "A Simple and Comprehensive Vulnerability Scanner for Containers and other Artifacts, Suitable for CI",
+        "url": "https://github.com/aquasecurity/trivy",
+        "hooks": [
+            "pre-commit",
+            "pre-push"
+        ],
+        "features": [
+            "OS packages and software dependencies in use (SBOM)",
+            "Known vulnerabilities (CVEs)",
+            "IaC issues and misconfigurations",
+            "Sensitive information and secrets",
+            "Software licenses"
+        ],
+        "cli": {
+            "cmd": "trivy",
+            "args": [
+                "--quiet",
+                "--exit-code",
+                "0",
+                "--severity",
+                "HIGH,CRITICAL",
+                "--no-progress",
+                "--ignore-unfixed"
+            ],
+            "install": [
+                "curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin"
+            ],
+            "uninstall": [
+                "rm /usr/local/bin/trivy"
+            ]
+        },
+        "api": {
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of trivy"
+            },
+            "docker/image": {
+                "args": [
+                    "--image",
+                    "{{.image}}"
+                ],
+                "help": "Scan a Docker image"
+            },
+            "docker/container": {
+                "args": [
+                    "--container",
+                    "{{.container}}"
+                ],
+                "help": "Scan a Docker container"
+            },
+            "fs": {
+                "args": [
+                    "--file",
+                    "{{.file}}"
+                ],
+                "help": "Scan a filesystem"
+            },
+            "repo/github": {
+                "args": [
+                    "--github-token",
+                    "{{.token}}",
+                    "--repository",
+                    "{{.repository}}"
+                ],
+                "help": "Scan a GitHub repository"
+            },
+            "vm": {
+                "args": [
+                    "--input",
+                    "{{.input}}"
+                ],
+                "help": "Scan a VM image"
+            },
+            "k8s": {
+                "args": [
+                    "--kubernetes",
+                    "{{.k8s}}"
+                ],
+                "help": "Scan a Kubernetes resource"
+            },
+            "artifact": {
+                "args": [
+                    "--artifact",
+                    "{{.artifact}}"
+                ],
+                "help": "Scan an artifact"
+            },
+            "aws": {
+                "args": [
+                    "--aws",
+                    "{{.aws}}"
+                ],
+                "help": "Scan an AWS resource"
+            }
+        },
+        "flags": {
+            "image": {
+                "description": "Docker image to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--image",
+                "env": "TRIVY_IMAGE"
+            },
+            "container": {
+                "description": "Docker container to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--container",
+                "env": "TRIVY_CONTAINER"
+            },
+            "file": {
+                "description": "Filesystem to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--file",
+                "env": "TRIVY_FILE"
+            },
+            "token": {
+                "description": "GitHub token",
+                "type": "string",
+                "required": true,
+                "argv": "--github-token",
+                "env": "TRIVY_GITHUB_TOKEN"
+            },
+            "repository": {
+                "description": "GitHub repository to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--repository",
+                "env": "TRIVY_REPOSITORY"
+            },
+            "input": {
+                "description": "VM image to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--input",
+                "env": "TRIVY_INPUT"
+            },
+            "k8s": {
+                "description": "Kubernetes resource to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--kubernetes",
+                "env": "TRIVY_K8S"
+            },
+            "artifact": {
+                "description": "Artifact to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--artifact",
+                "env": "TRIVY_ARTIFACT"
+            },
+            "aws": {
+                "description": "AWS resource to scan",
+                "type": "string",
+                "required": true,
+                "argv": "--aws",
+                "env": "TRIVY_AWS"
+            }
+        },
+        "packages": {
+            "brew": "trivy",
+            "npm": "trivy",
+            "apt": "trivy",
+            "docker": "aquasec/trivy:latest"
+        }
+    },
+    {
         "id": "cbb46398-a79e-4afe-9672-badabf6075e7",
         "name": "cloc",
         "description": "Count Lines of Code",
         "url": "https://github.com/AlDanial/cloc",
-        "features": [
-            "count",
-            "count-by-lang"
-        ],
         "hooks": [
             "pre-commit"
         ],
-        "workers": [
-            "host",
-            "docker",
-            "k8s",
-            "remote"
+        "features": [
+            "Count blank lines",
+            "Count comment lines",
+            "Count physical lines",
+            "Count lines of code by language",
+            "Count lines of code by file"
         ],
         "cli": {
             "cmd": "cloc",
@@ -34,10 +935,35 @@
             ]
         },
         "api": {
-            "version": [ "--version" ],
-            "count": [ "{{.target}}" ],
-            "count-by-lang": [ "--by-file", "{{.target}}" ],
-            "asset/filesystem": [ "{{.target}}" ]
+            "version": {
+                "args": [
+                    "--version"
+                ],
+                "help": "Get version of cloc"
+            },
+            "count": {
+                "args": [
+                    "{{.target}}"
+                ],
+                "help": "Count lines of code in a directory"
+            },
+            "count-by-lang": {
+                "args": [
+                    "--by-file",
+                    "{{.target}}"
+                ],
+                "help": "Count lines of code by language in a directory"
+            }
+        },
+        "flags": {
+            "target": {
+                "description": "Directory to count lines of code",
+                "type": "string",
+                "required": true,
+                "default": ".",
+                "argv": "--target",
+                "env": "CLOC_TARGET"
+            }
         },
         "packages": {
             "npm": "cloc",
