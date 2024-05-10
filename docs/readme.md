@@ -3,6 +3,15 @@
   git config --global user.email "raphaelcarlosr@gmail.com"
   git config --global user.name "Raphael C Rego"
 ```
+
+
+> **2024.05.10**
+```shell
+clear; ./packages/ydk/ydk.cli.sh onescan endpoints cloc ...
+clear; ./packages/ydk/ydk.cli.sh onescan endpoints
+```
+
+
 > **2024.05.9**
 ```shell
 clear; ./packages/ydk/ydk.cli.sh onescan endpoints cloc ...

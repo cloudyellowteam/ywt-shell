@@ -4,10 +4,11 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "SDK Debugger",
-            "program": "${workspaceFolder}/sdk/sdk.sh",
+            "name": "YDK Debugger",
+            "program": "${workspaceFolder}/packages/ydk/ydk.cli.sh",
             "args": [
-                "usage"
+                "onescan",
+                "endpoints"
             ]
         }
     ]

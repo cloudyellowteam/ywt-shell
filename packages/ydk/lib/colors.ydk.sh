@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2044,SC2155,SC2317
 ydk:colors() {
+    [[ -z "$LAST_RANDOM_COLOR_NAME" ]] && local LAST_RANDOM_COLOR_NAME="NC"
     inspect() {
         {
             local COLORS=("${!YDK_COLORS[@]}")
@@ -13,15 +14,34 @@ ydk:colors() {
         } >&4
     }
     random() {
+        local RANDOM_KIND="${1}"
         # local TEXT=${1} && shift
-        local RANDOM_COLOR=$((RANDOM % ${#YDK_COLORS_NAMES[@]}))
+        while true; do
+            local RANDOM_COLOR=$((RANDOM % ${#YDK_COLORS_NAMES[@]}))
+            case "$RANDOM_KIND" in
+            f | fg | foreground)
+                [[ "$RANDOM_COLOR" == *"_BG " ]] && continue
+                ;;
+            b | bg | background)
+                [[ "$RANDOM_COLOR" != *"_BG " ]] && continue
+                ;;
+            *)
+                local TEXT=${1}
+                # local RANDOM_COLOR=$((RANDOM % ${#YDK_COLORS_NAMES[@]}))
+                ;;
+            esac
+            [[ $LAST_RANDOM_COLOR_NAME != "$RANDOM_COLOR" ]] && break
+        done
+        LAST_RANDOM_COLOR_NAME=RANDOM_COLOR
         local RANDOM_COLOR="${YDK_COLORS_NAMES[RANDOM_COLOR]}"
         local RANDOM_COLOR="${YDK_COLORS[$RANDOM_COLOR]}"
-        if [[ -n "$1" ]]; then
+        if [[ -n "$TEXT" ]]; then
             echo -ne "${RANDOM_COLOR}${TEXT}${NC}${NBG}" >&4
         else
             echo -en "${RANDOM_COLOR}" >&4
         fi
+
+        return 0
         # local COLORS_RANDOM_INDEX=$((RANDOM % ${#YDK_COLORS[@]}))
         # local COLOR_RANDOM="${YDK_COLORS[$COLORS_RANDOM_INDEX]}"
         # echo -n "${COLOR_RANDOM}" >&4
@@ -102,7 +122,7 @@ ydk:colors() {
             [BRIGHT_WHITE]="\033[1;37m"
         ) && readonly YDK_COLORS
         declare -g -a YDK_COLORS_NAMES=(
-            "NC" "NBG" "BLACK" "BLACK_BG" "BRIGHT_BLACK" "BRIGHT_BLACK_BG" "DARK_GRAY" "DARK_GRAY_BG" "RED" "RED_BG" "BRIGHT_RED" "GREEN" "GREEN_BG" "BRIGHT_GREEN" "YELLOW" "YELLOW_BG" "BRIGHT_YELLOW" "BLUE" "BLUE_BG" "BRIGHT_BLUE" "PURPLE" "PURPLE_BG" "BRIGHT_PURPLE" "CYAN" "CYAN_BG" "BRIGHT_CYAN" "GRAY" "GRAY_BG" "BRIGHT_GRAY" "WHITE" "WHITE_BG" "BRIGHT_WHITE"
+            "BLACK" "BLACK_BG" "BRIGHT_BLACK" "BRIGHT_BLACK_BG" "DARK_GRAY" "DARK_GRAY_BG" "RED" "RED_BG" "BRIGHT_RED" "GREEN" "GREEN_BG" "BRIGHT_GREEN" "YELLOW" "YELLOW_BG" "BRIGHT_YELLOW" "BLUE" "BLUE_BG" "BRIGHT_BLUE" "PURPLE" "PURPLE_BG" "BRIGHT_PURPLE" "CYAN" "CYAN_BG" "BRIGHT_CYAN" "GRAY" "GRAY_BG" "BRIGHT_GRAY" "WHITE" "WHITE_BG" "BRIGHT_WHITE"
         ) && readonly YDK_COLORS_NAMES && export YDK_COLORS_NAMES
         [[ -n "$NO_COLOR" ]] && [[ "$NO_COLOR" == 1 || "$NO_COLOR" == true ]] && return 0
         for COLOR in "${!YDK_COLORS[@]}"; do

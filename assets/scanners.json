@@ -177,7 +177,7 @@
             "apt": "npm",
             "docker": "node:latest"
         }
-    }
+    },
     {
         "id": "37dc7156-87d4-4342-a6a1-cb82fccc4cd9",
         "name": "nancy",
