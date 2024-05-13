@@ -98,7 +98,7 @@ ydk:is() {
     boolean)
         [ -n "$2" ] && [[ "$2" =~ ^(true|false)$ ]] && return 0
         ;;
-    date)
+    date/iso8601)
         [ -n "$2" ] && [[ "$2" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] && return 0
         ;;
     url)

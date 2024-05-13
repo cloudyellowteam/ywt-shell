@@ -32,6 +32,66 @@ ydk:onescan() {
         ["available"]=".[] | select(.installed == true or .installed == \"true\")"
         ["unavailable"]=".[] | select(.installed == false or .installed == \"false\")"
         ["packages"]=".packages[]"
+        ["api-endpoints"]='
+            . |
+            to_entries[] |
+            .value as $scanner |
+            $scanner.flags as $flags |                
+            "ydk onescan api \($scanner.cli.cmd)/" as $command |
+            map(
+                $scanner.api |
+                to_entries[] |
+                .key as $method |
+                .value as $methodRef |
+                [
+                    $method, 
+                    (
+                        $methodRef.args |
+                        (
+                            .[] |
+                            . |
+                            if contains("{{") then 
+                                . as $param |
+                                . | sub("{{."; "") | sub("}}"; "") as $paramName | 
+                                $flags |
+                                to_entries[] |
+                                select(.key == $paramName) |
+                                .value as $paramRef |
+                                [
+                                    (
+                                        if $paramRef.required == true then
+                                            "*"
+                                        else
+                                            "?"
+                                        end 
+                                    ),
+                                    "[\($paramRef.env)|\($paramRef.argv)]",                                        
+                                    "(\($paramRef.type))",
+                                    "=",
+                                    "\"\($paramRef.default)\""
+                                ] |
+                                join("")
+                            else 
+                                null
+                            end
+                        )
+                    )
+                ] | join(" ")
+            ) as $methods |   
+            [
+                $scanner.id,
+                $scanner.name,
+                "\(if $scanner.installed then "yes" else "no" end)",
+                $command + 
+                (
+                    $methods |
+                    flatten |
+                    unique |
+                    sort |
+                    join("\n-\t-\t-\t" + $command)
+                )
+            ]
+        '
         ["status-log"]='
             .[1] |
             if .status == 0 then
@@ -56,7 +116,7 @@ ydk:onescan() {
         local ONESCAN_SCANNER_NAME="$1"
         local ONESCAN_API_PATH=""
         [ -z "$ONESCAN_SCANNER_NAME" ] && ydk:log error "No entrypoint provided" && return 22
-        [[ "$ONESCAN_SCANNER_NAME" == */* ]] && ONESCAN_SCANNER_NAME=$(cut -d'/' -f1 <<<"$1") && ONESCAN_API_PATH=$(cut -d'/' -f2 <<<"$1")
+        [[ "$ONESCAN_SCANNER_NAME" == */* ]] && ONESCAN_SCANNER_NAME=$(cut -d'/' -f1 <<<"$1") && ONESCAN_API_PATH=$(cut -d'/' -f2- <<<"$1")
         [[ -z "$ONESCAN_SCANNER_NAME" ]] && ydk:log error "No scanner name provided" && return 22
         local ONESCAN_SCANNER=$({
             if ! scanners get "$ONESCAN_SCANNER_NAME" 4>&1 >&4; then
@@ -319,79 +379,24 @@ ydk:onescan() {
     #   ydk onescan endpoints
     #   ydk onescan endpoints scanner1 scanner2
     endpoints() {
+        ydk:log info "Getting ${*:-"all"} endpoints"
         local SCANNERS_FILE="${YDK_ONESCAN_CONFIG[scanners]}"
         [ ! -f "$SCANNERS_FILE" ] && echo "[]" >&4 && ydk:log error "No scanners found" && return 1
-        # jq -c . <<<"$(scanners list 4>&1)"
-        # return 0
-        # ydk onescan api bandit/scan     [BANDIT_TARGET | --target]*(string)="." Directory     Scan a directory
+        # local YDK_ONESCAN_ENDPOINT_ARGS=("${@}")
+        # if [[ ${#YDK_ONESCAN_ENDPOINT_ARGS[@]} -eq 0 ]]; then
+        #     readarray -t YDK_ONESCAN_ENDPOINT_ARGS <<<"$(jq -cr '.[] | .name' <<<"$(scanners list 4>&1)")"
+        # fi
         {
             echo -e "Available\tAPI"
-            jq -rc \
-                '
-                . |
-                to_entries[] |
-                .value as $scanner |
-                $scanner.flags as $flags |                
-                "ydk onescan api \($scanner.cli.cmd)/" as $command |                
-                map(
-                    $scanner.api |
-                    to_entries[] |
-                    .key as $method |
-                    .value as $methodRef |
-                    [
-                        $method, 
-                        (
-                            $methodRef.args |
-                            (
-                                .[] |
-                                . |
-                                if contains("{{") then 
-                                    . as $param |
-                                    . | sub("{{."; "") | sub("}}"; "") as $paramName | 
-                                    $flags |
-                                    to_entries[] |
-                                    select(.key == $paramName) |
-                                    .value as $paramRef |
-                                    [
-                                        (
-                                            if $paramRef.required == true then
-                                                "*"
-                                            else
-                                                "?"
-                                            end 
-                                        ),
-                                        "[\($paramRef.env)|\($paramRef.argv)]",                                        
-                                        "(\($paramRef.type))",
-                                        "=",
-                                        "\"\($paramRef.default)\""
-                                    ] |
-                                    join("")
-                                else 
-                                    null
-                                end
-                            )
-                        )
-                    ] | join(" ")
-                ) as $methods |   
-                [
-                    $scanner.id,
-                    $scanner.name,
-                    "\(if $scanner.installed then "yes" else "no" end)",
-                    $command + 
-                    (
-                        $methods |
-                        flatten |
-                        unique |
-                        sort |
-                        join("\n-\t-\t-\t" + $command)
-                    )
-                ] |
-                @tsv
-            ' <<<"$(scanners list 4>&1)" | while IFS= read -r LINE; do
+            jq -rc "${YDK_ONESCAN_SPECS["api-endpoints"]} | @tsv" \
+                <<<"$(scanners list 4>&1)" | while IFS= read -r LINE; do
                 local SCANNER_ID=$(cut -d$'\t' -f1 <<<"$LINE")
                 local SCANNER_NAME=$(cut -d$'\t' -f2 <<<"$LINE")
+                if [[ "${#@}" -gt 0 && ! ${*} =~ $SCANNER_NAME ]]; then
+                    continue
+                fi
                 if [[ "$SCANNER_NAME" != "-" ]]; then
-                    local RANDOM_COLOR=$(ydk:colors random 4>&1)                    
+                    local RANDOM_COLOR=$(ydk:colors random 4>&1)
                 fi
                 LINE=${LINE//yes/"${GREEN}Yes${NC}"}
                 LINE=${LINE//no/"${RED}No${NC}"}
@@ -405,38 +410,200 @@ ydk:onescan() {
             done
         } | column -t -s $'\t' 2>/dev/null >&4
         return 0
-        local YDK_ONESCAN_ENDPOINT_ARGS=("${@}")
-        if [[ ${#YDK_ONESCAN_ENDPOINT_ARGS[@]} -eq 0 ]]; then
-            # jq -r '. | map(.name) | join(" ")' <<<"$(scanners list 4>&1)"
-            # jq -r '.[] | .name' <<<"$(scanners list 4>&1)"
-            readarray -t YDK_ONESCAN_ENDPOINT_ARGS <<<"$(jq -cr '.[] | .name' <<<"$(scanners list 4>&1)")"
-        fi
+        # local YDK_ONESCAN_ENDPOINT_ARGS=("${@}")
+        # if [[ ${#YDK_ONESCAN_ENDPOINT_ARGS[@]} -eq 0 ]]; then
+        #     # jq -r '. | map(.name) | join(" ")' <<<"$(scanners list 4>&1)"
+        #     # jq -r '.[] | .name' <<<"$(scanners list 4>&1)"
+        #     readarray -t YDK_ONESCAN_ENDPOINT_ARGS <<<"$(jq -cr '.[] | .name' <<<"$(scanners list 4>&1)")"
+        # fi
+        # {
+        #     echo -e "Command\tOptions\tDescription"
+        #     for SCANNER_ID in "${YDK_ONESCAN_ENDPOINT_ARGS[@]}"; do
+        #         # __onescan:api:validate "$ARG"
+        #         local ONESCAN_ENTRYPOINT=$(__onescan:api:validate "${SCANNER_ID,,}" 4>&1)
+        #         [ -z "$ONESCAN_ENTRYPOINT" ] && ydk:log error "No entrypoint provided" && return 22
+        #         ydk:log info "Getting $SCANNER_ID API endpoints"
+        #         __onescan:api:endpoint "$ONESCAN_ENTRYPOINT" 4>&1 >&4
+        #         # local ONESCAN_SCANNER_API=$(jq -cr '.scanner.api' <<<"$ONESCAN_ENTRYPOINT")
+        #         # jq -c . <<<"$ONESCAN_SCANNER_API" >&4
+        #         break
+        #     done
+        # } | column -t -s $'\t' >&4 &
+        # # local YDK_ONESCAN_ENDPOINTS_PID=$!
+        # ydk:await spin "$!" "Getting endpoints"
+        # return 0
+    }
+    # @description Get endpoint help
+    # @arg $1 <Scanner Identifier (Name or ID)>/<Api Path>
+    # @example
+    #   ydk onescan api <scanner>/<api path>
+    #   ydk onescan api cloc/version
+    #   ydk onescan api cloc/count --target=.
+    endpoint() {
+        local ONESCAN_ENTRYPOINT=$(__onescan:entrypoint "$1" 4>&1)
+        [ -z "$ONESCAN_ENTRYPOINT" ] && ydk:log error "No entrypoint provided" && return 22
+        local ONESCAN_API_PATH=$(jq -r '.path' <<<"$ONESCAN_ENTRYPOINT")
+        local ONESCAN_SCANNER_NAME=$(jq -r '.name' <<<"$ONESCAN_ENTRYPOINT")
         {
-            echo -e "Command\tOptions\tDescription"
-            for SCANNER_ID in "${YDK_ONESCAN_ENDPOINT_ARGS[@]}"; do
-                # __onescan:api:validate "$ARG"
-                local ONESCAN_ENTRYPOINT=$(__onescan:api:validate "${SCANNER_ID,,}" 4>&1)
-                [ -z "$ONESCAN_ENTRYPOINT" ] && ydk:log error "No entrypoint provided" && return 22
-                ydk:log info "Getting $SCANNER_ID API endpoints"
-                __onescan:api:endpoint "$ONESCAN_ENTRYPOINT" 4>&1 >&4
-                # local ONESCAN_SCANNER_API=$(jq -cr '.scanner.api' <<<"$ONESCAN_ENTRYPOINT")
-                # jq -c . <<<"$ONESCAN_SCANNER_API" >&4
-                break
-            done
-        } | column -t -s $'\t' >&4 &
-        # local YDK_ONESCAN_ENDPOINTS_PID=$!
-        ydk:await spin "$!" "Getting endpoints"
+            [ -z "$ONESCAN_API_PATH" ] && ydk:log error "No path provided" && return 22
+            [ -z "$ONESCAN_SCANNER_NAME" ] && ydk:log error "No name provided" && return 22
+        }
+        jq -r --arg SCANNER_ID "$ONESCAN_SCANNER_NAME" \
+            --arg API_PATH "$ONESCAN_API_PATH" \
+            '
+            '"${YDK_ONESCAN_SPECS["query"]}"' |
+            . as $scanner |
+            .api |
+            .[$API_PATH] |
+            if . == null then
+                error("Endpoint \($SCANNER_ID)/\($API_PATH) not found")
+            else
+                . as $endpoint |
+                .args |
+                [
+                    .[] |
+                    . as $arg |
+                    . | sub("{{."; "") | sub("}}"; "") as $argName |
+                    $scanner.flags |
+                    .[$argName] as $argRef |
+                    [
+                        "\($scanner.cli.cmd)/\($API_PATH)",
+                        (
+                            if $argRef.required == true then
+                                "*"
+                            else
+                                "?"
+                            end
+                        ),
+                        "[\($argRef.env)|\($argRef.argv)]",
+                        "(\($argRef.type))",
+                        "=",
+                        "\"\($argRef.default)\"",
+                        $endpoint.help
+                    ] |
+                    join(" ")
+                ] |
+                join(" ")
+            end
+        ' <<<"$(scanners list 4>&1)" >&4
         return 0
     }
     # @description API entrypoint
+    # @arg $1 <Scanner Identifier (Name or ID)>/<Api Path>
+    # @example
+    #   ydk onescan api <scanner>/<api path>
+    #   ydk onescan api cloc/version
+    #   ydk onescan api cloc/count --target=.
     api() {
-        ydk:log info "OneScan API"
+        # ydk:log info "OneScan API"
+        local ONESCAN_ENTRYPOINT=$(__onescan:entrypoint "$1" 4>&1)
+        [ -z "$ONESCAN_ENTRYPOINT" ] && ydk:log error "No entrypoint provided" && return 22
+        shift
+        local ONESCAN_API_PATH=$(jq -r '.path' <<<"$ONESCAN_ENTRYPOINT")
+        local ONESCAN_SCANNER_NAME=$(jq -r '.name' <<<"$ONESCAN_ENTRYPOINT")
+        {
+            [ -z "$ONESCAN_API_PATH" ] && ydk:log error "No path provided" && return 22
+            [ -z "$ONESCAN_SCANNER_NAME" ] && ydk:log error "No name provided" && return 22
+        }
+        local ONESCAN_ENDPOINT=$(
+            jq -r '
+                .scanner.api |
+                .["'"$ONESCAN_API_PATH"'"] |
+                if . == null then
+                    ""
+                else
+                    .
+                end
+            ' <<<"$ONESCAN_ENTRYPOINT"
+        )
+        [ -z "$ONESCAN_ENDPOINT" ] && ydk:log error "Endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH not found" && return 22
+        readarray -t ONESCAN_ENDPOINT_ARGS <<<"$(jq -cr '.args[]' <<<"$ONESCAN_ENDPOINT")"
+        [ -z "${ONESCAN_ENDPOINT_ARGS[*]}" ] && ydk:log error "Endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH args not found" && return 22
+        # ydk:log debug "Running endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH with (${#ONESCAN_ENDPOINT_ARGS[@]}) ${ONESCAN_ENDPOINT_ARGS[*]}"
+        for ONESCAN_ENDPOINT_ARG_IDX in "${!ONESCAN_ENDPOINT_ARGS[@]}"; do
+            local ONESCAN_ENDPOINT_ARG="${ONESCAN_ENDPOINT_ARGS[ONESCAN_ENDPOINT_ARG_IDX]}"
+            [[ "$ONESCAN_ENDPOINT_ARG" != \{\{*.*\}\} ]] && continue
+            local ONESCAN_ENDPOINT_ARG_NAME=$(cut -d'.' -f2 <<<"$ONESCAN_ENDPOINT_ARG")
+            ONESCAN_ENDPOINT_ARG_NAME=${ONESCAN_ENDPOINT_ARG_NAME//\}\}/}
+            local ONESCAN_ARG_FLAG=$(
+                jq -rc --arg ONESCAN_ENDPOINT_ARG_NAME "$ONESCAN_ENDPOINT_ARG_NAME" '
+                    .scanner.flags |
+                    to_entries[] |
+                    select(.key == $ONESCAN_ENDPOINT_ARG_NAME) |
+                    .value
+                ' <<<"$ONESCAN_ENTRYPOINT"
+            )
+            [ -z "$ONESCAN_ARG_FLAG" ] && ydk:log error "Endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH arg $ONESCAN_ENDPOINT_ARG_NAME not found" && return 22
+            {
+                # echo "ONESCAN_ENDPOINT_ARG_NAME = $ONESCAN_ENDPOINT_ARG_NAME"
+                # echo "ONESCAN_ARG_FLAG = $ONESCAN_ARG_FLAG"
+                # echo "ONESCAN_ENDPOINT_ARG_IDX = $ONESCAN_ENDPOINT_ARG_IDX"
+                local ONESCAN_ARG_ENV=$(jq -r '.env' <<<"$ONESCAN_ARG_FLAG")
+                local ONESCAN_ARG_ARGV=$(jq -r '.argv' <<<"$ONESCAN_ARG_FLAG")
+                local ONESCAN_ARG_TYPE=$(jq -r '.type' <<<"$ONESCAN_ARG_FLAG")
+                ONESCAN_ARG_TYPE=${ONESCAN_ARG_TYPE:-"string"}
+                local ONESCAN_ARG_DEFAULT=$(jq -r '.default' <<<"$ONESCAN_ARG_FLAG")
+                local ONESCAN_ARG_REQUIRED=$(jq -r '.required' <<<"$ONESCAN_ARG_FLAG")
+                local ONESCAN_ARG_VALUE=""
+                local ONESCAN_ERROR=(
+                    "Endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH arg $ONESCAN_ENDPOINT_ARG_NAME"
+                )                
+                # declare -g YDK_ONESCAN_CLOC_TARGET='./from-env';
+                ONESCAN_ARG_VALUE=$(eval "echo \$YDK_ONESCAN_$ONESCAN_ARG_ENV")
+                # getopt -u --name "$ONESCAN_ARG_ARGV" --longoptions "--$ONESCAN_ARG_ARGV" -- "$@" 2>/dev/null | cut -d'=' -f2
+                [[ -z "$ONESCAN_ARG_VALUE" ]] && ONESCAN_ARG_VALUE=$(getopt -uo '' --name "${ONESCAN_ENDPOINT_ARG_NAME}" --longoptions "${ONESCAN_ENDPOINT_ARG_NAME}:" -- "$@" 2>/dev/null | cut -d' ' -f3)
+                [[ -n "$ONESCAN_ARG_DEFAULT" && -z "${ONESCAN_ARG_VALUE}" ]] && ONESCAN_ARG_VALUE="$ONESCAN_ARG_DEFAULT"
+                [[ "$ONESCAN_ARG_REQUIRED" == true && -z "${ONESCAN_ARG_VALUE}" ]] && ydk:log error "${ONESCAN_ERROR[0]} is required" && return 22
+                ONESCAN_ERROR[0]+=", got $ONESCAN_ARG_VALUE"
+                case "$ONESCAN_ARG_TYPE" in
+                "number")
+                    ! ydk:is number "$ONESCAN_ARG_VALUE" && ONESCAN_ERROR+=("must be a number")
+                    ;;
+                "digit")
+                    ! ydk:is digit "$ONESCAN_ARG_VALUE" && ONESCAN_ERROR+=("must be a digit")
+                    ;;
+                "string")
+                    [[ -z "${ONESCAN_ARG_VALUE}" ]] && ONESCAN_ERROR+=("must be a string")
+                    ;;
+                "boolean")
+                    ! ydk:is boolean "$ONESCAN_ARG_VALUE" && ONESCAN_ERROR+=("must be a boolean")
+                    ;;
+                "url")
+                    ! ydk:is url "$ONESCAN_ARG_VALUE" && ONESCAN_ERROR+=("must be a url")
+                    ;;
+                "date/iso8601")
+                    ! ydk:is date/iso8601 "$ONESCAN_ARG_VALUE" && ONESCAN_ERROR+=("must be a date/iso8601")
+                    ;;
+                "path")
+                    [[ ! -d "$ONESCAN_ARG_VALUE" && ! -f "$ONESCAN_ARG_VALUE" ]] && ONESCAN_ERROR+=("must be a path")
+                    ;;
+                "dir")
+                    [[ ! -d "$ONESCAN_ARG_VALUE" ]] && ONESCAN_ERROR+=("must be a directory")
+                    ;;
+                "file")
+                    [[ ! -f "$ONESCAN_ARG_VALUE" ]] && ONESCAN_ERROR+=("must be a file")
+                    ;;
+                *) ;;
+                esac
+                if [[ "${#ONESCAN_ERROR[@]}" -gt 1 ]]; then
+                    local ONESCAN_RAW_ERROR="${ONESCAN_ERROR[*]}"
+                    ydk:log error "$ONESCAN_RAW_ERROR"
+                    return 22
+                fi
+            } 1>&2
+            ONESCAN_ENDPOINT_ARGS[ONESCAN_ENDPOINT_ARG_IDX]=$ONESCAN_ARG_VALUE
+            # ONESCAN_ENDPOINT=${ONESCAN_ENDPOINT//\{\{.${ONESCAN_ENDPOINT_ARG_NAME}\}\}/$ONESCAN_ARG_VALUE}
+        done
+        ydk:log debug "Running endpoint $ONESCAN_SCANNER_NAME/$ONESCAN_API_PATH with (${#ONESCAN_ENDPOINT_ARGS[@]}) ${ONESCAN_ENDPOINT_ARGS[*]}"
+        # echo "${#ONESCAN_ENDPOINT_ARGS[@]} - ${ONESCAN_ENDPOINT_ARGS[*]}" 1>&2
+        # jq . <<<"$ONESCAN_ENDPOINT" >&4
         return 0
     }
     # @section Scanners
     # @description Scanners entrypoint
     # @exitcode 1 If no scanners found
     # @example ydk onescan scanners
+    #
     scanners() {
         local SCANNERS_FILE="${YDK_ONESCAN_CONFIG[scanners]}"
         [ ! -f "$SCANNERS_FILE" ] && echo "[]" >&4 && ydk:log error "No scanners found" && return 1

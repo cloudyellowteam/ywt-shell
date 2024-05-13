@@ -745,7 +745,9 @@
             "Known vulnerabilities (CVEs)",
             "IaC issues and misconfigurations",
             "Sensitive information and secrets",
-            "Software licenses"
+            "Software licenses",
+            "Scan Files inside container images",
+            "Scan Container image metadata"
         ],
         "cli": {
             "cmd": "trivy",
@@ -772,63 +774,438 @@
                 ],
                 "help": "Get version of trivy"
             },
-            "docker/image": {
-                "args": [
-                    "--image",
-                    "{{.image}}"
-                ],
-                "help": "Scan a Docker image"
-            },
-            "docker/container": {
-                "args": [
-                    "--container",
-                    "{{.container}}"
-                ],
-                "help": "Scan a Docker container"
-            },
             "fs": {
                 "args": [
-                    "--file",
-                    "{{.file}}"
+                    "fs",
+                    "{{.target}}"
                 ],
-                "help": "Scan a filesystem"
+                "help": "Vulnerabilities and Secrets",
+                "targets": [
+                    "filesystem"
+                ]
             },
-            "repo/github": {
+            "fs/misconfig": {
                 "args": [
-                    "--github-token",
-                    "{{.token}}",
-                    "--repository",
-                    "{{.repository}}"
+                    "fs",
+                    "--scanners",
+                    "misconfig",
+                    "{{.target}}"
                 ],
-                "help": "Scan a GitHub repository"
+                "help": "Scan for IaC issues and misconfigurations",
+                "targets": [
+                    "filesystem"
+                ]
             },
-            "vm": {
+            "fs/licences": {
                 "args": [
+                    "fs",
+                    "--scanners",
+                    "licence",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "fs/sbom/spdx": {
+                "args": [
+                    "fs",
+                    "--format spdx-json",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses with SPDX format",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "fs/sbom/cyclonedx": {
+                "args": [
+                    "fs",
+                    "--format cyclonedx",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses with CycloneDX format",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "fs/root": {
+                "args": [
+                    "rootfs",
+                    "{{.target}}"
+                ],
+                "help": "Scan a directory",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "docker/image/fs": {
+                "args": [
+                    "image",
+                    "{{.image}}"
+                ],
+                "help": "Scan a Docker image Vulnerabilities and Secrets",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/fs/cves": {
+                "args": [
+                    "image",
+                    "--scanners",
+                    "vuln",
+                    "{{.image}}"
+                ],
+                "help": "Vulnerabilities",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/fs/misconfig": {
+                "args": [
+                    "image",
+                    "--scanners",
+                    "misconfig",
+                    "{{.image}}"
+                ],
+                "help": "Scan for IaC issues and misconfigurations",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/fs/licences": {
+                "args": [
+                    "image",
+                    "--scanners",
+                    "licence",
+                    "{{.image}}"
+                ],
+                "help": "Scan for software licenses",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/sbom/spdx": {
+                "args": [
+                    "image ",
+                    "--format spdx-json",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses with SPDX format",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "docker/sbom/cyclonedx": {
+                "args": [
+                    "image",
+                    "--format cyclonedx",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses with CycloneDX format",
+                "targets": [
+                    "filesystem"
+                ]
+            },
+            "docker/image/metadata": {
+                "args": [
+                    "image",
+                    "--image-config-scanners",
+                    "{{.image}}"
+                ],
+                "help": "Container images have configuration. docker inspect and docker history show the information according to the configuration.",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/metadata/misconfig": {
+                "args": [
+                    "image",
+                    "--image-config-scanners",
+                    "misconfig",
+                    "{{.image}}"
+                ],
+                "help": "Scan for IaC issues and misconfigurations",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/metadata/secrets": {
+                "args": [
+                    "image",
+                    "--image-config-scanners",
+                    "secret",
+                    "{{.image}}"
+                ],
+                "help": "Scan for secrets in docker metadata",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/image/tar": {
+                "args": [
+                    "image",
                     "--input",
-                    "{{.input}}"
+                    "{{.image}}"
+                ],
+                "help": "Scan a Docker image tar file",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/compliance": {
+                "args": [
+                    "image",
+                    "--compliance",
+                    "docker-cis",
+                    "{{.image}}"
+                ],
+                "help": "Container image specific compliance reports for CIS Docker Community Edition Benchmark",
+                "targets": [
+                    "docker:image"
+                ]
+            },
+            "docker/daemon": {
+                "args": [
+                    "image",
+                    "--docker-host",
+                    "{{.socket}}",
+                    "{{.image}}"
+                ],
+                "help": "Scan a Docker socket",
+                "targets": [
+                    "docker:socket"
+                ]
+            },
+            "podman/daemon": {
+                "args": [
+                    "image",
+                    "--podman-host",
+                    "{{.socket}}",
+                    "{{.image}}"
+                ],
+                "help": "Scan a Podman socket",
+                "targets": [
+                    "podman:socket"
+                ]
+            },
+            "repo": {
+                "args": [
+                    "repo",
+                    "{{.target}}"
+                ],
+                "help": "Scan a local or remote git repository",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/misconfig": {
+                "args": [
+                    "repo",
+                    "--scanners",
+                    "misconfig",
+                    "{{.target}}"
+                ],
+                "help": "Scan for IaC issues and misconfigurations",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/licences": {
+                "args": [
+                    "repo",
+                    "--scanners",
+                    "licence",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/branch": {
+                "args": [
+                    "repo",
+                    "--branch",
+                    "{{.branch}}",
+                    "{{.target}}"
+                ],
+                "help": "Scan a specific branch of a git repository",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/commit": {
+                "args": [
+                    "repo",
+                    "--commit",
+                    "{{.commit-hash}}",
+                    "{{.target}}"
+                ],
+                "help": "Scan a specific commit of a git repository",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/tag": {
+                "args": [
+                    "repo",
+                    "--tag",
+                    "{{.tag}}",
+                    "{{.target}}"
+                ],
+                "help": "Scan a specific tag of a git repository",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/private/github": {
+                "require": {
+                    "GITHUB_TOKEN": true
+                },
+                "args": [
+                    "repo",
+                    "{{.target}}"
+                ],
+                "help": "Scan a private GitHub repository. Require GITHUB_TOKEN",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "repo/private/gitlab": {
+                "require": {
+                    "GITLAB_TOKEN": true
+                },
+                "args": [
+                    "repo",
+                    "{{.target}}"
+                ],
+                "help": "Scan a private GitLab repository. Require GITLAB_TOKEN",
+                "targets": [
+                    "git:repo"
+                ]
+            },
+            "vm/misconfig": {
+                "args": [
+                    "vm",
+                    "--scanners",
+                    "misconfig",
+                    "{{.target}}"
+                ],
+                "help": "Scan for IaC issues and misconfigurations"
+            },
+            "vm/licences": {
+                "args": [
+                    "vm",
+                    "--scanners",
+                    "licence",
+                    "{{.target}}"
+                ],
+                "help": "Scan for software licenses"
+            },
+            "vm/vmdk": {
+                "args": [
+                    "vm",
+                    "--scanner",
+                    "vuln",
+                    "{{.target}}"
                 ],
                 "help": "Scan a VM image"
             },
+            "vm/ami": {
+                "args": [
+                    "vm",
+                    "--scanner",
+                    "vuln",
+                    "ami:{{.target}}"
+                ],
+                "help": "Amazon Machine Image (AMI)"
+            },
+            "vm/ami/by-region": {
+                "args": [
+                    "vm",
+                    "--aws-region",
+                    "{{.region}}",
+                    "--scanner",
+                    "vuln",
+                    "ami:{{.target}}"
+                ],
+                "help": "Amazon Machine Image (AMI)"
+            },
+            "vm/ebs": {
+                "args": [
+                    "vm",
+                    "--scanner",
+                    "vuln",
+                    "ebs:{{.target}}"
+                ],
+                "help": "Amazon Elastic Block Store (EBS)"
+            },
             "k8s": {
                 "args": [
-                    "--kubernetes",
-                    "{{.k8s}}"
+                    "k8s",
+                    "--report",
+                    "all"
                 ],
                 "help": "Scan a Kubernetes resource"
             },
-            "artifact": {
+            "k8s/sbom/spdx": {
                 "args": [
-                    "--artifact",
-                    "{{.artifact}}"
+                    "k8s",
+                    "--format",
+                    "spdx-json",
+                    "{{.target}}"
                 ],
-                "help": "Scan an artifact"
+                "help": "Scan a Kubernetes resource with SPDX format"
             },
-            "aws": {
+            "k8s/sbom/cyclonedx": {
                 "args": [
-                    "--aws",
-                    "{{.aws}}"
+                    "k8s",
+                    "--format",
+                    "cyclonedx",
+                    "{{.target}}"
+                ],
+                "help": "Scan a Kubernetes resource with CycloneDX format"
+            },
+            "aws/region": {
+                "args": [
+                    "aws",
+                    "--region",
+                    "{{.target}}"
                 ],
                 "help": "Scan an AWS resource"
+            },
+            "aws/service": {
+                "args": [
+                    "aws",
+                    "--service",
+                    "{{.target}}"
+                ],
+                "help": "Scan an AWS resource"
+            },
+            "aws/complaince/aws-cis-1.2": {
+                "args": [
+                    "aws",
+                    "--compliance=aws-cis-1.2",
+                    "{{.target}}"
+                ],
+                "help": "AWS specific compliance reports for AWS CIS Foundations Benchmark v1.2"
+            },
+            "aws/complaince/aws-cis-1.4": {
+                "args": [
+                    "aws",
+                    "--compliance=aws-cis-1.4",
+                    "{{.target}}"
+                ],
+                "help": "AWS specific compliance reports for AWS CIS Foundations Benchmark v1.4"
+            },
+            "sbom": {
+                "args": [
+                    "sbom",
+                    "{{.target}}"
+                ],
+                "help": "Scan a software bill of materials with SPDX format"
             }
         },
         "flags": {
@@ -839,61 +1216,62 @@
                 "argv": "--image",
                 "env": "TRIVY_IMAGE"
             },
-            "container": {
-                "description": "Docker container to scan",
+            "target": {
+                "description": "Directory to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--container",
-                "env": "TRIVY_CONTAINER"
+                "default": ".",
+                "argv": "--target",
+                "env": "TRIVY_TARGET"
             },
-            "file": {
-                "description": "Filesystem to scan",
+            "repo": {
+                "description": "Git repository to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--file",
-                "env": "TRIVY_FILE"
+                "argv": "--repo",
+                "env": "TRIVY_REPO"
             },
-            "token": {
-                "description": "GitHub token",
+            "branch": {
+                "description": "Branch to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--github-token",
-                "env": "TRIVY_GITHUB_TOKEN"
+                "argv": "--branch",
+                "env": "TRIVY_BRANCH"
             },
-            "repository": {
-                "description": "GitHub repository to scan",
+            "commit-hash": {
+                "description": "Commit hash to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--repository",
-                "env": "TRIVY_REPOSITORY"
+                "argv": "--commit",
+                "env": "TRIVY_COMMIT"
             },
-            "input": {
-                "description": "VM image to scan",
+            "tag": {
+                "description": "Tag to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--input",
-                "env": "TRIVY_INPUT"
+                "argv": "--tag",
+                "env": "TRIVY_TAG"
             },
-            "k8s": {
-                "description": "Kubernetes resource to scan",
+            "org": {
+                "description": "GitHub organization to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--kubernetes",
-                "env": "TRIVY_K8S"
+                "argv": "--github-org",
+                "env": "TRIVY_GITHUB_ORG"
             },
-            "artifact": {
-                "description": "Artifact to scan",
+            "bucket": {
+                "description": "S3 bucket to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--artifact",
-                "env": "TRIVY_ARTIFACT"
+                "argv": "--s3",
+                "env": "TRIVY_S3"
             },
-            "aws": {
-                "description": "AWS resource to scan",
+            "socket": {
+                "description": "Docker socket to scan",
                 "type": "string",
                 "required": true,
-                "argv": "--aws",
-                "env": "TRIVY_AWS"
+                "argv": "--docker-host",
+                "env": "TRIVY_SOCKET"
             }
         },
         "packages": {
@@ -941,13 +1319,13 @@
                 ],
                 "help": "Get version of cloc"
             },
-            "count": {
+            "fs/languages/count": {
                 "args": [
                     "{{.target}}"
                 ],
                 "help": "Count lines of code in a directory"
             },
-            "count-by-lang": {
+            "fs/languages/countByFile": {
                 "args": [
                     "--by-file",
                     "{{.target}}"
@@ -958,7 +1336,7 @@
         "flags": {
             "target": {
                 "description": "Directory to count lines of code",
-                "type": "string",
+                "type": "path",
                 "required": true,
                 "default": ".",
                 "argv": "--target",
